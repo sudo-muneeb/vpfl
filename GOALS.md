@@ -38,7 +38,7 @@ published package release.
 
 ## Current goal
 
-### Goal 1 — Application architecture and shell — In progress
+### Goal 1 — Application architecture and shell — Complete
 
 **Objective:** Establish feature UI, semantic themes, routing, and app shell.
 **Files/modules:** `lib/ui/core/`, `lib/ui/shell/`, `lib/routing/`.
@@ -47,6 +47,10 @@ published package release.
 works with VPFL light/dark theme tokens.
 **Tests required:** Shell/sidebar widget behavior and light/dark rendering.
 **Risks/unknowns:** Final responsive dimensions remain design-tunable.
+
+**Result:** Added responsive expanded/compact sidebar navigation, home and
+library/folder empty states, and a working System/Light/Dark appearance
+selector. Navigation and theme widget tests pass.
 
 ## Next goals
 

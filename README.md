@@ -1,13 +1,13 @@
 # VPFL
 
-VPFL is a Flutter desktop video player for local media on Linux. The current
-build is the playback compatibility baseline: one `media_kit` session with a
-minimal video surface and controls. The home library, saved folders, and
-persistence are planned goals; they are not implemented yet.
+VPFL is a Flutter desktop video player for local media on Linux. It has a
+responsive navigation shell and one `media_kit` playback session. The Home,
+All Videos, and Folders views currently show empty states; folder indexing and
+persistent media history are planned goals.
 
 ## Run
 
-Launch the empty player window:
+Launch the main app shell:
 
 ```bash
 flutter run -d linux
