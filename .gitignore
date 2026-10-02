@@ -1,3 +1,18 @@
+# vpfl specific
+
+videos/
+
+
+
+
+
+
+
+
+
+
+
+
 # Miscellaneous
 *.class
 *.log
@@ -35,6 +50,12 @@ migrate_working_dir/
 
 # Symbolication related
 app.*.symbols
+
+# Nested build artifacts from the vendored Flutter plugin.
+third_party/media_kit_video/**/.gradle/
+third_party/media_kit_video/**/build/
+third_party/media_kit_video/.dart_tool/
+third_party/media_kit_video/pubspec.lock
 
 # Obfuscation related
 app.*.map.json

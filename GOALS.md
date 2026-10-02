@@ -20,38 +20,25 @@ libraries and use user-granted folder access. Tests are focused unit and widget
 tests plus Linux/native integration checks; hardware and release claims require
 runtime evidence.
 
+## Previous milestone
+
+### Goal 0 — Playback compatibility and repository baseline — Core complete
+
+The Linux release build and single-file playback path are established.
+Hardware GL video rendering is verified on X11, and the integration run
+confirmed playback, seek, and pause. Flatpak build/run is deferred to Goal 7
+because `flatpak-builder` is unavailable in this environment. First-frame
+capture, hardware decoder state, Wayland, and dispose/reopen remain unverified.
+The optional CUDA probe warning is expected on this AMD machine and is not a
+playback blocker.
+
+The local `media_kit_video` patch is maintained as a small diff plus a refresh
+script; use `./tool/update_media_kit_video.sh <version>` to rebase it on a
+published package release.
+
 ## Current goal
 
-### Goal 0 — Playback compatibility and repository baseline — In progress
-
-**Objective:** Replace the starter counter with a minimal, locally playable
-Linux app and prove the selected Flutter/media stack before expanding the UI.
-
-**Files/modules:** `lib/main.dart`, initial `lib/data/` and `lib/ui/` player
-modules, `pubspec.yaml` / `pubspec.lock`, Linux runner, `flatpak/`, and this
-tracker.
-
-**Dependencies:** Flutter 3.47.5 / Dart 3.13.4 are installed. Select exact
-`media_kit` package versions and retain the lockfile. Flatpak tooling and a
-media fixture are needed for full native verification.
-
-**Acceptance criteria:** `vpfl` launches normally; `vpfl <file>` opens a local
-file through one application action; one `media_kit` player is owned below the
-UI; a Linux release build succeeds; a thin Flatpak manifest includes the
-playback runtime; the compatibility report distinguishes tested behavior from
-unverified hardware claims.
-
-**Tests required:** Focused unit/widget coverage for argument/open routing and
-player controls; Linux playback checks for open, first frame, pause, seek, and
-dispose/reopen. Run formatter, analyzer, tests, and release build.
-
-**Risks/unknowns:** The `media_kit` Linux rendering behavior must be checked on
-the installed Mesa/X11 setup. Flatpak tooling or native package access may be
-unavailable in this environment. No media fixtures are currently in the repo.
-
-## Next goals
-
-### Goal 1 — Application architecture and shell
+### Goal 1 — Application architecture and shell — In progress
 
 **Objective:** Establish feature UI, semantic themes, routing, and app shell.
 **Files/modules:** `lib/ui/core/`, `lib/ui/shell/`, `lib/routing/`.
@@ -60,6 +47,8 @@ unavailable in this environment. No media fixtures are currently in the repo.
 works with VPFL light/dark theme tokens.
 **Tests required:** Shell/sidebar widget behavior and light/dark rendering.
 **Risks/unknowns:** Final responsive dimensions remain design-tunable.
+
+## Next goals
 
 ### Goal 2 — Playback foundation
 
@@ -156,20 +145,54 @@ review, and release/profile measurements.
 - Confirmed Flutter 3.47.5, Dart 3.13.4, and Linux Mesa/X11 toolchain are
   installed. The Linux target reports an AMD Radeon GPU; this does not verify
   video hardware decoding or media rendering.
+- Added a minimal player, the single-session `PlaybackService`, CLI path
+  routing, VPFL light/dark theme baseline, and six focused routing/control
+  tests. `media_kit` packages are pinned to 1.2.6 / 2.0.1 / 1.0.7.
+- `flutter analyze`, all six `flutter test` cases, and
+  `flutter build linux --release` pass. The Linux playback integration run
+  advances, seeks, and pauses the 1440p sample.
+- Added the Phase 0 compatibility report and an early Flatpak manifest/build
+  script using Freedesktop 26.08. The Flatpak build itself is unverified.
+- Fixed Linux hardware-render context creation by carrying a narrow patch to
+  `media_kit_video` 2.0.1 under `third_party/`. The EGL context now uses a 1×1
+  pbuffer surface, avoiding a surfaceless `eglMakeCurrent` failure on this Mesa
+  driver. Debug integration and release smoke runs with all four local videos
+  (4K landscape, 4K portrait, and two 1440p samples) initialized the hardware
+  GL context.
 
 ## Known issues
 
-- The repository is a Flutter counter template with no player, repositories,
-  database, feature structure, or meaningful test coverage.
+- The repository started as a Flutter counter template. Playback now has a
+  baseline service and UI; repositories, database, home library, and saved
+  folders are still unimplemented.
 - `docs/07-roadmap.md`, `docs/09-sources.md`, and
   `TESTING_GUIDELINES.md` referenced by the brief are absent. Phase 0 is taken
   from the explicit first-task section in `docs/08-coding-agent-brief.md`.
 - `.agents/PERFORMANCE.md` mentions conversion progress, which conflicts with
   the current product scope and coding brief. Conversion remains excluded.
-- Flatpak tooling and media fixtures have not yet been checked.
+- The upstream hardware-render failure came from reading Flutter's
+  thread-local EGL context in a GTK callback after Flutter moved it to the
+  raster thread. The local patch obtains EGL from GDK and creates an isolated
+  context backed by a pbuffer. X11 rendering is verified; Wayland and visible
+  first-frame presentation still need verification.
+- mpv may log `Cannot load libcuda.so.1` while probing its optional NVIDIA
+  backend. This is expected on the AMD test machine and does not affect
+  rendering. VAAPI or other hardware decoding selection remains unknown.
+- `flatpak` 1.14.6 exists, but `flatpak-builder` is not installed. No media
+  fixture is tracked in the repository; the user's `videos/` directory is
+  deliberately ignored by Git. Installing the missing package was declined.
 
 ## Decisions discovered during implementation
 
 - The product scope and coding brief are more specific than the generic Flutter
   style notes: Riverpod is the documented state approach, and conversion stays
   out of scope.
+- The Linux manifest uses existing `com.app.vpfl` runner identity as a
+  placeholder. Choose the project-owned reverse-domain ID before public
+  packaging.
+- The Flatpak manifest targets Freedesktop 26.08, the current stable runtime
+  when this baseline was prepared.
+- The upstream hardware-render failure was caused by reading Flutter's
+  thread-local EGL context in a GTK callback after Flutter moved that context
+  to its raster thread. The local patch obtains EGL from GDK and creates an
+  isolated OpenGL ES 2 context backed by a pbuffer.
