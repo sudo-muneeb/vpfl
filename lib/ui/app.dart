@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/themes/vpfl_theme.dart';
+import 'core/widgets/window_controls.dart';
 import '../data/persistence_providers.dart';
 import 'player/player_screen.dart';
 import 'shell/app_shell.dart';
@@ -109,9 +110,12 @@ class _VpflAppState extends ConsumerState<VpflApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'VPFL',
+      debugShowCheckedModeBanner: false,
       theme: VpflTheme.light,
       darkTheme: VpflTheme.dark,
       themeMode: _themeMode,
+      builder: (context, child) =>
+          WindowResizeBorder(child: child ?? const SizedBox.shrink()),
       home: _activeMediaUri != null || _activeStartupError != null
           ? PlayerScreen(
               initialMediaUri: _activeMediaUri,

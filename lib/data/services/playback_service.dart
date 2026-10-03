@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:path/path.dart' as path;
 
+import 'media_file_picker.dart';
 import 'playback_open_coordinator.dart';
 
 /// Owns the single foreground media player session.
@@ -82,6 +85,42 @@ class PlaybackService {
   /// Opens and starts playing a media URI.
   Future<void> open(String uri) =>
       _openCoordinator.run(() => _player.open(Media(uri)));
+
+  /// Opens nearby video files as a queue so edge controls can navigate them.
+  /// A file picker grant may only cover one file; in that case open it alone.
+  Future<void> openWithDirectory(String uri) async {
+    final source = Uri.tryParse(uri);
+    if (source == null || source.scheme != 'file') return open(uri);
+    final selected = source.toFilePath();
+    final siblings = <String>[];
+    try {
+      await for (final entity in Directory(
+        path.dirname(selected),
+      ).list(followLinks: false)) {
+        if (siblings.length >= 2000) break;
+        if (entity is File &&
+            videoExtensions.contains(
+              path.extension(entity.path).replaceFirst('.', '').toLowerCase(),
+            )) {
+          siblings.add(entity.path);
+        }
+      }
+    } on FileSystemException {
+      return open(uri);
+    }
+    if (!siblings.contains(selected)) siblings.add(selected);
+    if (siblings.length < 2) return open(uri);
+    siblings.sort(
+      (a, b) => path
+          .basename(a)
+          .toLowerCase()
+          .compareTo(path.basename(b).toLowerCase()),
+    );
+    return openQueue(
+      siblings.map((file) => Uri.file(file).toString()).toList(),
+      startIndex: siblings.indexOf(selected),
+    );
+  }
 
   /// Opens a queue and starts at [startIndex].
   Future<void> openQueue(List<String> uris, {int startIndex = 0}) {

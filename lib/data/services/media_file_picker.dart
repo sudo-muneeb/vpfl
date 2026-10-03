@@ -1,6 +1,6 @@
 import 'package:file_selector/file_selector.dart';
 
-const List<String> _videoExtensions = [
+const List<String> videoExtensions = [
   '3g2',
   '3gp',
   'asf',
@@ -25,7 +25,7 @@ const List<String> _videoExtensions = [
 Future<String?> pickVideoUri() async {
   final XFile? file = await openFile(
     acceptedTypeGroups: const [
-      XTypeGroup(label: 'Video files', extensions: _videoExtensions),
+      XTypeGroup(label: 'Video files', extensions: videoExtensions),
       XTypeGroup(label: 'All files'),
     ],
   );

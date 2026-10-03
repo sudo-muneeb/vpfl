@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/persistence_providers.dart';
 import '../../data/model/app_database.dart';
+import '../library/media_card.dart';
 
 /// Home surface for recent media and the indexed video library.
 class HomeScreen extends ConsumerWidget {
@@ -36,9 +37,9 @@ class HomeScreen extends ConsumerWidget {
                   title: 'Nothing played yet',
                   message: 'Videos you play will appear here.',
                 )
-              : Column(
-                  children: [
-                    for (final PlaybackHistory entry in entries)
+              : _HomeCardGrid(
+                  cards: [
+                    for (final entry in entries.take(8))
                       _RecentMediaCard(
                         entry: entry,
                         onTap: () => onOpenMedia(entry.uri),
@@ -65,24 +66,14 @@ class HomeScreen extends ConsumerWidget {
                   title: 'Your library is empty',
                   message: 'Add a folder to start building your library.',
                 )
-              : Column(
-                  children: [
-                    for (final item in items.take(4))
-                      Card(
-                        child: ListTile(
-                          leading: const Icon(Icons.movie_outlined),
-                          title: Text(
-                            item.displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            item.path,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          onTap: () => onOpenMedia(item.uri),
-                        ),
+              : _HomeCardGrid(
+                  cards: [
+                    for (final item in items.take(8))
+                      MediaCard(
+                        title: item.displayName,
+                        status: 'Ready to play',
+                        detail: item.path,
+                        onTap: () => onOpenMedia(item.uri),
                       ),
                   ],
                 ),
@@ -106,23 +97,46 @@ class _RecentMediaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String progress = entry.durationMs > 0
-        ? '${Duration(milliseconds: entry.positionMs).inMinutes} min of '
-              '${Duration(milliseconds: entry.durationMs).inMinutes} min'
-        : 'Played ${entry.watchCount} ${entry.watchCount == 1 ? 'time' : 'times'}';
-    return Card(
-      child: ListTile(
-        onTap: onTap,
-        leading: const Icon(Icons.movie_outlined),
-        title: Text(
-          entry.displayName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(progress),
-      ),
+    final hasDuration = entry.durationMs > 0;
+    return MediaCard(
+      title: entry.displayName,
+      status: hasDuration
+          ? '${_time(entry.positionMs)} / ${_time(entry.durationMs)} watched'
+          : 'Played ${entry.watchCount} ${entry.watchCount == 1 ? 'time' : 'times'}',
+      detail: entry.completed ? 'Completed' : 'Recent playback',
+      progress: hasDuration ? entry.positionMs / entry.durationMs : null,
+      onTap: onTap,
     );
   }
+
+  String _time(int milliseconds) {
+    final duration = Duration(milliseconds: milliseconds);
+    final minutes = duration.inMinutes.toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+}
+
+class _HomeCardGrid extends StatelessWidget {
+  const _HomeCardGrid({required this.cards});
+
+  final List<Widget> cards;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      const gap = 16.0;
+      final columns = ((constraints.maxWidth + gap) / 250).floor().clamp(1, 5);
+      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: 20,
+        children: [
+          for (final card in cards) SizedBox(width: width, child: card),
+        ],
+      );
+    },
+  );
 }
 
 class _SectionHeading extends StatelessWidget {

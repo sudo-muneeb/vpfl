@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'window_controls.dart';
+
 /// Shared app bar for the library shell and playback screen.
 class AppTopBar extends StatelessWidget {
   const AppTopBar({
@@ -24,83 +26,114 @@ class AppTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final TextTheme textTheme = Theme.of(context).textTheme;
-    return SizedBox(
-      height: 64,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Row(
-          children: [
-            if (onBack case final VoidCallback back) ...[
-              IconButton(
-                tooltip: 'Back to library',
-                onPressed: back,
-                icon: const Icon(Icons.arrow_back),
-              ),
-              const SizedBox(width: 8),
-            ],
-            Image.asset('vpfl-logo.png', width: 34, height: 34),
-            const SizedBox(width: 10),
-            Text('VPFL', style: textTheme.titleMedium),
-            Expanded(
-              child: Row(
-                children: [
-                  if (title.isNotEmpty) ...[
-                    const SizedBox(width: 20),
-                    const VerticalDivider(indent: 16, endIndent: 16),
-                    const SizedBox(width: 16),
-                    Flexible(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.titleMedium,
-                      ),
+    final scheme = Theme.of(context).colorScheme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 900;
+        return Container(
+          height: 64,
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              if (onBack case final VoidCallback back) ...[
+                IconButton(
+                  tooltip: 'Home',
+                  onPressed: back,
+                  icon: const Icon(Icons.home_outlined),
+                ),
+                const SizedBox(width: 4),
+              ],
+              Expanded(
+                child: WindowDragHandle(
+                  child: SizedBox(
+                    height: 64,
+                    child: Row(
+                      children: [
+                        Image.asset('vpfl-logo.png', width: 30, height: 30),
+                        if (!compact) ...[
+                          const SizedBox(width: 10),
+                          Text('VPFL', style: textTheme.titleMedium),
+                        ],
+                        if (title.isNotEmpty) ...[
+                          const SizedBox(width: 14),
+                          SizedBox(
+                            height: 26,
+                            child: VerticalDivider(
+                              color: scheme.outlineVariant,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.titleSmall,
+                            ),
+                          ),
+                        ],
+                        if (renderingMode != null) ...[
+                          const SizedBox(width: 10),
+                          _RendererBadge(mode: renderingMode!),
+                        ],
+                        const SizedBox(width: 8),
+                      ],
                     ),
-                  ],
-                  if (renderingMode != null) ...[
-                    const SizedBox(width: 12),
-                    _RendererBadge(mode: renderingMode!),
-                  ],
+                  ),
+                ),
+              ),
+              if (compact)
+                IconButton.filledTonal(
+                  key: const Key('open-file-button'),
+                  tooltip: 'Open file',
+                  onPressed: onOpenFile,
+                  icon: const Icon(Icons.folder_open_outlined),
+                )
+              else
+                FilledButton.tonalIcon(
+                  key: const Key('open-file-button'),
+                  onPressed: onOpenFile,
+                  icon: const Icon(Icons.folder_open_outlined),
+                  label: const Text('Open file'),
+                ),
+              const SizedBox(width: 6),
+              PopupMenuButton<ThemeMode>(
+                key: const Key('quick-appearance-menu'),
+                tooltip: 'Appearance',
+                initialValue: themeMode,
+                onSelected: onThemeModeChanged,
+                icon: const Icon(Icons.palette_outlined),
+                itemBuilder: (BuildContext context) => const [
+                  PopupMenuItem(
+                    value: ThemeMode.system,
+                    child: Text('System appearance'),
+                  ),
+                  PopupMenuItem(
+                    value: ThemeMode.light,
+                    child: Text('Light appearance'),
+                  ),
+                  PopupMenuItem(
+                    value: ThemeMode.dark,
+                    child: Text('Dark appearance'),
+                  ),
                 ],
               ),
-            ),
-            FilledButton.tonalIcon(
-              key: const Key('open-file-button'),
-              onPressed: onOpenFile,
-              icon: const Icon(Icons.folder_open_outlined),
-              label: const Text('Open file'),
-            ),
-            const SizedBox(width: 8),
-            PopupMenuButton<ThemeMode>(
-              key: const Key('quick-appearance-menu'),
-              tooltip: 'Appearance',
-              initialValue: themeMode,
-              onSelected: onThemeModeChanged,
-              icon: const Icon(Icons.palette_outlined),
-              itemBuilder: (BuildContext context) => const [
-                PopupMenuItem(
-                  value: ThemeMode.system,
-                  child: Text('System appearance'),
-                ),
-                PopupMenuItem(
-                  value: ThemeMode.light,
-                  child: Text('Light appearance'),
-                ),
-                PopupMenuItem(
-                  value: ThemeMode.dark,
-                  child: Text('Dark appearance'),
-                ),
-              ],
-            ),
-            IconButton(
-              key: const Key('top-bar-settings-button'),
-              tooltip: 'Settings',
-              onPressed: onOpenSettings,
-              icon: const Icon(Icons.settings_outlined),
-            ),
-          ],
-        ),
-      ),
+              IconButton(
+                key: const Key('top-bar-settings-button'),
+                tooltip: 'Settings',
+                onPressed: onOpenSettings,
+                icon: const Icon(Icons.settings_outlined),
+              ),
+              const SizedBox(width: 8),
+              const WindowControlButtons(),
+            ],
+          ),
+        );
+      },
     );
   }
 }
