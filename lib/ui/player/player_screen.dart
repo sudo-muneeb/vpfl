@@ -25,6 +25,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
+  final GlobalKey<VideoState> _videoKey = GlobalKey<VideoState>();
   late final PlaybackService _playback;
   String? _mediaError;
   String? _renderingMode;
@@ -87,6 +88,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 alignment: Alignment.center,
                 child: error == null && widget.initialMediaUri != null
                     ? Video(
+                        key: _videoKey,
                         controller: _playback.videoController,
                         controls: NoVideoControls,
                       )
@@ -103,6 +105,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 position: _playback.position,
                 positionStream: _playback.positionStream,
                 playingStream: _playback.playingStream,
+                rate: _playback.rate,
+                rateStream: _playback.rateStream,
+                onSetRate: _playback.setRate,
+                volume: _playback.volume,
+                volumeStream: _playback.volumeStream,
+                onSetVolume: _playback.setVolume,
+                playlist: _playback.playlist,
+                playlistStream: _playback.playlistStream,
+                shuffle: _playback.shuffle,
+                shuffleStream: _playback.shuffleStream,
+                onSetShuffle: _playback.setShuffle,
+                tracks: _playback.tracks,
+                tracksStream: _playback.tracksStream,
+                onSetTrack: _playback.setTrack,
+                onSeekBy: _playback.seekBy,
+                onPrevious: _playback.previous,
+                onNext: _playback.next,
+                onToggleFullscreen: () async {
+                  await _videoKey.currentState?.toggleFullscreen();
+                },
               ),
           ],
         ),
