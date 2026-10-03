@@ -16,6 +16,18 @@ void main() {
     expect(toggled, isTrue);
   });
 
+  testWidgets('icon-only controls expose accessible labels', (tester) async {
+    final SemanticsHandle semantics = tester.ensureSemantics();
+    await tester.pumpWidget(_app(_controls()));
+
+    expect(find.byTooltip('Play'), findsOneWidget);
+    expect(find.byTooltip('Seek backward 10 seconds'), findsOneWidget);
+    expect(find.byTooltip('Seek forward 10 seconds'), findsOneWidget);
+    expect(find.byTooltip('More playback options'), findsOneWidget);
+
+    semantics.dispose();
+  });
+
   testWidgets('seek control is disabled without a media duration', (
     tester,
   ) async {
@@ -70,9 +82,77 @@ void main() {
 
     await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Audio tracks…'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Alternate'));
 
     expect(selectedTrack, const AudioTrack('2', 'Alternate', 'eng'));
+  });
+
+  testWidgets('overflow menu changes repeat mode and video fit', (
+    tester,
+  ) async {
+    PlaylistMode? selectedMode;
+    BoxFit? selectedFit;
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          onSetPlaylistMode: (value) async => selectedMode = value,
+          onSetFit: (value) => selectedFit = value,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Repeat mode…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Repeat one'));
+    await tester.pumpAndSettle();
+    expect(selectedMode, PlaylistMode.single);
+
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Video fit…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Fill and crop'));
+    await tester.pumpAndSettle();
+    expect(selectedFit, BoxFit.cover);
+  });
+
+  testWidgets('overflow menu exposes screenshot, media info, and diagnostics', (
+    tester,
+  ) async {
+    bool screenshotRequested = false;
+    bool mediaInfoRequested = false;
+    bool diagnosticsRequested = false;
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          onScreenshot: () async => screenshotRequested = true,
+          onShowMediaInfo: () => mediaInfoRequested = true,
+          onShowDiagnostics: () => diagnosticsRequested = true,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save screenshot…'));
+    await tester.pumpAndSettle();
+    expect(screenshotRequested, isTrue);
+
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Media information'));
+    await tester.pumpAndSettle();
+    expect(mediaInfoRequested, isTrue);
+
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Playback diagnostics'));
+    await tester.pumpAndSettle();
+    expect(diagnosticsRequested, isTrue);
   });
 }
 
@@ -85,6 +165,11 @@ PlayerControls _controls({
   Future<void> Function(Duration)? onSeekBy,
   Future<void> Function(double)? onSetRate,
   Future<void> Function(Object)? onSetTrack,
+  Future<void> Function(PlaylistMode)? onSetPlaylistMode,
+  ValueChanged<BoxFit>? onSetFit,
+  Future<void> Function()? onScreenshot,
+  VoidCallback? onShowMediaInfo,
+  VoidCallback? onShowDiagnostics,
 }) => PlayerControls(
   duration: duration,
   durationStream: const Stream<Duration>.empty(),
@@ -108,12 +193,12 @@ PlayerControls _controls({
   onSetShuffle: (_) async {},
   playlistMode: PlaylistMode.none,
   playlistModeStream: const Stream<PlaylistMode>.empty(),
-  onSetPlaylistMode: (_) async {},
+  onSetPlaylistMode: onSetPlaylistMode ?? (_) async {},
   fit: BoxFit.contain,
-  onSetFit: (_) {},
-  onScreenshot: () async {},
-  onShowMediaInfo: () {},
-  onShowDiagnostics: () {},
+  onSetFit: onSetFit ?? (_) {},
+  onScreenshot: onScreenshot ?? () async {},
+  onShowMediaInfo: onShowMediaInfo ?? () {},
+  onShowDiagnostics: onShowDiagnostics ?? () {},
   tracks: tracks,
   tracksStream: const Stream<Tracks>.empty(),
   onSetTrack: onSetTrack ?? (_) async {},

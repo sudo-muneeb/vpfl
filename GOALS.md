@@ -130,7 +130,7 @@ Flatpak portal persistence behavior still need runtime validation.
 
 ## Current goal
 
-### Goal 5 — Player UI — In progress
+### Goal 5 — Player UI — Core complete
 
 **Objective:** Complete primary controls, menus, subtitles, diagnostics, and
 fullscreen interaction.
@@ -142,16 +142,20 @@ bar activates only at the top edge; position changes do not rebuild the shell.
 tests; relevant native media cases.
 **Risks/unknowns:** Subtitle and diagnostic exposure varies by backend.
 
-**Progress:** Moved audio/subtitle selection, repeat modes, video fit, screenshot,
-media information, and diagnostics into the overflow menu. Fullscreen now has
-custom bottom controls that hide after inactivity, a hidden cursor while idle,
-and a title/exit bar activated only by the top 16 px. The fullscreen control
-overlay is disabled during normal playback to avoid duplicate controls.
+**Result:** Playback controls now render over the video in both normal and
+fullscreen playback. Removed the separate control row below the video while
+keeping the app top bar. The video overlay includes seek and transport
+controls; the overflow menu holds audio/subtitle selection, repeat modes,
+video fit, screenshot, media information, and diagnostics. In fullscreen,
+controls hide after inactivity, the cursor hides while idle, and the title/exit
+bar appears only when the pointer reaches the top 16 px. Keyboard shortcuts
+cover play/pause, ten-second seeking, volume, mute, fullscreen, Escape, and Open
+File, and are ignored while an editor has focus.
 
-`flutter analyze` and the Linux release build pass. Focused Goal 5 widget tests
-and interactive fullscreen validation remain. Keyboard shortcuts now cover
-play/pause, ten-second seeking, volume, mute, fullscreen, Escape, and Open File;
-shortcuts are ignored while a text editor has focus.
+`flutter analyze`, the Linux release build, and all 11 focused player-control
+and overlay widget tests pass. The full suite still has failures in three shell
+widget tests and one persistence test, outside Goal 5. Interactive fullscreen
+and native media validation remain for the Linux integration matrix in Goal 8.
 
 ## Next goals
 

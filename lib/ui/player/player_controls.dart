@@ -470,12 +470,70 @@ class _OverflowMenu extends StatelessWidget {
               tooltip: 'More playback options',
               onSelected: (_PlayerAction action) async {
                 switch (action.kind) {
-                  case _PlayerActionKind.track:
-                    await onSetTrack(action.value!);
+                  case _PlayerActionKind.audioTracks:
+                    final AudioTrack? track =
+                        await _chooseSelection<AudioTrack>(
+                          context,
+                          'Audio tracks',
+                          [
+                            for (final track in available.audio)
+                              (_trackLabel(track), track),
+                          ],
+                        );
+                    if (track != null) await onSetTrack(track);
+                  case _PlayerActionKind.videoTracks:
+                    final VideoTrack? track =
+                        await _chooseSelection<VideoTrack>(
+                          context,
+                          'Video tracks',
+                          [
+                            for (final track in available.video)
+                              (_trackLabel(track), track),
+                          ],
+                        );
+                    if (track != null) await onSetTrack(track);
+                  case _PlayerActionKind.subtitleTracks:
+                    final SubtitleTrack? track =
+                        await _chooseSelection<SubtitleTrack>(
+                          context,
+                          'Subtitle tracks',
+                          [
+                            for (final track in available.subtitle)
+                              (_trackLabel(track), track),
+                          ],
+                        );
+                    if (track != null) await onSetTrack(track);
                   case _PlayerActionKind.playlistMode:
-                    await onSetPlaylistMode(action.value! as PlaylistMode);
+                    final PlaylistMode?
+                    mode = await _chooseSelection<PlaylistMode>(
+                      context,
+                      'Repeat mode',
+                      [
+                        for (final mode in PlaylistMode.values)
+                          (
+                            '${mode == currentMode ? '✓ ' : ''}${_modeLabel(mode)}',
+                            mode,
+                          ),
+                      ],
+                    );
+                    if (mode != null) await onSetPlaylistMode(mode);
                   case _PlayerActionKind.fit:
-                    onSetFit(action.value! as BoxFit);
+                    final BoxFit? selectedFit = await _chooseSelection<BoxFit>(
+                      context,
+                      'Video fit',
+                      [
+                        for (final option in const [
+                          BoxFit.contain,
+                          BoxFit.cover,
+                          BoxFit.fill,
+                        ])
+                          (
+                            '${fit == option ? '✓ ' : ''}${_fitLabel(option)}',
+                            option,
+                          ),
+                      ],
+                    );
+                    if (selectedFit != null) onSetFit(selectedFit);
                   case _PlayerActionKind.screenshot:
                     await onScreenshot();
                   case _PlayerActionKind.mediaInfo:
@@ -485,54 +543,29 @@ class _OverflowMenu extends StatelessWidget {
                 }
               },
               itemBuilder: (BuildContext context) => [
-                if (available.audio.isNotEmpty) ...[
+                if (available.audio.isNotEmpty)
                   const PopupMenuItem<_PlayerAction>(
-                    enabled: false,
-                    child: Text('AUDIO'),
+                    value: _PlayerAction(_PlayerActionKind.audioTracks),
+                    child: Text('Audio tracks…'),
                   ),
-                  for (final AudioTrack track in available.audio)
-                    PopupMenuItem<_PlayerAction>(
-                      value: _PlayerAction(_PlayerActionKind.track, track),
-                      child: Text(_trackLabel(track)),
-                    ),
-                ],
-                if (available.subtitle.isNotEmpty) ...[
+                if (available.video.length > 1)
                   const PopupMenuItem<_PlayerAction>(
-                    enabled: false,
-                    child: Text('SUBTITLES'),
+                    value: _PlayerAction(_PlayerActionKind.videoTracks),
+                    child: Text('Video tracks…'),
                   ),
-                  for (final SubtitleTrack track in available.subtitle)
-                    PopupMenuItem<_PlayerAction>(
-                      value: _PlayerAction(_PlayerActionKind.track, track),
-                      child: Text(_trackLabel(track)),
-                    ),
-                ],
-                const PopupMenuItem<_PlayerAction>(
-                  enabled: false,
-                  child: Text('PLAYBACK'),
-                ),
-                for (final PlaylistMode mode in PlaylistMode.values)
-                  PopupMenuItem<_PlayerAction>(
-                    value: _PlayerAction(_PlayerActionKind.playlistMode, mode),
-                    child: Text(
-                      '${currentMode == mode ? '✓ ' : ''}${_modeLabel(mode)}',
-                    ),
+                if (available.subtitle.isNotEmpty)
+                  const PopupMenuItem<_PlayerAction>(
+                    value: _PlayerAction(_PlayerActionKind.subtitleTracks),
+                    child: Text('Subtitles…'),
                   ),
                 const PopupMenuItem<_PlayerAction>(
-                  enabled: false,
-                  child: Text('VIDEO'),
+                  value: _PlayerAction(_PlayerActionKind.playlistMode),
+                  child: Text('Repeat mode…'),
                 ),
-                for (final BoxFit option in const [
-                  BoxFit.contain,
-                  BoxFit.cover,
-                  BoxFit.fill,
-                ])
-                  PopupMenuItem<_PlayerAction>(
-                    value: _PlayerAction(_PlayerActionKind.fit, option),
-                    child: Text(
-                      '${fit == option ? '✓ ' : ''}${_fitLabel(option)}',
-                    ),
-                  ),
+                const PopupMenuItem<_PlayerAction>(
+                  value: _PlayerAction(_PlayerActionKind.fit),
+                  child: Text('Video fit…'),
+                ),
                 const PopupMenuDivider(),
                 const PopupMenuItem<_PlayerAction>(
                   value: _PlayerAction(_PlayerActionKind.screenshot),
@@ -551,6 +584,31 @@ class _OverflowMenu extends StatelessWidget {
             );
           },
         ),
+  );
+
+  Future<T?> _chooseSelection<T extends Object>(
+    BuildContext context,
+    String title,
+    List<(String, T)> options,
+  ) => showDialog<T>(
+    context: context,
+    builder: (BuildContext context) => AlertDialog(
+      title: Text(title),
+      content: SizedBox(
+        width: 360,
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: options.length,
+          itemBuilder: (BuildContext context, int index) {
+            final (String label, T value) = options[index];
+            return ListTile(
+              title: Text(label),
+              onTap: () => Navigator.of(context).pop(value),
+            );
+          },
+        ),
+      ),
+    ),
   );
 
   static String _modeLabel(PlaylistMode mode) => switch (mode) {
@@ -585,7 +643,9 @@ class _OverflowMenu extends StatelessWidget {
 }
 
 enum _PlayerActionKind {
-  track,
+  audioTracks,
+  videoTracks,
+  subtitleTracks,
   playlistMode,
   fit,
   screenshot,
@@ -594,7 +654,6 @@ enum _PlayerActionKind {
 }
 
 class _PlayerAction {
-  const _PlayerAction(this.kind, [this.value]);
+  const _PlayerAction(this.kind);
   final _PlayerActionKind kind;
-  final Object? value;
 }
