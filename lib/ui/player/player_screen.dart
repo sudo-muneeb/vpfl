@@ -53,6 +53,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late final PlaybackService _playback;
   String? _mediaError;
   String? _renderingMode;
+  StreamSubscription<dynamic>? _playlistSubscription;
+  String? _playingUri;
   ValueNotifier<String?>? _renderingModeSource;
   BoxFit _videoFit = BoxFit.contain;
 
@@ -60,6 +62,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void initState() {
     super.initState();
     _playback = ref.read(playbackServiceProvider);
+    _playingUri = widget.initialMediaUri;
+    _playlistSubscription = _playback.playlistStream.listen((queue) {
+      if (!mounted ||
+          queue.medias.isEmpty ||
+          queue.index < 0 ||
+          queue.index >= queue.medias.length) {
+        return;
+      }
+      setState(() => _playingUri = queue.medias[queue.index].uri);
+    });
     ref.read(playbackHistoryRecorderProvider);
     unawaited(_readRenderingMode());
     if (widget.initialMediaUri case final String uri) {
@@ -73,6 +85,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final String? uri = widget.initialMediaUri;
     if (oldWidget.initialMediaUri != uri && uri != null) {
       _mediaError = null;
+      _playingUri = uri;
       unawaited(_openMedia(uri));
     }
   }
@@ -196,6 +209,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   void dispose() {
+    unawaited(_playlistSubscription?.cancel());
     _renderingModeSource?.removeListener(_updateRenderingMode);
     super.dispose();
   }
@@ -319,7 +333,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     try {
       await _waitForVideoRenderer();
-      await _playback.open(uri);
+      await _playback.openWithDirectory(uri);
       if (resumePosition != null) {
         await _playback.seek(resumePosition);
       }
@@ -386,7 +400,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           child: Column(
             children: [
               AppTopBar(
-                title: _titleFor(widget.initialMediaUri),
+                title: _titleFor(_playingUri),
                 themeMode: widget.themeMode,
                 onOpenFile: _pickAndOpenFile,
                 onOpenSettings: _showSettings,
@@ -409,8 +423,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           controller: _playback.videoController,
                           fit: _videoFit,
                           controls: (VideoState state) => VideoControlsOverlay(
-                            title: _titleFor(widget.initialMediaUri),
+                            title: _titleFor(_playingUri),
                             fullscreen: state.isFullscreen(),
+                            playlist: _playback.playlist,
+                            playlistStream: _playback.playlistStream,
+                            onPrevious: _playback.previous,
+                            onNext: _playback.next,
                             controls: _buildPlayerControls(
                               onToggleFullscreen: state.toggleFullscreen,
                             ),

@@ -26,7 +26,14 @@ abstract final class VpflTheme {
       brightness: brightness,
       scaffoldBackgroundColor: colorScheme.surface,
       extensions: const <ThemeExtension<dynamic>>[
-        VpflThemeExtension(playerBackground: Color(0xFF080A0E)),
+        VpflThemeExtension(
+          playerBackground: Color(0xFF080A0E),
+          playerOverlayForeground: Color(0xFFFFFFFF),
+          playerOverlayTop: Color(0xC7000000),
+          playerOverlayMiddle: Color(0x7A607D8B),
+          playerOverlayBottom: Color(0xAD607D8B),
+          playerEdgeBackground: Color(0x61000000),
+        ),
       ],
       useMaterial3: true,
     );

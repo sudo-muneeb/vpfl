@@ -79,12 +79,14 @@ class PlayerControls extends StatelessWidget {
 
   static const Duration _seekStep = Duration(seconds: 10);
   static const List<double> _rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  static const double _controlHeight = 48;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           _SeekBar(
             duration: duration,
@@ -93,77 +95,105 @@ class PlayerControls extends StatelessWidget {
             positionStream: positionStream,
             onSeek: onSeek,
           ),
-          Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 4,
-            runSpacing: 2,
-            children: [
-              _QueueButton(
-                playlist: playlist,
-                playlistStream: playlistStream,
-                onPrevious: onPrevious,
-                onNext: onNext,
-              ),
-              IconButton(
-                tooltip: 'Seek backward 10 seconds',
-                onPressed: () => onSeekBy(-_seekStep),
-                icon: const Icon(Icons.replay_10),
-              ),
-              StreamBuilder<bool>(
-                stream: playingStream,
-                initialData: isPlaying,
-                builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-                  final bool playing = snapshot.data ?? isPlaying;
-                  return IconButton(
-                    tooltip: playing ? 'Pause' : 'Play',
-                    onPressed: onPlayPause,
-                    icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                  );
-                },
-              ),
-              IconButton(
-                tooltip: 'Seek forward 10 seconds',
-                onPressed: () => onSeekBy(_seekStep),
-                icon: const Icon(Icons.forward_10),
-              ),
-              _RateButton(
-                rate: rate,
-                rateStream: rateStream,
-                rates: _rates,
-                onSetRate: onSetRate,
-              ),
-              _VolumeControl(
-                volume: volume,
-                volumeStream: volumeStream,
-                onSetVolume: onSetVolume,
-              ),
-              _ShuffleButton(
-                playlist: playlist,
-                playlistStream: playlistStream,
-                shuffle: shuffle,
-                shuffleStream: shuffleStream,
-                onSetShuffle: onSetShuffle,
-              ),
-              _OverflowMenu(
-                tracks: tracks,
-                tracksStream: tracksStream,
-                onSetTrack: onSetTrack,
-                playlistMode: playlistMode,
-                playlistModeStream: playlistModeStream,
-                onSetPlaylistMode: onSetPlaylistMode,
-                fit: fit,
-                onSetFit: onSetFit,
-                onScreenshot: onScreenshot,
-                onShowMediaInfo: onShowMediaInfo,
-                onShowDiagnostics: onShowDiagnostics,
-              ),
-              IconButton(
-                tooltip: 'Toggle fullscreen',
-                onPressed: onToggleFullscreen,
-                icon: const Icon(Icons.fullscreen),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool compact = constraints.maxWidth < 860;
+              return SizedBox(
+                height: _controlHeight,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _OverflowMenu(
+                            tracks: tracks,
+                            tracksStream: tracksStream,
+                            onSetTrack: onSetTrack,
+                            playlistMode: playlistMode,
+                            playlistModeStream: playlistModeStream,
+                            onSetPlaylistMode: onSetPlaylistMode,
+                            fit: fit,
+                            onSetFit: onSetFit,
+                            onScreenshot: onScreenshot,
+                            onShowMediaInfo: onShowMediaInfo,
+                            onShowDiagnostics: onShowDiagnostics,
+                          ),
+                          _VolumeControl(
+                            volume: volume,
+                            volumeStream: volumeStream,
+                            onSetVolume: onSetVolume,
+                            showSlider: !compact,
+                          ),
+                          _SubtitleButton(
+                            tracks: tracks,
+                            tracksStream: tracksStream,
+                            onSetTrack: onSetTrack,
+                          ),
+                          _RateButton(
+                            rate: rate,
+                            rateStream: rateStream,
+                            rates: _rates,
+                            onSetRate: onSetRate,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Seek backward 10 seconds',
+                          onPressed: () => onSeekBy(-_seekStep),
+                          icon: const Icon(Icons.replay_10_rounded),
+                        ),
+                        StreamBuilder<bool>(
+                          stream: playingStream,
+                          initialData: isPlaying,
+                          builder: (context, snapshot) =>
+                              IconButton.filledTonal(
+                                tooltip: (snapshot.data ?? isPlaying)
+                                    ? 'Pause'
+                                    : 'Play',
+                                onPressed: onPlayPause,
+                                icon: Icon(
+                                  (snapshot.data ?? isPlaying)
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                ),
+                              ),
+                        ),
+                        IconButton(
+                          tooltip: 'Seek forward 10 seconds',
+                          onPressed: () => onSeekBy(_seekStep),
+                          icon: const Icon(Icons.forward_10_rounded),
+                        ),
+                      ],
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _RepeatButton(
+                            mode: playlistMode,
+                            stream: playlistModeStream,
+                            onSet: onSetPlaylistMode,
+                          ),
+                          IconButton(
+                            tooltip: 'Toggle fullscreen',
+                            onPressed: onToggleFullscreen,
+                            icon: const Icon(Icons.open_in_full_rounded),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -249,48 +279,6 @@ class _SeekBar extends StatelessWidget {
   }
 }
 
-class _QueueButton extends StatelessWidget {
-  const _QueueButton({
-    required this.playlist,
-    required this.playlistStream,
-    required this.onPrevious,
-    required this.onNext,
-  });
-
-  final Playlist playlist;
-  final Stream<Playlist> playlistStream;
-  final Future<void> Function() onPrevious;
-  final Future<void> Function() onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<Playlist>(
-      stream: playlistStream,
-      initialData: playlist,
-      builder: (BuildContext context, AsyncSnapshot<Playlist> snapshot) {
-        if ((snapshot.data ?? playlist).medias.length < 2) {
-          return const SizedBox.shrink();
-        }
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              tooltip: 'Previous video',
-              onPressed: onPrevious,
-              icon: const Icon(Icons.skip_previous),
-            ),
-            IconButton(
-              tooltip: 'Next video',
-              onPressed: onNext,
-              icon: const Icon(Icons.skip_next),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
 class _RateButton extends StatelessWidget {
   const _RateButton({
     required this.rate,
@@ -322,9 +310,23 @@ class _RateButton extends StatelessWidget {
                 child: Text('${_formatRate(value)}×'),
               ),
           ],
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Text('${_formatRate(current)}×'),
+          child: Tooltip(
+            message: 'Playback speed: ${_formatRate(current)}×',
+            child: SizedBox(
+              width: 62,
+              height: 48,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.speed_rounded, size: 21),
+                  const SizedBox(width: 3),
+                  Text(
+                    '${_formatRate(current)}×',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -341,11 +343,13 @@ class _VolumeControl extends StatelessWidget {
     required this.volume,
     required this.volumeStream,
     required this.onSetVolume,
+    required this.showSlider,
   });
 
   final double volume;
   final Stream<double> volumeStream;
   final Future<void> Function(double) onSetVolume;
+  final bool showSlider;
 
   @override
   Widget build(BuildContext context) {
@@ -367,16 +371,17 @@ class _VolumeControl extends StatelessWidget {
               onPressed: () => onSetVolume(value == 0 ? 100 : 0),
               icon: Icon(icon),
             ),
-            SizedBox(
-              width: 84,
-              child: Slider(
-                min: 0,
-                max: 100,
-                value: value,
-                onChanged: (_) {},
-                onChangeEnd: onSetVolume,
+            if (showSlider)
+              SizedBox(
+                width: 84,
+                child: Slider(
+                  min: 0,
+                  max: 100,
+                  value: value,
+                  onChanged: (_) {},
+                  onChangeEnd: onSetVolume,
+                ),
               ),
-            ),
           ],
         );
       },
@@ -384,48 +389,80 @@ class _VolumeControl extends StatelessWidget {
   }
 }
 
-class _ShuffleButton extends StatelessWidget {
-  const _ShuffleButton({
-    required this.playlist,
-    required this.playlistStream,
-    required this.shuffle,
-    required this.shuffleStream,
-    required this.onSetShuffle,
+class _SubtitleButton extends StatelessWidget {
+  const _SubtitleButton({
+    required this.tracks,
+    required this.tracksStream,
+    required this.onSetTrack,
   });
 
-  final Playlist playlist;
-  final Stream<Playlist> playlistStream;
-  final bool shuffle;
-  final Stream<bool> shuffleStream;
-  final Future<void> Function(bool) onSetShuffle;
+  final Tracks tracks;
+  final Stream<Tracks> tracksStream;
+  final Future<void> Function(Object) onSetTrack;
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<Playlist>(
-      stream: playlistStream,
-      initialData: playlist,
-      builder: (BuildContext context, AsyncSnapshot<Playlist> playlistState) {
-        if ((playlistState.data ?? playlist).medias.length < 2) {
-          return const SizedBox.shrink();
-        }
-        return StreamBuilder<bool>(
-          stream: shuffleStream,
-          initialData: shuffle,
-          builder: (BuildContext context, AsyncSnapshot<bool> shuffleState) {
-            final bool enabled = shuffleState.data ?? shuffle;
-            return IconButton(
-              tooltip: enabled ? 'Disable shuffle' : 'Enable shuffle',
-              onPressed: () => onSetShuffle(!enabled),
-              icon: Icon(
-                Icons.shuffle,
-                color: enabled ? Theme.of(context).colorScheme.primary : null,
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+  Widget build(BuildContext context) => StreamBuilder<Tracks>(
+    stream: tracksStream,
+    initialData: tracks,
+    builder: (context, snapshot) {
+      final subtitles = (snapshot.data ?? tracks).subtitle;
+      return PopupMenuButton<SubtitleTrack>(
+        tooltip: 'Subtitles',
+        enabled: subtitles.isNotEmpty,
+        onSelected: onSetTrack,
+        itemBuilder: (context) => [
+          for (final track in subtitles)
+            PopupMenuItem(
+              value: track,
+              child: Text(_OverflowMenu._trackLabel(track)),
+            ),
+        ],
+        icon: const Icon(Icons.closed_caption_outlined),
+      );
+    },
+  );
+}
+
+class _RepeatButton extends StatelessWidget {
+  const _RepeatButton({
+    required this.mode,
+    required this.stream,
+    required this.onSet,
+  });
+
+  final PlaylistMode mode;
+  final Stream<PlaylistMode> stream;
+  final Future<void> Function(PlaylistMode) onSet;
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<PlaylistMode>(
+    stream: stream,
+    initialData: mode,
+    builder: (context, snapshot) {
+      final current = snapshot.data ?? mode;
+      final next = switch (current) {
+        PlaylistMode.none => PlaylistMode.single,
+        PlaylistMode.single => PlaylistMode.loop,
+        PlaylistMode.loop => PlaylistMode.none,
+      };
+      return IconButton(
+        tooltip: switch (current) {
+          PlaylistMode.none => 'Repeat off. Click to repeat this video',
+          PlaylistMode.single => 'Repeat this video. Click to repeat queue',
+          PlaylistMode.loop => 'Repeat queue. Click to turn off',
+        },
+        onPressed: () => onSet(next),
+        icon: Icon(
+          current == PlaylistMode.single
+              ? Icons.repeat_one_rounded
+              : Icons.repeat_rounded,
+          color: current == PlaylistMode.none
+              ? null
+              : Theme.of(context).colorScheme.primary,
+        ),
+      );
+    },
+  );
 }
 
 class _OverflowMenu extends StatelessWidget {
@@ -492,17 +529,6 @@ class _OverflowMenu extends StatelessWidget {
                           ],
                         );
                     if (track != null) await onSetTrack(track);
-                  case _PlayerActionKind.subtitleTracks:
-                    final SubtitleTrack? track =
-                        await _chooseSelection<SubtitleTrack>(
-                          context,
-                          'Subtitle tracks',
-                          [
-                            for (final track in available.subtitle)
-                              (_trackLabel(track), track),
-                          ],
-                        );
-                    if (track != null) await onSetTrack(track);
                   case _PlayerActionKind.playlistMode:
                     final PlaylistMode?
                     mode = await _chooseSelection<PlaylistMode>(
@@ -552,11 +578,6 @@ class _OverflowMenu extends StatelessWidget {
                   const PopupMenuItem<_PlayerAction>(
                     value: _PlayerAction(_PlayerActionKind.videoTracks),
                     child: Text('Video tracks…'),
-                  ),
-                if (available.subtitle.isNotEmpty)
-                  const PopupMenuItem<_PlayerAction>(
-                    value: _PlayerAction(_PlayerActionKind.subtitleTracks),
-                    child: Text('Subtitles…'),
                   ),
                 const PopupMenuItem<_PlayerAction>(
                   value: _PlayerAction(_PlayerActionKind.playlistMode),
@@ -645,7 +666,6 @@ class _OverflowMenu extends StatelessWidget {
 enum _PlayerActionKind {
   audioTracks,
   videoTracks,
-  subtitleTracks,
   playlistMode,
   fit,
   screenshot,

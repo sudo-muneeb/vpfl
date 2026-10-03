@@ -26,22 +26,33 @@ mouse friendly
 
 ## Main window
 
-Initial structure:
+Current desktop structure:
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│ VPFL                                            window controls │
+│ VPFL   current title   renderer   Open file   utilities  ─ □ × │
 ├──────────────┬───────────────────────────────────────────────┤
 │ Home         │                                               │
 │ All Videos   │ Recent videos                                 │
-│              │ [card] [card] [card] [card]                  │
+│              │ [preview] [preview] [preview]                │
 │ Folders      │                                               │
 │ + Add Folder │ All videos                                    │
-│              │ [card] [card] [card] [card]                  │
-│ Settings     │ [card] [card] [card] [card]                  │
+│              │ [preview] [preview] [preview]                │
+│ Settings     │ [preview] [preview] [preview]                │
 │              │                                               │
 └──────────────┴───────────────────────────────────────────────┘
 ```
+
+Flutter draws the top bar and VPFL's own minimize, maximize/restore, and close
+buttons. The GTK runner removes system decorations and handles those actions
+through a window method channel. The title region drags the window and
+double-clicking it toggles maximize. The window edges support resizing.
+Buttons use themed hover, focus, and tooltips. The runner sets a 760 × 480
+minimum window size.
+
+The shared top bar keeps the logo, current filename while playing, renderer
+badge, Open file, appearance, and Settings. The player uses a Home navigation
+button. At compact widths, Open file becomes icon-only with a tooltip.
 
 ## Sidebar
 
@@ -86,6 +97,14 @@ Each card may show:
 * last played time when useful
 
 Clicking the card opens the player.
+
+Recent and indexed media use a shared video-card component. A 16:9 preview
+area sits above the title and two short metadata lines. The current preview
+uses a themed placeholder and play icon; cached thumbnail display can be wired
+in when the artwork provider is available. Recent cards show watched
+progress on the preview when duration is known. Home uses responsive card
+rows; the full library and saved-folder views use a lazy grid. Entering the
+grid does not decode video or generate thumbnails.
 
 A partially watched item resumes according to the resume policy.
 
@@ -136,13 +155,12 @@ Normal player layout:
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │                                                              │
-│                         VIDEO                                │
-│     prev vidoe                               next video      │
+│  ◀                      VIDEO                             ▶  │
 │                                                              │
 │                                                              │
 │  00:21  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  01:42:13     │
 │                                                              │
-│  ↶10    ▶/❚❚    ↷10      1×      Shuffle      🔊      ⋮  ⛶ │
+│  ⋮  🔊  CC  speed       ↶10  ▶/❚❚  ↷10       repeat    ⛶ │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -155,12 +173,31 @@ Core controls:
 * seek backward
 * seek forward
 * speed button
-* shuffle button
+* subtitles button
+* repeat button
 * volume/mute
 * three-dot overflow menu
 * fullscreen
 
 Default seek step can begin at 10 seconds and later become configurable.
+
+The bottom row has three anchored groups. More options, volume, subtitles,
+and speed sit at the left. Ten-second seek and play/pause stay centered in the
+video viewport. Repeat and fullscreen sit at the right edge. The seek bar is
+above them. The volume slider hides at narrower widths while mute remains
+available. Speed opens a rate menu; subtitles open a track menu when tracks
+are available. The overflow retains secondary actions.
+
+Previous and next appear at the far sides, halfway down the video when a
+multi-item queue exists. Opening a local file builds a queue from video files
+in the same directory if folder access permits it. The end buttons disable
+at the start and end of the queue. A single file or inaccessible parent
+folder has no edge navigation.
+
+When controls are active, a light gray translucent gradient improves their
+legibility on bright frames. Controls and edge buttons fade out after idle
+time and stop receiving pointer events while hidden. Pointer movement brings
+them back. The fullscreen top bar still requires the top activation edge.
 
 ## Three-dot player menu
 
@@ -169,16 +206,12 @@ Secondary actions belong here so the primary control bar remains clean.
 Initial menu groups can include:
 
 ```text
-Subtitles
-  Auto
-  Off
-  embedded tracks
-  Add subtitle file
-
 Audio
   Auto
   available audio tracks
-  Add external audio when supported
+
+Video tracks
+  available tracks when more than one exists
 
 Playback
   Repeat mode
@@ -189,18 +222,16 @@ Video
   Media information
 
 Advanced
-  subtitle delay
-  audio delay
   diagnostics
 ```
 
 Only show capabilities that are available.
 
-## Shuffle
+## Queue playback
 
-Shuffle should be visible only when a queue or playlist context exists, or disabled clearly for single-item playback.
-
-Do not pretend shuffle has meaning for one isolated file.
+Repeat is always available: off, one item, and queue. Shuffle remains part of
+playback state but is not a primary control until its queue interaction is
+designed. Do not present shuffle as meaningful for an isolated file.
 
 ## Fullscreen behavior
 
@@ -312,6 +343,11 @@ controlForeground
 controlBackground
 controlHover
 overlayBackground
+playerOverlayForeground
+playerOverlayTop
+playerOverlayMiddle
+playerOverlayBottom
+playerEdgeBackground
 error
 warning
 success

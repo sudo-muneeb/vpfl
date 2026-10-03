@@ -58,44 +58,43 @@ class _AppShellState extends ConsumerState<AppShell> {
     });
     return Scaffold(
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            final bool compact = constraints.maxWidth < 900;
-            return Row(
-              children: [
-                _Sidebar(
-                  compact: compact,
-                  destination: _destination,
-                  folders: folders.value ?? const <SavedFolder>[],
-                  onAddFolder: _addFolder,
-                  onFolderSelected: (SavedFolder folder) => setState(() {
-                    _selectedFolder = folder;
-                    _destination = AppDestination.folders;
-                  }),
-                  onDestinationSelected: (AppDestination destination) {
-                    setState(() => _destination = destination);
-                  },
-                ),
-                const VerticalDivider(width: 1),
-                Expanded(
-                  child: Column(
+        child: Column(
+          children: [
+            AppTopBar(
+              title: '',
+              themeMode: widget.themeMode,
+              onOpenFile: _pickAndOpenFile,
+              onOpenSettings: () =>
+                  setState(() => _destination = AppDestination.settings),
+              onThemeModeChanged: widget.onThemeModeChanged,
+            ),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  final bool compact = constraints.maxWidth < 900;
+                  return Row(
                     children: [
-                      AppTopBar(
-                        title: '',
-                        themeMode: widget.themeMode,
-                        onOpenFile: _pickAndOpenFile,
-                        onOpenSettings: () => setState(
-                          () => _destination = AppDestination.settings,
-                        ),
-                        onThemeModeChanged: widget.onThemeModeChanged,
+                      _Sidebar(
+                        compact: compact,
+                        destination: _destination,
+                        folders: folders.value ?? const <SavedFolder>[],
+                        onAddFolder: _addFolder,
+                        onFolderSelected: (SavedFolder folder) => setState(() {
+                          _selectedFolder = folder;
+                          _destination = AppDestination.folders;
+                        }),
+                        onDestinationSelected: (AppDestination destination) {
+                          setState(() => _destination = destination);
+                        },
                       ),
+                      const VerticalDivider(width: 1),
                       Expanded(child: _buildDestination()),
                     ],
-                  ),
-                ),
-              ],
-            );
-          },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -205,20 +204,7 @@ class _Sidebar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: compact
-                  ? MainAxisAlignment.center
-                  : MainAxisAlignment.start,
-              children: [
-                Image.asset('vpfl-logo.png', width: 34, height: 34),
-                if (!compact) ...[
-                  const SizedBox(width: 10),
-                  Text('VPFL', style: Theme.of(context).textTheme.titleMedium),
-                ],
-              ],
-            ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             _NavigationItem(
               compact: compact,
               destination: AppDestination.home,
