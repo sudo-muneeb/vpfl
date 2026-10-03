@@ -25,6 +25,14 @@ class PlayerControls extends StatelessWidget {
     required this.shuffle,
     required this.shuffleStream,
     required this.onSetShuffle,
+    required this.playlistMode,
+    required this.playlistModeStream,
+    required this.onSetPlaylistMode,
+    required this.fit,
+    required this.onSetFit,
+    required this.onScreenshot,
+    required this.onShowMediaInfo,
+    required this.onShowDiagnostics,
     required this.tracks,
     required this.tracksStream,
     required this.onSetTrack,
@@ -54,6 +62,14 @@ class PlayerControls extends StatelessWidget {
   final bool shuffle;
   final Stream<bool> shuffleStream;
   final Future<void> Function(bool) onSetShuffle;
+  final PlaylistMode playlistMode;
+  final Stream<PlaylistMode> playlistModeStream;
+  final Future<void> Function(PlaylistMode) onSetPlaylistMode;
+  final BoxFit fit;
+  final ValueChanged<BoxFit> onSetFit;
+  final Future<void> Function() onScreenshot;
+  final VoidCallback onShowMediaInfo;
+  final VoidCallback onShowDiagnostics;
   final Tracks tracks;
   final Stream<Tracks> tracksStream;
   final Future<void> Function(Object) onSetTrack;
@@ -129,10 +145,18 @@ class PlayerControls extends StatelessWidget {
                 shuffleStream: shuffleStream,
                 onSetShuffle: onSetShuffle,
               ),
-              _TrackMenu(
+              _OverflowMenu(
                 tracks: tracks,
                 tracksStream: tracksStream,
                 onSetTrack: onSetTrack,
+                playlistMode: playlistMode,
+                playlistModeStream: playlistModeStream,
+                onSetPlaylistMode: onSetPlaylistMode,
+                fit: fit,
+                onSetFit: onSetFit,
+                onScreenshot: onScreenshot,
+                onShowMediaInfo: onShowMediaInfo,
+                onShowDiagnostics: onShowDiagnostics,
               ),
               IconButton(
                 tooltip: 'Toggle fullscreen',
@@ -404,50 +428,143 @@ class _ShuffleButton extends StatelessWidget {
   }
 }
 
-class _TrackMenu extends StatelessWidget {
-  const _TrackMenu({
+class _OverflowMenu extends StatelessWidget {
+  const _OverflowMenu({
     required this.tracks,
     required this.tracksStream,
     required this.onSetTrack,
+    required this.playlistMode,
+    required this.playlistModeStream,
+    required this.onSetPlaylistMode,
+    required this.fit,
+    required this.onSetFit,
+    required this.onScreenshot,
+    required this.onShowMediaInfo,
+    required this.onShowDiagnostics,
   });
 
   final Tracks tracks;
   final Stream<Tracks> tracksStream;
   final Future<void> Function(Object) onSetTrack;
+  final PlaylistMode playlistMode;
+  final Stream<PlaylistMode> playlistModeStream;
+  final Future<void> Function(PlaylistMode) onSetPlaylistMode;
+  final BoxFit fit;
+  final ValueChanged<BoxFit> onSetFit;
+  final Future<void> Function() onScreenshot;
+  final VoidCallback onShowMediaInfo;
+  final VoidCallback onShowDiagnostics;
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<Tracks>(
-      stream: tracksStream,
-      initialData: tracks,
-      builder: (BuildContext context, AsyncSnapshot<Tracks> snapshot) {
-        final Tracks available = snapshot.data ?? tracks;
-        final List<_TrackChoice> choices = [
-          for (final VideoTrack track in available.video)
-            _TrackChoice('Video', track, _trackLabel(track)),
-          for (final AudioTrack track in available.audio)
-            _TrackChoice('Audio', track, _trackLabel(track)),
-          for (final SubtitleTrack track in available.subtitle)
-            _TrackChoice('Subtitle', track, _trackLabel(track)),
-        ];
-        if (choices.length <= 6) {
-          return const SizedBox.shrink();
-        }
-        return PopupMenuButton<Object>(
-          tooltip: 'Audio and subtitle tracks',
-          onSelected: onSetTrack,
-          itemBuilder: (BuildContext context) => [
-            for (final _TrackChoice choice in choices)
-              PopupMenuItem<Object>(
-                value: choice.track,
-                child: Text('${choice.kind}: ${choice.label}'),
-              ),
-          ],
-          icon: const Icon(Icons.subtitles_outlined),
-        );
-      },
-    );
-  }
+  Widget build(BuildContext context) => StreamBuilder<Tracks>(
+    stream: tracksStream,
+    initialData: tracks,
+    builder: (BuildContext context, AsyncSnapshot<Tracks> trackState) =>
+        StreamBuilder<PlaylistMode>(
+          stream: playlistModeStream,
+          initialData: playlistMode,
+          builder: (BuildContext context, AsyncSnapshot<PlaylistMode> modeState) {
+            final Tracks available = trackState.data ?? tracks;
+            final PlaylistMode currentMode = modeState.data ?? playlistMode;
+            return PopupMenuButton<_PlayerAction>(
+              tooltip: 'More playback options',
+              onSelected: (_PlayerAction action) async {
+                switch (action.kind) {
+                  case _PlayerActionKind.track:
+                    await onSetTrack(action.value!);
+                  case _PlayerActionKind.playlistMode:
+                    await onSetPlaylistMode(action.value! as PlaylistMode);
+                  case _PlayerActionKind.fit:
+                    onSetFit(action.value! as BoxFit);
+                  case _PlayerActionKind.screenshot:
+                    await onScreenshot();
+                  case _PlayerActionKind.mediaInfo:
+                    onShowMediaInfo();
+                  case _PlayerActionKind.diagnostics:
+                    onShowDiagnostics();
+                }
+              },
+              itemBuilder: (BuildContext context) => [
+                if (available.audio.isNotEmpty) ...[
+                  const PopupMenuItem<_PlayerAction>(
+                    enabled: false,
+                    child: Text('AUDIO'),
+                  ),
+                  for (final AudioTrack track in available.audio)
+                    PopupMenuItem<_PlayerAction>(
+                      value: _PlayerAction(_PlayerActionKind.track, track),
+                      child: Text(_trackLabel(track)),
+                    ),
+                ],
+                if (available.subtitle.isNotEmpty) ...[
+                  const PopupMenuItem<_PlayerAction>(
+                    enabled: false,
+                    child: Text('SUBTITLES'),
+                  ),
+                  for (final SubtitleTrack track in available.subtitle)
+                    PopupMenuItem<_PlayerAction>(
+                      value: _PlayerAction(_PlayerActionKind.track, track),
+                      child: Text(_trackLabel(track)),
+                    ),
+                ],
+                const PopupMenuItem<_PlayerAction>(
+                  enabled: false,
+                  child: Text('PLAYBACK'),
+                ),
+                for (final PlaylistMode mode in PlaylistMode.values)
+                  PopupMenuItem<_PlayerAction>(
+                    value: _PlayerAction(_PlayerActionKind.playlistMode, mode),
+                    child: Text(
+                      '${currentMode == mode ? '✓ ' : ''}${_modeLabel(mode)}',
+                    ),
+                  ),
+                const PopupMenuItem<_PlayerAction>(
+                  enabled: false,
+                  child: Text('VIDEO'),
+                ),
+                for (final BoxFit option in const [
+                  BoxFit.contain,
+                  BoxFit.cover,
+                  BoxFit.fill,
+                ])
+                  PopupMenuItem<_PlayerAction>(
+                    value: _PlayerAction(_PlayerActionKind.fit, option),
+                    child: Text(
+                      '${fit == option ? '✓ ' : ''}${_fitLabel(option)}',
+                    ),
+                  ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<_PlayerAction>(
+                  value: _PlayerAction(_PlayerActionKind.screenshot),
+                  child: Text('Save screenshot…'),
+                ),
+                const PopupMenuItem<_PlayerAction>(
+                  value: _PlayerAction(_PlayerActionKind.mediaInfo),
+                  child: Text('Media information'),
+                ),
+                const PopupMenuItem<_PlayerAction>(
+                  value: _PlayerAction(_PlayerActionKind.diagnostics),
+                  child: Text('Playback diagnostics'),
+                ),
+              ],
+              icon: const Icon(Icons.more_vert),
+            );
+          },
+        ),
+  );
+
+  static String _modeLabel(PlaylistMode mode) => switch (mode) {
+    PlaylistMode.none => 'No repeat',
+    PlaylistMode.single => 'Repeat one',
+    PlaylistMode.loop => 'Repeat queue',
+  };
+
+  static String _fitLabel(BoxFit fit) => switch (fit) {
+    BoxFit.contain => 'Fit',
+    BoxFit.cover => 'Fill and crop',
+    BoxFit.fill => 'Stretch',
+    _ => 'Fit',
+  };
 
   static String _trackLabel(Object track) => switch (track) {
     VideoTrack(id: 'auto') ||
@@ -467,10 +584,17 @@ class _TrackMenu extends StatelessWidget {
   };
 }
 
-class _TrackChoice {
-  const _TrackChoice(this.kind, this.track, this.label);
+enum _PlayerActionKind {
+  track,
+  playlistMode,
+  fit,
+  screenshot,
+  mediaInfo,
+  diagnostics,
+}
 
-  final String kind;
-  final Object track;
-  final String label;
+class _PlayerAction {
+  const _PlayerAction(this.kind, [this.value]);
+  final _PlayerActionKind kind;
+  final Object? value;
 }
