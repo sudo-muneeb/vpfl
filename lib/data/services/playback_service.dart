@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
@@ -35,6 +37,9 @@ class PlaybackService {
   /// Whether queue shuffle is enabled.
   bool get shuffle => _player.state.shuffle;
 
+  /// Current playlist repeat behavior.
+  PlaylistMode get playlistMode => _player.state.playlistMode;
+
   /// Current queue and its selected index.
   Playlist get playlist => _player.state.playlist;
 
@@ -61,6 +66,9 @@ class PlaybackService {
 
   /// Emits shuffle-state changes.
   Stream<bool> get shuffleStream => _player.stream.shuffle;
+
+  /// Emits playlist repeat behavior changes.
+  Stream<PlaylistMode> get playlistModeStream => _player.stream.playlistMode;
 
   /// Emits queue changes and the active queue index.
   Stream<Playlist> get playlistStream => _player.stream.playlist;
@@ -139,6 +147,14 @@ class PlaybackService {
   /// Toggles shuffle; a one-item queue always remains unshuffled.
   Future<void> setShuffle(bool value) =>
       _player.setShuffle(value && playlist.medias.length > 1);
+
+  /// Sets repeat behavior for the current queue.
+  Future<void> setPlaylistMode(PlaylistMode mode) =>
+      _player.setPlaylistMode(mode);
+
+  /// Captures the current frame using the playback engine.
+  Future<Uint8List?> screenshot() =>
+      _player.screenshot(format: 'image/png', includeLibassSubtitles: true);
 
   /// Selects a video, audio, or subtitle track.
   Future<void> setTrack(Object track) => switch (track) {

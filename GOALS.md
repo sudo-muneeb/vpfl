@@ -72,7 +72,7 @@ Linux integration run verified playback, seek, pause, speed, volume, and moving
 to the next queue item. The integration environment fell back to software GL,
 so this run does not verify hardware rendering.
 
-## Current goal
+## Previous milestones
 
 ### Goal 3 — Persistence and recent media — Complete
 
@@ -128,9 +128,9 @@ the sidebar, GTK window, and Flatpak app icon; the packaged PNG is correctly
 `flutter analyze` and a Linux release build pass. Focused Goal 4 tests and
 Flatpak portal persistence behavior still need runtime validation.
 
-## Next goals
+## Current goal
 
-### Goal 5 — Player UI
+### Goal 5 — Player UI — In progress
 
 **Objective:** Complete primary controls, menus, subtitles, diagnostics, and
 fullscreen interaction.
@@ -141,6 +141,19 @@ bar activates only at the top edge; position changes do not rebuild the shell.
 **Tests required:** Control, menu, seek, accessibility, and fullscreen widget
 tests; relevant native media cases.
 **Risks/unknowns:** Subtitle and diagnostic exposure varies by backend.
+
+**Progress:** Moved audio/subtitle selection, repeat modes, video fit, screenshot,
+media information, and diagnostics into the overflow menu. Fullscreen now has
+custom bottom controls that hide after inactivity, a hidden cursor while idle,
+and a title/exit bar activated only by the top 16 px. The fullscreen control
+overlay is disabled during normal playback to avoid duplicate controls.
+
+`flutter analyze` and the Linux release build pass. Focused Goal 5 widget tests
+and interactive fullscreen validation remain. Keyboard shortcuts now cover
+play/pause, ten-second seeking, volume, mute, fullscreen, Escape, and Open File;
+shortcuts are ignored while a text editor has focus.
+
+## Next goals
 
 ### Goal 6 — Linux integration
 

@@ -50,9 +50,7 @@ void main() {
     expect(selectedRate, 1.5);
   });
 
-  testWidgets('track menu appears when the media exposes extra tracks', (
-    tester,
-  ) async {
+  testWidgets('overflow menu exposes media tracks', (tester) async {
     Object? selectedTrack;
     const Tracks tracks = Tracks(
       audio: [
@@ -70,9 +68,9 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byTooltip('Audio and subtitle tracks'));
+    await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Audio: Alternate'));
+    await tester.tap(find.text('Alternate'));
 
     expect(selectedTrack, const AudioTrack('2', 'Alternate', 'eng'));
   });
@@ -108,6 +106,14 @@ PlayerControls _controls({
   shuffle: false,
   shuffleStream: const Stream<bool>.empty(),
   onSetShuffle: (_) async {},
+  playlistMode: PlaylistMode.none,
+  playlistModeStream: const Stream<PlaylistMode>.empty(),
+  onSetPlaylistMode: (_) async {},
+  fit: BoxFit.contain,
+  onSetFit: (_) {},
+  onScreenshot: () async {},
+  onShowMediaInfo: () {},
+  onShowDiagnostics: () {},
   tracks: tracks,
   tracksStream: const Stream<Tracks>.empty(),
   onSetTrack: onSetTrack ?? (_) async {},
