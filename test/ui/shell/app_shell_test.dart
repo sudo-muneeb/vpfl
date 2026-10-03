@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
+import 'package:vpfl/data/model/app_database.dart';
+import 'package:vpfl/data/persistence_providers.dart';
 import 'package:vpfl/ui/app.dart';
 
 void main() {
   testWidgets('sidebar navigates between the main sections', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(
-      const VpflApp(initialMediaUri: null, startupError: null),
-    );
+    await tester.pumpWidget(_testApp());
 
     expect(find.text('Recent videos'), findsOneWidget);
 
@@ -28,7 +30,7 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.byTooltip('Settings'));
+    await tester.tap(find.byKey(const Key('top-bar-settings-button')));
     await tester.pumpAndSettle();
     expect(find.text('Appearance'), findsOneWidget);
   });
@@ -36,10 +38,8 @@ void main() {
   testWidgets('appearance setting changes between system and dark theme', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(
-      const VpflApp(initialMediaUri: null, startupError: null),
-    );
-    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpWidget(_testApp());
+    await tester.tap(find.byKey(const Key('top-bar-settings-button')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Dark'));
@@ -56,4 +56,34 @@ void main() {
       ThemeMode.system,
     );
   });
+
+  testWidgets('top bar shows the logo, file action, and appearance menu', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(_testApp());
+
+    expect(find.byKey(const Key('open-file-button')), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
+    await tester.tap(find.byKey(const Key('quick-appearance-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('Dark appearance'), findsOneWidget);
+    await tester.tap(find.text('Dark appearance'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('top-bar-settings-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Playback history'), findsOneWidget);
+  });
 }
+
+Widget _testApp() => ProviderScope(
+  overrides: [
+    recentPlaybackProvider.overrideWith((ref) => Stream.value(const [])),
+    appDatabaseProvider.overrideWith((ref) {
+      final AppDatabase database = AppDatabase(NativeDatabase.memory());
+      ref.onDispose(() => database.close());
+      return database;
+    }),
+  ],
+  child: const VpflApp(initialMediaUri: null, startupError: null),
+);

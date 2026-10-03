@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../data/services/media_file_picker.dart';
+import '../core/widgets/app_top_bar.dart';
 import '../folders/folders_screen.dart';
 import '../home/home_screen.dart';
 import '../library/library_screen.dart';
@@ -11,11 +13,21 @@ class AppShell extends StatefulWidget {
   const AppShell({
     required this.themeMode,
     required this.onThemeModeChanged,
+    required this.historyEnabled,
+    required this.resumeEnabled,
+    required this.onHistoryEnabledChanged,
+    required this.onResumeEnabledChanged,
+    required this.onOpenMedia,
     super.key,
   });
 
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final bool historyEnabled;
+  final bool resumeEnabled;
+  final ValueChanged<bool> onHistoryEnabledChanged;
+  final ValueChanged<bool> onResumeEnabledChanged;
+  final ValueChanged<String> onOpenMedia;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -41,7 +53,22 @@ class _AppShellState extends State<AppShell> {
                   },
                 ),
                 const VerticalDivider(width: 1),
-                Expanded(child: _buildDestination()),
+                Expanded(
+                  child: Column(
+                    children: [
+                      AppTopBar(
+                        title: '',
+                        themeMode: widget.themeMode,
+                        onOpenFile: _pickAndOpenFile,
+                        onOpenSettings: () => setState(
+                          () => _destination = AppDestination.settings,
+                        ),
+                        onThemeModeChanged: widget.onThemeModeChanged,
+                      ),
+                      Expanded(child: _buildDestination()),
+                    ],
+                  ),
+                ),
               ],
             );
           },
@@ -57,8 +84,25 @@ class _AppShellState extends State<AppShell> {
     AppDestination.settings => SettingsScreen(
       themeMode: widget.themeMode,
       onThemeModeChanged: widget.onThemeModeChanged,
+      historyEnabled: widget.historyEnabled,
+      resumeEnabled: widget.resumeEnabled,
+      onHistoryEnabledChanged: widget.onHistoryEnabledChanged,
+      onResumeEnabledChanged: widget.onResumeEnabledChanged,
     ),
   };
+
+  Future<void> _pickAndOpenFile() async {
+    try {
+      final String? uri = await pickVideoUri();
+      if (uri != null) widget.onOpenMedia(uri);
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open the file picker: $error')),
+        );
+      }
+    }
+  }
 }
 
 class _Sidebar extends StatelessWidget {
@@ -82,24 +126,7 @@ class _Sidebar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              height: 68,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
-                child: Row(
-                  children: [
-                    const Icon(Icons.play_circle_outline, size: 28),
-                    if (!compact) ...[
-                      const SizedBox(width: 12),
-                      Text(
-                        'VPFL',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+            const SizedBox(height: 20),
             const SizedBox(height: 12),
             _NavigationItem(
               compact: compact,

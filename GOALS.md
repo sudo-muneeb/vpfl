@@ -74,21 +74,35 @@ so this run does not verify hardware rendering.
 
 ## Current goal
 
-### Goal 3 — Persistence and recent media — Next
+### Goal 3 — Persistence and recent media — Complete
 
 **Objective:** Persist successful playback history, resume position, and
 settings in versioned SQLite storage.
 **Files/modules:** `lib/data/model/`, repositories/services, domain models.
-**Dependencies:** Goal 2; database package decision.
+**Dependencies:** Goal 2; Drift selected for versioned SQLite storage.
 **Acceptance criteria:** Recent items and one-time resume survive restart;
 failed/private sessions follow the documented history policy.
 **Tests required:** Temporary-database CRUD, migrations, resume and privacy
 unit/widget tests.
-**Risks/unknowns:** Migration backup/recovery policy needs implementation.
+**Risks/unknowns:** Migration backup/recovery policy needs implementation before
+later schema upgrades.
 
-## Next goals
+**Result:** Added schema version 1 with Drift, recent playback history, watched
+position, completion state, and app preferences stored beneath XDG data home.
+History starts after playback enters the playing state; failed opens create no
+entry. Disabling history stops new recording and keeps existing entries. Home
+shows recent items, resume seeks once when reopening, and appearance/history/
+resume preferences persist. The Linux shell and player now share a top bar with
+the VPFL logo, Open File, quick appearance selection, and Settings. The native
+file selector supports Linux.
 
-### Goal 4 — Saved folders and indexed library
+Repository tests cover schema initialization, settings, completion/resume
+rules, reactive recent history, and disk persistence after reopening. The
+Linux integration test verified stored history and resume position; all 18
+unit/widget tests, analysis, and the Linux release build pass. The integration
+test fell back to software GL; GPU rendering is not assessed by this phase.
+
+### Goal 4 — Saved folders and indexed library — Next
 
 **Objective:** Add granted-folder persistence, bounded asynchronous scans, and
 incremental SQLite indexing.
@@ -100,6 +114,8 @@ unchanged media and never decode files for artwork.
 **Tests required:** Temporary-tree scanner/repository tests and folder/library
 widget tests.
 **Risks/unknowns:** Persistent portal grants differ across desktops/Flatpak.
+
+## Next goals
 
 ### Goal 5 — Player UI
 

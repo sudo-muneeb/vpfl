@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../data/persistence_providers.dart';
+import '../../data/model/app_database.dart';
 
 /// Home surface for recent media and the indexed video library.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recent = ref.watch(recentPlaybackProvider);
     return ListView(
       padding: const EdgeInsets.all(32),
       children: [
@@ -22,10 +27,25 @@ class HomeScreen extends StatelessWidget {
           subtitle: 'Pick up where you left off.',
         ),
         const SizedBox(height: 12),
-        const _EmptyLibraryCard(
-          icon: Icons.history,
-          title: 'Nothing played yet',
-          message: 'Videos you play will appear here.',
+        recent.when(
+          data: (List<PlaybackHistory> entries) => entries.isEmpty
+              ? const _EmptyLibraryCard(
+                  icon: Icons.history,
+                  title: 'Nothing played yet',
+                  message: 'Videos you play will appear here.',
+                )
+              : Column(
+                  children: [
+                    for (final PlaybackHistory entry in entries)
+                      _RecentMediaCard(entry: entry),
+                  ],
+                ),
+          loading: () => const LinearProgressIndicator(),
+          error: (Object error, StackTrace stack) => _EmptyLibraryCard(
+            icon: Icons.error_outline,
+            title: 'History is unavailable',
+            message: error.toString(),
+          ),
         ),
         const SizedBox(height: 32),
         _SectionHeading(
@@ -39,6 +59,31 @@ class HomeScreen extends StatelessWidget {
           message: 'Add a folder to start building your library.',
         ),
       ],
+    );
+  }
+}
+
+class _RecentMediaCard extends StatelessWidget {
+  const _RecentMediaCard({required this.entry});
+
+  final PlaybackHistory entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final String progress = entry.durationMs > 0
+        ? '${Duration(milliseconds: entry.positionMs).inMinutes} min of '
+              '${Duration(milliseconds: entry.durationMs).inMinutes} min'
+        : 'Played ${entry.watchCount} ${entry.watchCount == 1 ? 'time' : 'times'}';
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.movie_outlined),
+        title: Text(
+          entry.displayName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(progress),
+      ),
     );
   }
 }
