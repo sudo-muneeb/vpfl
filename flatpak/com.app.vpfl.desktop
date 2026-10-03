@@ -4,6 +4,6 @@ Name=VPFL
 Comment=Play local videos
 Exec=vpfl
 Icon=com.app.vpfl
-StartupWMClass=com.app.vpfl
+StartupWMClass=Com.app.vpfl
 Terminal=false
 Categories=AudioVideo;Player;Video;
