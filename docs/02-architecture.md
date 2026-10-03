@@ -264,6 +264,11 @@ Remove completed in-flight entries.
 ## Persistence
 
 Use SQLite as the source of truth for local application records.
+VPFL uses Drift with a versioned schema. The Linux database is stored at
+`$XDG_DATA_HOME/vpfl/vpfl.sqlite`, falling back to
+`~/.local/share/vpfl/vpfl.sqlite` when `XDG_DATA_HOME` is unset. Keep migration
+steps in `AppDatabase.migration` and increase `schemaVersion` for every schema
+change.
 
 Suggested records:
 

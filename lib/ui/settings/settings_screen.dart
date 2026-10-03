@@ -5,11 +5,19 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     required this.themeMode,
     required this.onThemeModeChanged,
+    this.historyEnabled = true,
+    this.resumeEnabled = true,
+    this.onHistoryEnabledChanged,
+    this.onResumeEnabledChanged,
     super.key,
   });
 
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final bool historyEnabled;
+  final bool resumeEnabled;
+  final ValueChanged<bool>? onHistoryEnabledChanged;
+  final ValueChanged<bool>? onResumeEnabledChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +57,26 @@ class SettingsScreen extends StatelessWidget {
           onSelectionChanged: (Set<ThemeMode> selected) {
             onThemeModeChanged(selected.single);
           },
+        ),
+        const SizedBox(height: 28),
+        Text('Playback', style: Theme.of(context).textTheme.titleLarge),
+        SwitchListTile(
+          key: const Key('history-enabled-setting'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Playback history'),
+          subtitle: const Text(
+            'Remember videos that start playing. Turning this off keeps existing history.',
+          ),
+          value: historyEnabled,
+          onChanged: onHistoryEnabledChanged,
+        ),
+        SwitchListTile(
+          key: const Key('resume-enabled-setting'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Resume playback'),
+          subtitle: const Text('Continue from the last saved position.'),
+          value: resumeEnabled,
+          onChanged: onResumeEnabledChanged,
         ),
       ],
     );
