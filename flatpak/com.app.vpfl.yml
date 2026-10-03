@@ -17,7 +17,7 @@ modules:
       - cp -a bundle/. /app/lib/vpfl/
       - install -D -m 755 vpfl-launcher /app/bin/vpfl
       - install -D -m 644 com.app.vpfl.desktop /app/share/applications/com.app.vpfl.desktop
-      - install -D -m 644 vpfl-logo.png /app/share/icons/hicolor/512x512/apps/com.app.vpfl.png
+      - install -D -m 644 vpfl-logo-512.png /app/share/icons/hicolor/512x512/apps/com.app.vpfl.png
     sources:
       - type: dir
         path: ../build/linux/x64/release/bundle
@@ -27,5 +27,4 @@ modules:
       - type: file
         path: com.app.vpfl.desktop
       - type: file
-        path: ../vpfl-logo.png
-        dest-filename: vpfl-logo.png
+        path: vpfl-logo-512.png

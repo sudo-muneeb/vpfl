@@ -31,3 +31,6 @@ Future<String?> pickVideoUri() async {
   );
   return file == null ? null : Uri.file(file.path).toString();
 }
+
+/// Opens the desktop folder chooser for a library root.
+Future<String?> pickLibraryFolder() => getDirectoryPath();

@@ -27,7 +27,30 @@ class AppSettings extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [PlaybackHistories, AppSettings])
+class SavedFolders extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get path => text().unique()();
+  TextColumn get displayName => text()();
+  DateTimeColumn get addedAt => dateTime()();
+  DateTimeColumn get lastScannedAt => dateTime().nullable()();
+}
+
+class LibraryMediaItems extends Table {
+  TextColumn get uri => text()();
+  IntColumn get folderId => integer().references(SavedFolders, #id)();
+  TextColumn get path => text()();
+  TextColumn get displayName => text()();
+  IntColumn get sizeBytes => integer()();
+  DateTimeColumn get modifiedAt => dateTime()();
+  DateTimeColumn get indexedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {uri};
+}
+
+@DriftDatabase(
+  tables: [PlaybackHistories, AppSettings, SavedFolders, LibraryMediaItems],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(
@@ -41,13 +64,16 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator migrator) => migrator.createAll(),
     onUpgrade: (Migrator migrator, int from, int to) async {
-      // Add schema migrations here as the database version advances.
+      if (from < 2) {
+        await migrator.createTable(savedFolders);
+        await migrator.createTable(libraryMediaItems);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');

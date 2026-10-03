@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/media_file_picker.dart';
+import '../../data/persistence_providers.dart';
+import '../../data/model/app_database.dart';
 import '../core/widgets/app_top_bar.dart';
 import '../folders/folders_screen.dart';
 import '../home/home_screen.dart';
@@ -9,7 +12,7 @@ import '../settings/settings_screen.dart';
 import 'app_destination.dart';
 
 /// Main desktop layout with persistent navigation and feature content.
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({
     required this.themeMode,
     required this.onThemeModeChanged,
@@ -30,14 +33,29 @@ class AppShell extends StatefulWidget {
   final ValueChanged<String> onOpenMedia;
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   AppDestination _destination = AppDestination.home;
+  SavedFolder? _selectedFolder;
+  final Set<int> _scanningFolderIds = {};
 
   @override
   Widget build(BuildContext context) {
+    final AsyncValue<List<SavedFolder>> folders = ref.watch(
+      savedFoldersProvider,
+    );
+    folders.whenData((List<SavedFolder> values) {
+      for (final SavedFolder folder in values) {
+        _scanFolder(folder);
+      }
+      if (_selectedFolder != null) {
+        _selectedFolder = values
+            .where((SavedFolder value) => value.id == _selectedFolder!.id)
+            .firstOrNull;
+      }
+    });
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -48,6 +66,12 @@ class _AppShellState extends State<AppShell> {
                 _Sidebar(
                   compact: compact,
                   destination: _destination,
+                  folders: folders.value ?? const <SavedFolder>[],
+                  onAddFolder: _addFolder,
+                  onFolderSelected: (SavedFolder folder) => setState(() {
+                    _selectedFolder = folder;
+                    _destination = AppDestination.folders;
+                  }),
                   onDestinationSelected: (AppDestination destination) {
                     setState(() => _destination = destination);
                   },
@@ -78,9 +102,17 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildDestination() => switch (_destination) {
-    AppDestination.home => const HomeScreen(),
-    AppDestination.allVideos => const LibraryScreen(),
-    AppDestination.folders => const FoldersScreen(),
+    AppDestination.home => HomeScreen(onOpenMedia: widget.onOpenMedia),
+    AppDestination.allVideos => LibraryScreen(onOpenMedia: widget.onOpenMedia),
+    AppDestination.folders => FoldersScreen(
+      folder: _selectedFolder,
+      onAddFolder: _addFolder,
+      onOpenMedia: widget.onOpenMedia,
+      onRemoveFolder: _removeFolder,
+      onRescan: _selectedFolder == null
+          ? null
+          : () => _scanFolder(_selectedFolder!),
+    ),
     AppDestination.settings => SettingsScreen(
       themeMode: widget.themeMode,
       onThemeModeChanged: widget.onThemeModeChanged,
@@ -103,17 +135,64 @@ class _AppShellState extends State<AppShell> {
       }
     }
   }
+
+  Future<void> _addFolder() async {
+    try {
+      final String? folderPath = await pickLibraryFolder();
+      if (folderPath == null || !mounted) return;
+      final repository = ref.read(libraryRepositoryProvider);
+      final SavedFolder folder = await repository.addFolder(folderPath);
+      setState(() {
+        _selectedFolder = folder;
+        _destination = AppDestination.folders;
+      });
+      await _scanFolder(folder);
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not add folder: $error')));
+      }
+    }
+  }
+
+  Future<void> _scanFolder(SavedFolder folder) async {
+    if (!_scanningFolderIds.add(folder.id)) return;
+    try {
+      await ref.read(libraryScannerProvider).scan(folder);
+    } on Object catch (error) {
+      debugPrint('Could not scan saved folder ${folder.path}: $error');
+    } finally {
+      _scanningFolderIds.remove(folder.id);
+    }
+  }
+
+  Future<void> _removeFolder(SavedFolder folder) async {
+    await ref.read(libraryRepositoryProvider).removeFolder(folder);
+    if (mounted && _selectedFolder?.id == folder.id) {
+      setState(() {
+        _selectedFolder = null;
+        _destination = AppDestination.folders;
+      });
+    }
+  }
 }
 
 class _Sidebar extends StatelessWidget {
   const _Sidebar({
     required this.compact,
     required this.destination,
+    required this.folders,
+    required this.onAddFolder,
+    required this.onFolderSelected,
     required this.onDestinationSelected,
   });
 
   final bool compact;
   final AppDestination destination;
+  final List<SavedFolder> folders;
+  final VoidCallback onAddFolder;
+  final ValueChanged<SavedFolder> onFolderSelected;
   final ValueChanged<AppDestination> onDestinationSelected;
 
   @override
@@ -126,8 +205,20 @@ class _Sidebar extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 20),
             const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: compact
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.start,
+              children: [
+                Image.asset('vpfl-logo.png', width: 34, height: 34),
+                if (!compact) ...[
+                  const SizedBox(width: 10),
+                  Text('VPFL', style: Theme.of(context).textTheme.titleMedium),
+                ],
+              ],
+            ),
+            const SizedBox(height: 14),
             _NavigationItem(
               compact: compact,
               destination: AppDestination.home,
@@ -161,9 +252,22 @@ class _Sidebar extends StatelessWidget {
               destination: AppDestination.folders,
               selected: destination == AppDestination.folders,
               icon: Icons.folder_outlined,
-              label: compact ? 'Folders' : 'Add Folder',
-              onPressed: onDestinationSelected,
+              label: 'Add Folder',
+              onPressed: (_) => onAddFolder(),
             ),
+            if (!compact)
+              for (final SavedFolder folder in folders)
+                Padding(
+                  padding: const EdgeInsets.only(left: 10),
+                  child: _NavigationItem(
+                    compact: false,
+                    destination: AppDestination.folders,
+                    selected: destination == AppDestination.folders,
+                    icon: Icons.folder_outlined,
+                    label: folder.displayName,
+                    onPressed: (_) => onFolderSelected(folder),
+                  ),
+                ),
             const Spacer(),
             _NavigationItem(
               compact: compact,
