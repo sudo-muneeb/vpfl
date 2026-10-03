@@ -31,6 +31,19 @@ void main() {
     );
 
     final playback = container.read(playbackServiceProvider);
+    final videoOutput = await playback.videoController.platform.future;
+    await tester.pump();
+    for (
+      var attempt = 0;
+      attempt < 80 &&
+          (videoOutput.rect.value == null ||
+              videoOutput.rect.value!.width <= 1);
+      attempt++
+    ) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    await videoOutput.waitUntilFirstFrameRendered.timeout(eventTimeout);
+    expect(videoOutput.renderingMode.value, anyOf('gpu', 'software'));
     final Duration firstPosition = await playback.positionStream
         .firstWhere((Duration position) => position > Duration.zero)
         .timeout(eventTimeout);
@@ -91,6 +104,11 @@ void main() {
         .then((Playlist queue) => queue.index)
         .timeout(eventTimeout);
     await playback.openQueue([mediaUri, mediaUri]);
+    if (playback.playlist.medias.length < 2) {
+      await playback.playlistStream
+          .firstWhere((Playlist queue) => queue.medias.length == 2)
+          .timeout(eventTimeout);
+    }
     await playback.next();
     expect(await nextQueueItem, 1);
 

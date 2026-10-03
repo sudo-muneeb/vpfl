@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:synchronized/synchronized.dart';
 
 import 'package:media_kit/media_kit.dart';
@@ -28,6 +29,8 @@ import 'package:media_kit_video/src/video_controller/platform_video_controller.d
 ///
 /// {@endtemplate}
 class NativeVideoController extends PlatformVideoController {
+  bool _bootstrapFrameRequested = false;
+
   /// Whether [NativeVideoController] is supported on the current platform or not.
   static bool get supported =>
       Platform.isWindows ||
@@ -187,6 +190,10 @@ class NativeVideoController extends PlatformVideoController {
       },
     );
 
+    if (controller.renderingMode.value == 'unavailable') {
+      throw StateError('No Linux video renderer is available');
+    }
+
     await completer.future;
     controller.id.removeListener(listener);
 
@@ -254,7 +261,7 @@ class NativeVideoController extends PlatformVideoController {
   static final _controllers = HashMap<int, NativeVideoController>();
 
   /// [MethodChannel] for invoking platform specific native implementation.
-  static final _channel =
+  static final MethodChannel _channel =
       const MethodChannel('com.alexmercerind/media_kit_video')
         ..setMethodCallHandler(
           (MethodCall call) async {
@@ -273,10 +280,27 @@ class NativeVideoController extends PlatformVideoController {
                       call.arguments['rect']['height'] * 1.0,
                     );
                     final int id = call.arguments['id'];
+                    final String? renderingMode =
+                        call.arguments['renderingMode'] as String?;
+                    if (renderingMode != null) {
+                      _controllers[handle]?.renderingMode.value = renderingMode;
+                    }
                     _controllers[handle]?.rect.value = rect;
-                    _controllers[handle]?.id.value = id;
+                    if (id >= 0) _controllers[handle]?.id.value = id;
+                    final controller = _controllers[handle];
+                    if (Platform.isLinux &&
+                        controller != null &&
+                        !controller._bootstrapFrameRequested) {
+                      controller._bootstrapFrameRequested = true;
+                      SchedulerBinding.instance.addPostFrameCallback((_) {
+                        unawaited(_channel.invokeMethod<void>(
+                          'VideoOutputManager.RequestFrame',
+                          {'handle': handle.toString()},
+                        ));
+                      });
+                    }
                     // Notify about the first frame being rendered.
-                    if (rect.width > 0 && rect.height > 0) {
+                    if (rect.width > 1 && rect.height > 1) {
                       final completer = _controllers[handle]
                           ?.waitUntilFirstFrameRenderedCompleter;
                       if (!(completer?.isCompleted ?? true)) {

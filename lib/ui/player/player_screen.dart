@@ -53,6 +53,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late final PlaybackService _playback;
   String? _mediaError;
   String? _renderingMode;
+  ValueNotifier<String?>? _renderingModeSource;
   BoxFit _videoFit = BoxFit.contain;
 
   @override
@@ -176,15 +177,27 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final platformController =
           await _playback.videoController.platform.future;
       if (mounted) {
-        setState(() {
-          _renderingMode = platformController.renderingMode.value;
-        });
+        _renderingModeSource = platformController.renderingMode;
+        _renderingModeSource!.addListener(_updateRenderingMode);
+        _updateRenderingMode();
       }
     } on Object catch (_) {
       if (mounted) {
         setState(() => _renderingMode = 'unavailable');
       }
     }
+  }
+
+  void _updateRenderingMode() {
+    if (mounted) {
+      setState(() => _renderingMode = _renderingModeSource?.value);
+    }
+  }
+
+  @override
+  void dispose() {
+    _renderingModeSource?.removeListener(_updateRenderingMode);
+    super.dispose();
   }
 
   Future<void> _saveScreenshot() async {
@@ -305,6 +318,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
 
     try {
+      await _waitForVideoRenderer();
       await _playback.open(uri);
       if (resumePosition != null) {
         await _playback.seek(resumePosition);
@@ -313,6 +327,35 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (mounted) {
         setState(() => _mediaError = 'Could not open this media file: $error');
       }
+    }
+  }
+
+  Future<void> _waitForVideoRenderer() async {
+    final platform = await _playback.videoController.platform.future;
+    final mode = platform.renderingMode;
+    if (mode.value == 'gpu' || mode.value == 'software') return;
+    if (mode.value == 'unavailable') {
+      throw StateError('No video renderer is available.');
+    }
+    final completer = Completer<void>();
+    void listener() {
+      if (mode.value == 'gpu' || mode.value == 'software') {
+        if (!completer.isCompleted) completer.complete();
+      } else if (mode.value == 'unavailable') {
+        if (!completer.isCompleted) {
+          completer.completeError(
+            StateError('No video renderer is available.'),
+          );
+        }
+      }
+    }
+
+    mode.addListener(listener);
+    try {
+      listener();
+      await completer.future.timeout(const Duration(seconds: 10));
+    } finally {
+      mode.removeListener(listener);
     }
   }
 

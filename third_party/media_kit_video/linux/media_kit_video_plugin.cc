@@ -62,12 +62,14 @@ static void media_kit_video_plugin_handle_method_call(
 
     typedef struct _VideoOutputTextureUpdateCallbackData {
       FlMethodChannel* channel;
+      VideoOutputManager* manager;
       gint64 handle;
     } VideoOutputTextureUpdateCallbackData;
     // TODO(@alexmercerind): Fix memory leak.
     VideoOutputTextureUpdateCallbackData* data =
         g_new0(VideoOutputTextureUpdateCallbackData, 1);
     data->channel = self->channel;
+    data->manager = self->video_output_manager;
     data->handle = handle_value;
     video_output_manager_create(
         self->video_output_manager, handle_value, configuration_value,
@@ -87,29 +89,44 @@ static void media_kit_video_plugin_handle_method_call(
           
           typedef struct {
             FlMethodChannel* channel;
+            VideoOutputManager* manager;
+            gint64 handle;
             FlValue* result;
           } IdleCallbackData;
           
           IdleCallbackData* idle_data = g_new0(IdleCallbackData, 1);
-          idle_data->channel = channel;
+          idle_data->channel = FL_METHOD_CHANNEL(g_object_ref(channel));
+          idle_data->manager = VIDEO_OUTPUT_MANAGER(g_object_ref(data->manager));
+          idle_data->handle = handle;
           idle_data->result = result;
 
           // `fl_method_channel_invoke_method` should be called from PlatformThread.
           g_idle_add([](gpointer user_data) -> gboolean {
             IdleCallbackData* idle_data = (IdleCallbackData*)user_data;
+            fl_value_set_string_take(
+                idle_data->result, "renderingMode",
+                fl_value_new_string(video_output_manager_get_rendering_mode(
+                    idle_data->manager, idle_data->handle)));
             fl_method_channel_invoke_method(idle_data->channel, "VideoOutput.Resize", 
                                           idle_data->result, NULL, NULL, NULL);
+            fl_value_unref(idle_data->result);
+            g_object_unref(idle_data->manager);
+            g_object_unref(idle_data->channel);
             g_free(idle_data);
             return G_SOURCE_REMOVE;
           }, idle_data);
         },
         data);
-    const bool hardware_rendering =
-        video_output_manager_is_hardware_rendering(
-            self->video_output_manager, handle_value);
     FlValue* result = fl_value_new_string(
-        hardware_rendering ? "gpu" : "software");
+        video_output_manager_get_rendering_mode(
+            self->video_output_manager, handle_value));
     response = FL_METHOD_RESPONSE(fl_method_success_response_new(result));
+  } else if (g_strcmp0(method, "VideoOutputManager.RequestFrame") == 0) {
+    FlValue* arguments = fl_method_call_get_args(method_call);
+    FlValue* handle = fl_value_lookup_string(arguments, "handle");
+    const gint64 handle_value = g_ascii_strtoll(fl_value_get_string(handle), NULL, 10);
+    video_output_manager_request_frame(self->video_output_manager, handle_value);
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(fl_value_new_null()));
   } else if (g_strcmp0(method, "VideoOutputManager.SetSize") == 0) {
     FlValue* arguments = fl_method_call_get_args(method_call);
     FlValue* handle = fl_value_lookup_string(arguments, "handle");

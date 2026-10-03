@@ -90,7 +90,12 @@ void video_output_set_size(VideoOutput* self, gint64 width, gint64 height);
 
 mpv_render_context* video_output_get_render_context(VideoOutput* self);
 
-GdkGLContext* video_output_get_gdk_gl_context(VideoOutput* self);
+// Called only from FlTextureGL.populate, where Flutter's EGL context is current.
+bool video_output_prepare_gpu(VideoOutput* self, EGLDisplay flutter_display,
+                              EGLContext flutter_context);
+void video_output_fail_gpu(VideoOutput* self, const char* reason);
+void video_output_lock(VideoOutput* self);
+void video_output_unlock(VideoOutput* self);
 
 EGLDisplay video_output_get_egl_display(VideoOutput* self);
 
@@ -98,6 +103,7 @@ EGLContext video_output_get_egl_context(VideoOutput* self);
 EGLSurface video_output_get_egl_surface(VideoOutput* self);
 
 bool video_output_get_hardware_rendering(VideoOutput* self);
+const char* video_output_get_rendering_mode(VideoOutput* self);
 
 guint8* video_output_get_pixel_buffer(VideoOutput* self);
 
@@ -108,5 +114,7 @@ gint64 video_output_get_height(VideoOutput* self);
 gint64 video_output_get_texture_id(VideoOutput* self);
 
 void video_output_notify_texture_update(VideoOutput* self);
+void video_output_request_frame(VideoOutput* self);
+void video_output_stop(VideoOutput* self);
 
 #endif  // VIDEO_OUTPUT_H_

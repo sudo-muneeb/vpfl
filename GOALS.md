@@ -32,9 +32,15 @@ capture, hardware decoder state, Wayland, and dispose/reopen remain unverified.
 The optional CUDA probe warning is expected on this AMD machine and is not a
 playback blocker.
 
-The local `media_kit_video` patch is maintained as a small diff plus a refresh
+The local `media_kit_video` patch is maintained as a checked-in diff plus a refresh
 script; use `./tool/update_media_kit_video.sh <version>` to rebase it on a
 published package release.
+
+A follow-up renderer change now uses an EGL context shared with Flutter's
+raster context and falls back to software when GPU setup fails. On X11/AMD,
+the native playback integration passed with GPU rendering and with injected
+GPU initialization failure. Wayland, Intel, NVIDIA, and Flatpak runtime checks
+remain open; see `docs/compatibility/phase-0.md`.
 
 ## Previous milestone
 
@@ -231,9 +237,10 @@ review, and release/profile measurements.
   the current product scope and coding brief. Conversion remains excluded.
 - The upstream hardware-render failure came from reading Flutter's
   thread-local EGL context in a GTK callback after Flutter moved it to the
-  raster thread. The local patch obtains EGL from GDK and creates an isolated
-  context backed by a pbuffer. X11 rendering is verified; Wayland and visible
-  first-frame presentation still need verification.
+  raster thread. The current patch creates a context shared with Flutter from
+  the raster callback and uses software fallback for GPU failures. X11/AMD
+  native integration passed; Wayland and visible frame capture still need
+  verification.
 - mpv may log `Cannot load libcuda.so.1` while probing its optional NVIDIA
   backend. This is expected on the AMD test machine and does not affect
   rendering. VAAPI or other hardware decoding selection remains unknown.
@@ -253,5 +260,5 @@ review, and release/profile measurements.
   when this baseline was prepared.
 - The upstream hardware-render failure was caused by reading Flutter's
   thread-local EGL context in a GTK callback after Flutter moved that context
-  to its raster thread. The local patch obtains EGL from GDK and creates an
-  isolated OpenGL ES 2 context backed by a pbuffer.
+  to its raster thread. The current patch initializes an EGL context shared
+  with Flutter from the texture callback and keeps software fallback.
