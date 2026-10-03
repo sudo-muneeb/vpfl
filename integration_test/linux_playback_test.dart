@@ -49,6 +49,28 @@ void main() {
     await playback.playOrPause();
     expect(await pausedEvent, isFalse);
 
+    final Future<double> rateEvent = playback.rateStream
+        .firstWhere((double rate) => rate == 1.25)
+        .timeout(eventTimeout);
+    await playback.setRate(1.25);
+    expect(await rateEvent, 1.25);
+
+    final Future<double> volumeEvent = playback.volumeStream
+        .firstWhere((double volume) => volume == 35)
+        .timeout(eventTimeout);
+    await playback.setVolume(35);
+    expect(await volumeEvent, 35);
+
+    final String mediaUri = Uri.file(File(testVideoPath).absolute.path)
+        .toString();
+    final Future<int> nextQueueItem = playback.playlistStream
+        .firstWhere((Playlist queue) => queue.index == 1)
+        .then((Playlist queue) => queue.index)
+        .timeout(eventTimeout);
+    await playback.openQueue([mediaUri, mediaUri]);
+    await playback.next();
+    expect(await nextQueueItem, 1);
+
     container.dispose();
   }, skip: testVideoPath.isEmpty);
 }

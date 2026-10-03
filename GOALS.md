@@ -36,7 +36,7 @@ The local `media_kit_video` patch is maintained as a small diff plus a refresh
 script; use `./tool/update_media_kit_video.sh <version>` to rebase it on a
 published package release.
 
-## Current goal
+## Previous milestone
 
 ### Goal 1 — Application architecture and shell — Complete
 
@@ -52,9 +52,7 @@ works with VPFL light/dark theme tokens.
 library/folder empty states, and a working System/Light/Dark appearance
 selector. Navigation and theme widget tests pass.
 
-## Next goals
-
-### Goal 2 — Playback foundation
+### Goal 2 — Playback foundation — Complete
 
 **Objective:** Add event-driven playback state, queue actions, and media open
 routing while retaining one foreground session.
@@ -67,7 +65,16 @@ play/pause, seek, speed, volume, fullscreen, and capability-gated tracks.
 playback integration.
 **Risks/unknowns:** Native capabilities depend on the packaged mpv version.
 
-### Goal 3 — Persistence and recent media
+**Result:** Added serialized latest-request-wins source opening, queue
+navigation and shuffle, relative seeking, playback speed, volume/mute, track
+selection, and fullscreen controls. Coordinator and widget tests pass; the
+Linux integration run verified playback, seek, pause, speed, volume, and moving
+to the next queue item. The integration environment fell back to software GL,
+so this run does not verify hardware rendering.
+
+## Current goal
+
+### Goal 3 — Persistence and recent media — Next
 
 **Objective:** Persist successful playback history, resume position, and
 settings in versioned SQLite storage.
@@ -78,6 +85,8 @@ failed/private sessions follow the documented history policy.
 **Tests required:** Temporary-database CRUD, migrations, resume and privacy
 unit/widget tests.
 **Risks/unknowns:** Migration backup/recovery policy needs implementation.
+
+## Next goals
 
 ### Goal 4 — Saved folders and indexed library
 
