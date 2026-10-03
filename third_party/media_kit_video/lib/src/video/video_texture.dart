@@ -400,9 +400,12 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
                                 return ValueListenableBuilder<Rect?>(
                                   valueListenable: notifier.rect,
                                   builder: (context, rect, _) {
+                                    // Linux needs the initial 1x1 Texture mounted
+                                    // before the raster callback can initialize
+                                    // its mpv render context and discover size.
                                     if (id != null &&
                                         rect != null &&
-                                        _visible) {
+                                        (_visible || Platform.isLinux)) {
                                       return SizedBox(
                                         // Apply aspect ratio if provided.
                                         width:

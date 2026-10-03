@@ -21,6 +21,8 @@ G_DECLARE_FINAL_TYPE(TextureGL, texture_gl, TEXTURE_GL, TEXTURE_GL, FlTextureGL)
   (G_TYPE_CHECK_INSTANCE_CAST((obj), texture_gl_get_type(), TextureGL))
 
 TextureGL* texture_gl_new(VideoOutput* video_output);
+// The caller must have the VPFL EGL context current.
+void texture_gl_release(TextureGL* self);
 
 /**
  * @brief Populates texture with video frame.

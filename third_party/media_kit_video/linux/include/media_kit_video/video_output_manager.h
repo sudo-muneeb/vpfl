@@ -71,8 +71,11 @@ void video_output_manager_set_size(VideoOutputManager* self,
  * @param handle |mpv_handle| reference casted to gint64.
  */
 void video_output_manager_dispose(VideoOutputManager* self, gint64 handle);
+void video_output_manager_request_frame(VideoOutputManager* self, gint64 handle);
 
 bool video_output_manager_is_hardware_rendering(VideoOutputManager* self,
                                                 gint64 handle);
+const char* video_output_manager_get_rendering_mode(VideoOutputManager* self,
+                                                    gint64 handle);
 
 #endif

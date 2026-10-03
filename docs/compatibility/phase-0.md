@@ -76,3 +76,30 @@ VideoOutput.Resize ... width: 3840, height: 2160
 The AMD system has no CUDA library, so `Cannot load libcuda.so.1` is also
 reported while mpv probes available decoder backends. It does not establish
 whether VAAPI or another hardware decoder is active.
+
+## Follow-up: shared Flutter EGL renderer
+
+The isolated context above was the initial Phase 0 result. A later run opened
+the 1280 × 720 sample and then disconnected from `flutter run`. The Linux
+renderer now initializes from Flutter's actual EGL context in
+`FlTextureGL.populate`, creates a shared context and pbuffer, and renders mpv
+frames into a texture that Flutter can consume. It checks EGL configuration,
+pbuffer support, GL texture size, framebuffer completeness, and mpv render
+results. On failure it switches to software output and reports the active mode.
+An unavailable software renderer reports `unavailable` to the UI.
+
+On this X11/AMD/Mesa system, `flutter analyze`, Linux debug and release builds,
+and the Linux playback integration test passed. The test now waits for a real
+sized frame before checking playback, then verifies position, history, seek,
+pause, speed, volume, and queue navigation. The same test passed with
+`VPFL_TEST_FAIL_GPU_INIT=1`, which forced software fallback. A release app smoke
+run logged `H/W rendering with shared Flutter EGL context` and a 1280 × 720
+resize without a crash. A `flutter run --no-enable-impeller` smoke run reached
+the same GPU state; its final `Lost connection to device` followed the
+intentional `timeout` termination of the run command.
+
+These checks establish renderer initialization and a real sized texture on the
+available X11 machine. They do not prove that every frame was visibly presented
+or that video decoding used the GPU. Wayland, Intel, NVIDIA, and Flatpak runtime
+testing require those environments. The CUDA library warning is an optional
+decoder probe and remained nonfatal in the successful runs.

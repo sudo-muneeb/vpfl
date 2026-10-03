@@ -70,8 +70,17 @@ void video_output_manager_set_size(VideoOutputManager* self,
 
 void video_output_manager_dispose(VideoOutputManager* self, gint64 handle) {
   if (g_hash_table_contains(self->video_outputs, GINT_TO_POINTER(handle))) {
+    VideoOutput* output = VIDEO_OUTPUT(
+        g_hash_table_lookup(self->video_outputs, GINT_TO_POINTER(handle)));
+    video_output_stop(output);
     g_hash_table_remove(self->video_outputs, GINT_TO_POINTER(handle));
   }
+}
+
+void video_output_manager_request_frame(VideoOutputManager* self, gint64 handle) {
+  VideoOutput* output = VIDEO_OUTPUT(
+      g_hash_table_lookup(self->video_outputs, GINT_TO_POINTER(handle)));
+  if (output != nullptr) video_output_request_frame(output);
 }
 
 bool video_output_manager_is_hardware_rendering(VideoOutputManager* self,
@@ -82,4 +91,11 @@ bool video_output_manager_is_hardware_rendering(VideoOutputManager* self,
   VideoOutput* video_output = VIDEO_OUTPUT(
       g_hash_table_lookup(self->video_outputs, GINT_TO_POINTER(handle)));
   return video_output_get_hardware_rendering(video_output);
+}
+
+const char* video_output_manager_get_rendering_mode(VideoOutputManager* self,
+                                                    gint64 handle) {
+  VideoOutput* output = VIDEO_OUTPUT(
+      g_hash_table_lookup(self->video_outputs, GINT_TO_POINTER(handle)));
+  return output == nullptr ? "unavailable" : video_output_get_rendering_mode(output);
 }
