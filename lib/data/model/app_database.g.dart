@@ -689,12 +689,857 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   }
 }
 
+class $SavedFoldersTable extends SavedFolders
+    with TableInfo<$SavedFoldersTable, SavedFolder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SavedFoldersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _addedAtMeta = const VerificationMeta(
+    'addedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> addedAt = GeneratedColumn<DateTime>(
+    'added_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastScannedAtMeta = const VerificationMeta(
+    'lastScannedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastScannedAt =
+      GeneratedColumn<DateTime>(
+        'last_scanned_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    path,
+    displayName,
+    addedAt,
+    lastScannedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'saved_folders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SavedFolder> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pathMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    if (data.containsKey('added_at')) {
+      context.handle(
+        _addedAtMeta,
+        addedAt.isAcceptableOrUnknown(data['added_at']!, _addedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_addedAtMeta);
+    }
+    if (data.containsKey('last_scanned_at')) {
+      context.handle(
+        _lastScannedAtMeta,
+        lastScannedAt.isAcceptableOrUnknown(
+          data['last_scanned_at']!,
+          _lastScannedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SavedFolder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SavedFolder(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      addedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}added_at'],
+      )!,
+      lastScannedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_scanned_at'],
+      ),
+    );
+  }
+
+  @override
+  $SavedFoldersTable createAlias(String alias) {
+    return $SavedFoldersTable(attachedDatabase, alias);
+  }
+}
+
+class SavedFolder extends DataClass implements Insertable<SavedFolder> {
+  final int id;
+  final String path;
+  final String displayName;
+  final DateTime addedAt;
+  final DateTime? lastScannedAt;
+  const SavedFolder({
+    required this.id,
+    required this.path,
+    required this.displayName,
+    required this.addedAt,
+    this.lastScannedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['path'] = Variable<String>(path);
+    map['display_name'] = Variable<String>(displayName);
+    map['added_at'] = Variable<DateTime>(addedAt);
+    if (!nullToAbsent || lastScannedAt != null) {
+      map['last_scanned_at'] = Variable<DateTime>(lastScannedAt);
+    }
+    return map;
+  }
+
+  SavedFoldersCompanion toCompanion(bool nullToAbsent) {
+    return SavedFoldersCompanion(
+      id: Value(id),
+      path: Value(path),
+      displayName: Value(displayName),
+      addedAt: Value(addedAt),
+      lastScannedAt: lastScannedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastScannedAt),
+    );
+  }
+
+  factory SavedFolder.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SavedFolder(
+      id: serializer.fromJson<int>(json['id']),
+      path: serializer.fromJson<String>(json['path']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+      lastScannedAt: serializer.fromJson<DateTime?>(json['lastScannedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'path': serializer.toJson<String>(path),
+      'displayName': serializer.toJson<String>(displayName),
+      'addedAt': serializer.toJson<DateTime>(addedAt),
+      'lastScannedAt': serializer.toJson<DateTime?>(lastScannedAt),
+    };
+  }
+
+  SavedFolder copyWith({
+    int? id,
+    String? path,
+    String? displayName,
+    DateTime? addedAt,
+    Value<DateTime?> lastScannedAt = const Value.absent(),
+  }) => SavedFolder(
+    id: id ?? this.id,
+    path: path ?? this.path,
+    displayName: displayName ?? this.displayName,
+    addedAt: addedAt ?? this.addedAt,
+    lastScannedAt: lastScannedAt.present
+        ? lastScannedAt.value
+        : this.lastScannedAt,
+  );
+  SavedFolder copyWithCompanion(SavedFoldersCompanion data) {
+    return SavedFolder(
+      id: data.id.present ? data.id.value : this.id,
+      path: data.path.present ? data.path.value : this.path,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+      lastScannedAt: data.lastScannedAt.present
+          ? data.lastScannedAt.value
+          : this.lastScannedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SavedFolder(')
+          ..write('id: $id, ')
+          ..write('path: $path, ')
+          ..write('displayName: $displayName, ')
+          ..write('addedAt: $addedAt, ')
+          ..write('lastScannedAt: $lastScannedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, path, displayName, addedAt, lastScannedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SavedFolder &&
+          other.id == this.id &&
+          other.path == this.path &&
+          other.displayName == this.displayName &&
+          other.addedAt == this.addedAt &&
+          other.lastScannedAt == this.lastScannedAt);
+}
+
+class SavedFoldersCompanion extends UpdateCompanion<SavedFolder> {
+  final Value<int> id;
+  final Value<String> path;
+  final Value<String> displayName;
+  final Value<DateTime> addedAt;
+  final Value<DateTime?> lastScannedAt;
+  const SavedFoldersCompanion({
+    this.id = const Value.absent(),
+    this.path = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.addedAt = const Value.absent(),
+    this.lastScannedAt = const Value.absent(),
+  });
+  SavedFoldersCompanion.insert({
+    this.id = const Value.absent(),
+    required String path,
+    required String displayName,
+    required DateTime addedAt,
+    this.lastScannedAt = const Value.absent(),
+  }) : path = Value(path),
+       displayName = Value(displayName),
+       addedAt = Value(addedAt);
+  static Insertable<SavedFolder> custom({
+    Expression<int>? id,
+    Expression<String>? path,
+    Expression<String>? displayName,
+    Expression<DateTime>? addedAt,
+    Expression<DateTime>? lastScannedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (path != null) 'path': path,
+      if (displayName != null) 'display_name': displayName,
+      if (addedAt != null) 'added_at': addedAt,
+      if (lastScannedAt != null) 'last_scanned_at': lastScannedAt,
+    });
+  }
+
+  SavedFoldersCompanion copyWith({
+    Value<int>? id,
+    Value<String>? path,
+    Value<String>? displayName,
+    Value<DateTime>? addedAt,
+    Value<DateTime?>? lastScannedAt,
+  }) {
+    return SavedFoldersCompanion(
+      id: id ?? this.id,
+      path: path ?? this.path,
+      displayName: displayName ?? this.displayName,
+      addedAt: addedAt ?? this.addedAt,
+      lastScannedAt: lastScannedAt ?? this.lastScannedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (addedAt.present) {
+      map['added_at'] = Variable<DateTime>(addedAt.value);
+    }
+    if (lastScannedAt.present) {
+      map['last_scanned_at'] = Variable<DateTime>(lastScannedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SavedFoldersCompanion(')
+          ..write('id: $id, ')
+          ..write('path: $path, ')
+          ..write('displayName: $displayName, ')
+          ..write('addedAt: $addedAt, ')
+          ..write('lastScannedAt: $lastScannedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LibraryMediaItemsTable extends LibraryMediaItems
+    with TableInfo<$LibraryMediaItemsTable, LibraryMediaItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LibraryMediaItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uriMeta = const VerificationMeta('uri');
+  @override
+  late final GeneratedColumn<String> uri = GeneratedColumn<String>(
+    'uri',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _folderIdMeta = const VerificationMeta(
+    'folderId',
+  );
+  @override
+  late final GeneratedColumn<int> folderId = GeneratedColumn<int>(
+    'folder_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES saved_folders (id)',
+    ),
+  );
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sizeBytesMeta = const VerificationMeta(
+    'sizeBytes',
+  );
+  @override
+  late final GeneratedColumn<int> sizeBytes = GeneratedColumn<int>(
+    'size_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _modifiedAtMeta = const VerificationMeta(
+    'modifiedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> modifiedAt = GeneratedColumn<DateTime>(
+    'modified_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _indexedAtMeta = const VerificationMeta(
+    'indexedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> indexedAt = GeneratedColumn<DateTime>(
+    'indexed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uri,
+    folderId,
+    path,
+    displayName,
+    sizeBytes,
+    modifiedAt,
+    indexedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'library_media_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LibraryMediaItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uri')) {
+      context.handle(
+        _uriMeta,
+        uri.isAcceptableOrUnknown(data['uri']!, _uriMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uriMeta);
+    }
+    if (data.containsKey('folder_id')) {
+      context.handle(
+        _folderIdMeta,
+        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_folderIdMeta);
+    }
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pathMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    if (data.containsKey('size_bytes')) {
+      context.handle(
+        _sizeBytesMeta,
+        sizeBytes.isAcceptableOrUnknown(data['size_bytes']!, _sizeBytesMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sizeBytesMeta);
+    }
+    if (data.containsKey('modified_at')) {
+      context.handle(
+        _modifiedAtMeta,
+        modifiedAt.isAcceptableOrUnknown(data['modified_at']!, _modifiedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_modifiedAtMeta);
+    }
+    if (data.containsKey('indexed_at')) {
+      context.handle(
+        _indexedAtMeta,
+        indexedAt.isAcceptableOrUnknown(data['indexed_at']!, _indexedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_indexedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uri};
+  @override
+  LibraryMediaItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LibraryMediaItem(
+      uri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uri'],
+      )!,
+      folderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}folder_id'],
+      )!,
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      sizeBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}size_bytes'],
+      )!,
+      modifiedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}modified_at'],
+      )!,
+      indexedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}indexed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LibraryMediaItemsTable createAlias(String alias) {
+    return $LibraryMediaItemsTable(attachedDatabase, alias);
+  }
+}
+
+class LibraryMediaItem extends DataClass
+    implements Insertable<LibraryMediaItem> {
+  final String uri;
+  final int folderId;
+  final String path;
+  final String displayName;
+  final int sizeBytes;
+  final DateTime modifiedAt;
+  final DateTime indexedAt;
+  const LibraryMediaItem({
+    required this.uri,
+    required this.folderId,
+    required this.path,
+    required this.displayName,
+    required this.sizeBytes,
+    required this.modifiedAt,
+    required this.indexedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uri'] = Variable<String>(uri);
+    map['folder_id'] = Variable<int>(folderId);
+    map['path'] = Variable<String>(path);
+    map['display_name'] = Variable<String>(displayName);
+    map['size_bytes'] = Variable<int>(sizeBytes);
+    map['modified_at'] = Variable<DateTime>(modifiedAt);
+    map['indexed_at'] = Variable<DateTime>(indexedAt);
+    return map;
+  }
+
+  LibraryMediaItemsCompanion toCompanion(bool nullToAbsent) {
+    return LibraryMediaItemsCompanion(
+      uri: Value(uri),
+      folderId: Value(folderId),
+      path: Value(path),
+      displayName: Value(displayName),
+      sizeBytes: Value(sizeBytes),
+      modifiedAt: Value(modifiedAt),
+      indexedAt: Value(indexedAt),
+    );
+  }
+
+  factory LibraryMediaItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LibraryMediaItem(
+      uri: serializer.fromJson<String>(json['uri']),
+      folderId: serializer.fromJson<int>(json['folderId']),
+      path: serializer.fromJson<String>(json['path']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      sizeBytes: serializer.fromJson<int>(json['sizeBytes']),
+      modifiedAt: serializer.fromJson<DateTime>(json['modifiedAt']),
+      indexedAt: serializer.fromJson<DateTime>(json['indexedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uri': serializer.toJson<String>(uri),
+      'folderId': serializer.toJson<int>(folderId),
+      'path': serializer.toJson<String>(path),
+      'displayName': serializer.toJson<String>(displayName),
+      'sizeBytes': serializer.toJson<int>(sizeBytes),
+      'modifiedAt': serializer.toJson<DateTime>(modifiedAt),
+      'indexedAt': serializer.toJson<DateTime>(indexedAt),
+    };
+  }
+
+  LibraryMediaItem copyWith({
+    String? uri,
+    int? folderId,
+    String? path,
+    String? displayName,
+    int? sizeBytes,
+    DateTime? modifiedAt,
+    DateTime? indexedAt,
+  }) => LibraryMediaItem(
+    uri: uri ?? this.uri,
+    folderId: folderId ?? this.folderId,
+    path: path ?? this.path,
+    displayName: displayName ?? this.displayName,
+    sizeBytes: sizeBytes ?? this.sizeBytes,
+    modifiedAt: modifiedAt ?? this.modifiedAt,
+    indexedAt: indexedAt ?? this.indexedAt,
+  );
+  LibraryMediaItem copyWithCompanion(LibraryMediaItemsCompanion data) {
+    return LibraryMediaItem(
+      uri: data.uri.present ? data.uri.value : this.uri,
+      folderId: data.folderId.present ? data.folderId.value : this.folderId,
+      path: data.path.present ? data.path.value : this.path,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      sizeBytes: data.sizeBytes.present ? data.sizeBytes.value : this.sizeBytes,
+      modifiedAt: data.modifiedAt.present
+          ? data.modifiedAt.value
+          : this.modifiedAt,
+      indexedAt: data.indexedAt.present ? data.indexedAt.value : this.indexedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LibraryMediaItem(')
+          ..write('uri: $uri, ')
+          ..write('folderId: $folderId, ')
+          ..write('path: $path, ')
+          ..write('displayName: $displayName, ')
+          ..write('sizeBytes: $sizeBytes, ')
+          ..write('modifiedAt: $modifiedAt, ')
+          ..write('indexedAt: $indexedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    uri,
+    folderId,
+    path,
+    displayName,
+    sizeBytes,
+    modifiedAt,
+    indexedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LibraryMediaItem &&
+          other.uri == this.uri &&
+          other.folderId == this.folderId &&
+          other.path == this.path &&
+          other.displayName == this.displayName &&
+          other.sizeBytes == this.sizeBytes &&
+          other.modifiedAt == this.modifiedAt &&
+          other.indexedAt == this.indexedAt);
+}
+
+class LibraryMediaItemsCompanion extends UpdateCompanion<LibraryMediaItem> {
+  final Value<String> uri;
+  final Value<int> folderId;
+  final Value<String> path;
+  final Value<String> displayName;
+  final Value<int> sizeBytes;
+  final Value<DateTime> modifiedAt;
+  final Value<DateTime> indexedAt;
+  final Value<int> rowid;
+  const LibraryMediaItemsCompanion({
+    this.uri = const Value.absent(),
+    this.folderId = const Value.absent(),
+    this.path = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.sizeBytes = const Value.absent(),
+    this.modifiedAt = const Value.absent(),
+    this.indexedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LibraryMediaItemsCompanion.insert({
+    required String uri,
+    required int folderId,
+    required String path,
+    required String displayName,
+    required int sizeBytes,
+    required DateTime modifiedAt,
+    required DateTime indexedAt,
+    this.rowid = const Value.absent(),
+  }) : uri = Value(uri),
+       folderId = Value(folderId),
+       path = Value(path),
+       displayName = Value(displayName),
+       sizeBytes = Value(sizeBytes),
+       modifiedAt = Value(modifiedAt),
+       indexedAt = Value(indexedAt);
+  static Insertable<LibraryMediaItem> custom({
+    Expression<String>? uri,
+    Expression<int>? folderId,
+    Expression<String>? path,
+    Expression<String>? displayName,
+    Expression<int>? sizeBytes,
+    Expression<DateTime>? modifiedAt,
+    Expression<DateTime>? indexedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uri != null) 'uri': uri,
+      if (folderId != null) 'folder_id': folderId,
+      if (path != null) 'path': path,
+      if (displayName != null) 'display_name': displayName,
+      if (sizeBytes != null) 'size_bytes': sizeBytes,
+      if (modifiedAt != null) 'modified_at': modifiedAt,
+      if (indexedAt != null) 'indexed_at': indexedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LibraryMediaItemsCompanion copyWith({
+    Value<String>? uri,
+    Value<int>? folderId,
+    Value<String>? path,
+    Value<String>? displayName,
+    Value<int>? sizeBytes,
+    Value<DateTime>? modifiedAt,
+    Value<DateTime>? indexedAt,
+    Value<int>? rowid,
+  }) {
+    return LibraryMediaItemsCompanion(
+      uri: uri ?? this.uri,
+      folderId: folderId ?? this.folderId,
+      path: path ?? this.path,
+      displayName: displayName ?? this.displayName,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+      indexedAt: indexedAt ?? this.indexedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uri.present) {
+      map['uri'] = Variable<String>(uri.value);
+    }
+    if (folderId.present) {
+      map['folder_id'] = Variable<int>(folderId.value);
+    }
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (sizeBytes.present) {
+      map['size_bytes'] = Variable<int>(sizeBytes.value);
+    }
+    if (modifiedAt.present) {
+      map['modified_at'] = Variable<DateTime>(modifiedAt.value);
+    }
+    if (indexedAt.present) {
+      map['indexed_at'] = Variable<DateTime>(indexedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LibraryMediaItemsCompanion(')
+          ..write('uri: $uri, ')
+          ..write('folderId: $folderId, ')
+          ..write('path: $path, ')
+          ..write('displayName: $displayName, ')
+          ..write('sizeBytes: $sizeBytes, ')
+          ..write('modifiedAt: $modifiedAt, ')
+          ..write('indexedAt: $indexedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $PlaybackHistoriesTable playbackHistories =
       $PlaybackHistoriesTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $SavedFoldersTable savedFolders = $SavedFoldersTable(this);
+  late final $LibraryMediaItemsTable libraryMediaItems =
+      $LibraryMediaItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -702,6 +1547,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     playbackHistories,
     appSettings,
+    savedFolders,
+    libraryMediaItems,
   ];
 }
 
@@ -1118,6 +1965,682 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSetting,
       PrefetchHooks Function()
     >;
+typedef $$SavedFoldersTableCreateCompanionBuilder =
+    SavedFoldersCompanion Function({
+      Value<int> id,
+      required String path,
+      required String displayName,
+      required DateTime addedAt,
+      Value<DateTime?> lastScannedAt,
+    });
+typedef $$SavedFoldersTableUpdateCompanionBuilder =
+    SavedFoldersCompanion Function({
+      Value<int> id,
+      Value<String> path,
+      Value<String> displayName,
+      Value<DateTime> addedAt,
+      Value<DateTime?> lastScannedAt,
+    });
+
+final class $$SavedFoldersTableReferences
+    extends BaseReferences<_$AppDatabase, $SavedFoldersTable, SavedFolder> {
+  $$SavedFoldersTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$LibraryMediaItemsTable, List<LibraryMediaItem>>
+  _libraryMediaItemsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.libraryMediaItems,
+        aliasName: 'saved_folders__id__library_media_items__folder_id',
+      );
+
+  $$LibraryMediaItemsTableProcessedTableManager get libraryMediaItemsRefs {
+    final manager = $$LibraryMediaItemsTableTableManager(
+      $_db,
+      $_db.libraryMediaItems,
+    ).filter((f) => f.folderId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _libraryMediaItemsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$SavedFoldersTableFilterComposer
+    extends Composer<_$AppDatabase, $SavedFoldersTable> {
+  $$SavedFoldersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastScannedAt => $composableBuilder(
+    column: $table.lastScannedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> libraryMediaItemsRefs(
+    Expression<bool> Function($$LibraryMediaItemsTableFilterComposer f) f,
+  ) {
+    final $$LibraryMediaItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.libraryMediaItems,
+      getReferencedColumn: (t) => t.folderId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LibraryMediaItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.libraryMediaItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$SavedFoldersTableOrderingComposer
+    extends Composer<_$AppDatabase, $SavedFoldersTable> {
+  $$SavedFoldersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastScannedAt => $composableBuilder(
+    column: $table.lastScannedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SavedFoldersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SavedFoldersTable> {
+  $$SavedFoldersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get addedAt =>
+      $composableBuilder(column: $table.addedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastScannedAt => $composableBuilder(
+    column: $table.lastScannedAt,
+    builder: (column) => column,
+  );
+
+  Expression<T> libraryMediaItemsRefs<T extends Object>(
+    Expression<T> Function($$LibraryMediaItemsTableAnnotationComposer a) f,
+  ) {
+    final $$LibraryMediaItemsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.libraryMediaItems,
+          getReferencedColumn: (t) => t.folderId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$LibraryMediaItemsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.libraryMediaItems,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$SavedFoldersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SavedFoldersTable,
+          SavedFolder,
+          $$SavedFoldersTableFilterComposer,
+          $$SavedFoldersTableOrderingComposer,
+          $$SavedFoldersTableAnnotationComposer,
+          $$SavedFoldersTableCreateCompanionBuilder,
+          $$SavedFoldersTableUpdateCompanionBuilder,
+          (SavedFolder, $$SavedFoldersTableReferences),
+          SavedFolder,
+          PrefetchHooks Function({bool libraryMediaItemsRefs})
+        > {
+  $$SavedFoldersTableTableManager(_$AppDatabase db, $SavedFoldersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SavedFoldersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SavedFoldersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SavedFoldersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> path = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+                Value<DateTime?> lastScannedAt = const Value.absent(),
+              }) => SavedFoldersCompanion(
+                id: id,
+                path: path,
+                displayName: displayName,
+                addedAt: addedAt,
+                lastScannedAt: lastScannedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String path,
+                required String displayName,
+                required DateTime addedAt,
+                Value<DateTime?> lastScannedAt = const Value.absent(),
+              }) => SavedFoldersCompanion.insert(
+                id: id,
+                path: path,
+                displayName: displayName,
+                addedAt: addedAt,
+                lastScannedAt: lastScannedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SavedFoldersTable, SavedFolder>(table),
+                  $$SavedFoldersTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({libraryMediaItemsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (libraryMediaItemsRefs) db.libraryMediaItems,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (libraryMediaItemsRefs)
+                    await $_getPrefetchedData<
+                      SavedFolder,
+                      $SavedFoldersTable,
+                      LibraryMediaItem
+                    >(
+                      currentTable: table,
+                      referencedTable: $$SavedFoldersTableReferences
+                          ._libraryMediaItemsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$SavedFoldersTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).libraryMediaItemsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.folderId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SavedFoldersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SavedFoldersTable,
+      SavedFolder,
+      $$SavedFoldersTableFilterComposer,
+      $$SavedFoldersTableOrderingComposer,
+      $$SavedFoldersTableAnnotationComposer,
+      $$SavedFoldersTableCreateCompanionBuilder,
+      $$SavedFoldersTableUpdateCompanionBuilder,
+      (SavedFolder, $$SavedFoldersTableReferences),
+      SavedFolder,
+      PrefetchHooks Function({bool libraryMediaItemsRefs})
+    >;
+typedef $$LibraryMediaItemsTableCreateCompanionBuilder =
+    LibraryMediaItemsCompanion Function({
+      required String uri,
+      required int folderId,
+      required String path,
+      required String displayName,
+      required int sizeBytes,
+      required DateTime modifiedAt,
+      required DateTime indexedAt,
+      Value<int> rowid,
+    });
+typedef $$LibraryMediaItemsTableUpdateCompanionBuilder =
+    LibraryMediaItemsCompanion Function({
+      Value<String> uri,
+      Value<int> folderId,
+      Value<String> path,
+      Value<String> displayName,
+      Value<int> sizeBytes,
+      Value<DateTime> modifiedAt,
+      Value<DateTime> indexedAt,
+      Value<int> rowid,
+    });
+
+final class $$LibraryMediaItemsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $LibraryMediaItemsTable,
+          LibraryMediaItem
+        > {
+  $$LibraryMediaItemsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SavedFoldersTable _folderIdTable(_$AppDatabase db) => db.savedFolders
+      .createAlias('library_media_items__folder_id__saved_folders__id');
+
+  $$SavedFoldersTableProcessedTableManager get folderId {
+    final $_column = $_itemColumn<int>('folder_id')!;
+
+    final manager = $$SavedFoldersTableTableManager(
+      $_db,
+      $_db.savedFolders,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_folderIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$LibraryMediaItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $LibraryMediaItemsTable> {
+  $$LibraryMediaItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uri => $composableBuilder(
+    column: $table.uri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sizeBytes => $composableBuilder(
+    column: $table.sizeBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get modifiedAt => $composableBuilder(
+    column: $table.modifiedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get indexedAt => $composableBuilder(
+    column: $table.indexedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SavedFoldersTableFilterComposer get folderId {
+    final $$SavedFoldersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.savedFolders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SavedFoldersTableFilterComposer(
+            $db: $db,
+            $table: $db.savedFolders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LibraryMediaItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LibraryMediaItemsTable> {
+  $$LibraryMediaItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uri => $composableBuilder(
+    column: $table.uri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sizeBytes => $composableBuilder(
+    column: $table.sizeBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get modifiedAt => $composableBuilder(
+    column: $table.modifiedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get indexedAt => $composableBuilder(
+    column: $table.indexedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SavedFoldersTableOrderingComposer get folderId {
+    final $$SavedFoldersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.savedFolders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SavedFoldersTableOrderingComposer(
+            $db: $db,
+            $table: $db.savedFolders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LibraryMediaItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LibraryMediaItemsTable> {
+  $$LibraryMediaItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uri =>
+      $composableBuilder(column: $table.uri, builder: (column) => column);
+
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get sizeBytes =>
+      $composableBuilder(column: $table.sizeBytes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get modifiedAt => $composableBuilder(
+    column: $table.modifiedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get indexedAt =>
+      $composableBuilder(column: $table.indexedAt, builder: (column) => column);
+
+  $$SavedFoldersTableAnnotationComposer get folderId {
+    final $$SavedFoldersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.savedFolders,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SavedFoldersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.savedFolders,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LibraryMediaItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LibraryMediaItemsTable,
+          LibraryMediaItem,
+          $$LibraryMediaItemsTableFilterComposer,
+          $$LibraryMediaItemsTableOrderingComposer,
+          $$LibraryMediaItemsTableAnnotationComposer,
+          $$LibraryMediaItemsTableCreateCompanionBuilder,
+          $$LibraryMediaItemsTableUpdateCompanionBuilder,
+          (LibraryMediaItem, $$LibraryMediaItemsTableReferences),
+          LibraryMediaItem,
+          PrefetchHooks Function({bool folderId})
+        > {
+  $$LibraryMediaItemsTableTableManager(
+    _$AppDatabase db,
+    $LibraryMediaItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LibraryMediaItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LibraryMediaItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LibraryMediaItemsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> uri = const Value.absent(),
+                Value<int> folderId = const Value.absent(),
+                Value<String> path = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<int> sizeBytes = const Value.absent(),
+                Value<DateTime> modifiedAt = const Value.absent(),
+                Value<DateTime> indexedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LibraryMediaItemsCompanion(
+                uri: uri,
+                folderId: folderId,
+                path: path,
+                displayName: displayName,
+                sizeBytes: sizeBytes,
+                modifiedAt: modifiedAt,
+                indexedAt: indexedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uri,
+                required int folderId,
+                required String path,
+                required String displayName,
+                required int sizeBytes,
+                required DateTime modifiedAt,
+                required DateTime indexedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => LibraryMediaItemsCompanion.insert(
+                uri: uri,
+                folderId: folderId,
+                path: path,
+                displayName: displayName,
+                sizeBytes: sizeBytes,
+                modifiedAt: modifiedAt,
+                indexedAt: indexedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$LibraryMediaItemsTable, LibraryMediaItem>(table),
+                  $$LibraryMediaItemsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({folderId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (folderId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.folderId,
+                        referencedTable: $$LibraryMediaItemsTableReferences
+                            ._folderIdTable(db),
+                        referencedColumn: $$LibraryMediaItemsTableReferences
+                            ._folderIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$LibraryMediaItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LibraryMediaItemsTable,
+      LibraryMediaItem,
+      $$LibraryMediaItemsTableFilterComposer,
+      $$LibraryMediaItemsTableOrderingComposer,
+      $$LibraryMediaItemsTableAnnotationComposer,
+      $$LibraryMediaItemsTableCreateCompanionBuilder,
+      $$LibraryMediaItemsTableUpdateCompanionBuilder,
+      (LibraryMediaItem, $$LibraryMediaItemsTableReferences),
+      LibraryMediaItem,
+      PrefetchHooks Function({bool folderId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1126,4 +2649,8 @@ class $AppDatabaseManager {
       $$PlaybackHistoriesTableTableManager(_db, _db.playbackHistories);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$SavedFoldersTableTableManager get savedFolders =>
+      $$SavedFoldersTableTableManager(_db, _db.savedFolders);
+  $$LibraryMediaItemsTableTableManager get libraryMediaItems =>
+      $$LibraryMediaItemsTableTableManager(_db, _db.libraryMediaItems);
 }

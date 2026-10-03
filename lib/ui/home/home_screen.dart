@@ -6,11 +6,13 @@ import '../../data/model/app_database.dart';
 
 /// Home surface for recent media and the indexed video library.
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({required this.onOpenMedia, super.key});
+  final ValueChanged<String> onOpenMedia;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recent = ref.watch(recentPlaybackProvider);
+    final library = ref.watch(libraryMediaProvider);
     return ListView(
       padding: const EdgeInsets.all(32),
       children: [
@@ -37,7 +39,10 @@ class HomeScreen extends ConsumerWidget {
               : Column(
                   children: [
                     for (final PlaybackHistory entry in entries)
-                      _RecentMediaCard(entry: entry),
+                      _RecentMediaCard(
+                        entry: entry,
+                        onTap: () => onOpenMedia(entry.uri),
+                      ),
                   ],
                 ),
           loading: () => const LinearProgressIndicator(),
@@ -53,10 +58,40 @@ class HomeScreen extends ConsumerWidget {
           subtitle: 'Your indexed video library.',
         ),
         const SizedBox(height: 12),
-        const _EmptyLibraryCard(
-          icon: Icons.video_library_outlined,
-          title: 'Your library is empty',
-          message: 'Add a folder to start building your library.',
+        library.when(
+          data: (items) => items.isEmpty
+              ? const _EmptyLibraryCard(
+                  icon: Icons.video_library_outlined,
+                  title: 'Your library is empty',
+                  message: 'Add a folder to start building your library.',
+                )
+              : Column(
+                  children: [
+                    for (final item in items.take(4))
+                      Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.movie_outlined),
+                          title: Text(
+                            item.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            item.path,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () => onOpenMedia(item.uri),
+                        ),
+                      ),
+                  ],
+                ),
+          loading: () => const LinearProgressIndicator(),
+          error: (Object error, StackTrace stack) => _EmptyLibraryCard(
+            icon: Icons.error_outline,
+            title: 'Library is unavailable',
+            message: error.toString(),
+          ),
         ),
       ],
     );
@@ -64,9 +99,10 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _RecentMediaCard extends StatelessWidget {
-  const _RecentMediaCard({required this.entry});
+  const _RecentMediaCard({required this.entry, required this.onTap});
 
   final PlaybackHistory entry;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +112,7 @@ class _RecentMediaCard extends StatelessWidget {
         : 'Played ${entry.watchCount} ${entry.watchCount == 1 ? 'time' : 'times'}';
     return Card(
       child: ListTile(
+        onTap: onTap,
         leading: const Icon(Icons.movie_outlined),
         title: Text(
           entry.displayName,

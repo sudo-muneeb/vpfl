@@ -102,7 +102,7 @@ Linux integration test verified stored history and resume position; all 18
 unit/widget tests, analysis, and the Linux release build pass. The integration
 test fell back to software GL; GPU rendering is not assessed by this phase.
 
-### Goal 4 — Saved folders and indexed library — Next
+### Goal 4 — Saved folders and indexed library — Implemented
 
 **Objective:** Add granted-folder persistence, bounded asynchronous scans, and
 incremental SQLite indexing.
@@ -114,6 +114,19 @@ unchanged media and never decode files for artwork.
 **Tests required:** Temporary-tree scanner/repository tests and folder/library
 widget tests.
 **Risks/unknowns:** Persistent portal grants differ across desktops/Flatpak.
+
+**Result:** Added schema version 2 for saved roots and indexed media, with an
+upgrade migration from version 1. The library scans saved roots at launch and
+when added or refreshed, walks directories without following symlinks, batches
+index updates, and skips media whose size and modified time have not changed.
+It does not read video contents or generate artwork. The sidebar lists saved
+roots; folder browsing, All Videos, and Home now show indexed media, and video
+cards open playback. The library uses a lazy grid. The VPFL mark now appears in
+the sidebar, GTK window, and Flatpak app icon; the packaged PNG is correctly
+512 × 512.
+
+`flutter analyze` and a Linux release build pass. Focused Goal 4 tests and
+Flatpak portal persistence behavior still need runtime validation.
 
 ## Next goals
 
