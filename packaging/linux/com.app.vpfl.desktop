@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=VPFL
+GenericName=Video Player
+Comment=Play local videos with VPFL
+Exec=vpfl %f
+TryExec=vpfl
+Icon=com.app.vpfl
+StartupWMClass=Com.app.vpfl
+Terminal=false
+Categories=AudioVideo;Player;Video;
+Keywords=video;movie;media;player;
+MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;video/vnd.avi;video/mpeg;video/mp2t;video/x-flv;video/x-ms-wmv;video/3gpp;video/3gpp2;video/ogg;application/mxf;

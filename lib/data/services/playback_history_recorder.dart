@@ -140,7 +140,8 @@ class PlaybackHistoryRecorder {
         .split('/')
         .where((String e) => e.isNotEmpty)
         .toList();
-    return segments.isEmpty ? uri : Uri.decodeComponent(segments.last);
+    // Uri.path is already decoded; decoding again breaks Unicode names.
+    return segments.isEmpty ? uri : segments.last;
   }
 
   static String _canonicalUri(String uri) {

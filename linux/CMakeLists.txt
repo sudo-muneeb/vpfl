@@ -43,6 +43,8 @@ function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_14)
   target_compile_options(${TARGET} PRIVATE -Wall -Werror)
   target_compile_options(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O3>")
+  # Package native debug information separately from the release binaries.
+  target_compile_options(${TARGET} PRIVATE "$<$<CONFIG:Release>:-g>")
   target_compile_definitions(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:NDEBUG>")
 endfunction()
 
@@ -73,6 +75,20 @@ set_target_properties(${BINARY_NAME}
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
+
+# Plugin binaries are copied from the build tree into bundle/lib rather than
+# installed as CMake targets. Give them a relocatable build RUNPATH so the
+# bundle and native distro packages do not embed the checkout's ephemeral path.
+foreach(plugin ${FLUTTER_PLUGIN_LIST})
+  set_target_properties(${plugin}_plugin PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "$ORIGIN")
+endforeach()
+if(TARGET jni)
+  set_target_properties(jni PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "$ORIGIN")
+endif()
 
 
 # === Installation ===

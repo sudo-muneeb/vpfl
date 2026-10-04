@@ -1,0 +1,51 @@
+%global debug_package %{nil}
+%global _build_id_links none
+# libdartjni is a transitive Android-only asset retained in Flutter's bundle.
+# VPFL does not load it on Linux; avoid requiring a JVM for video playback.
+%global __requires_exclude ^libjvm[.]so.*$
+
+Name: vpfl
+Version: @VERSION@
+Release: 1%{?dist}
+Summary: Local video player for Linux
+License: LicenseRef-proprietary
+URL: https://github.com/sudo-muneeb/vpfl
+Source0: vpfl-stage.tar.gz
+BuildArch: x86_64
+# Flutter loads EGL/GLES with dlopen, so ELF dependency generators miss them.
+Requires: libglvnd-egl
+Requires: libglvnd-gles
+Requires: desktop-file-utils
+
+%description
+VPFL plays local video files and remembers playback progress.
+
+%prep
+
+%build
+
+%install
+mkdir -p %{buildroot}
+tar -xzf %{SOURCE0} -C %{buildroot}
+
+%files
+%defattr(-,root,root,-)
+/usr/bin/vpfl
+/usr/lib/vpfl/
+/usr/share/applications/com.app.vpfl.desktop
+/usr/share/icons/hicolor/48x48/apps/com.app.vpfl.png
+/usr/share/icons/hicolor/64x64/apps/com.app.vpfl.png
+/usr/share/icons/hicolor/128x128/apps/com.app.vpfl.png
+/usr/share/icons/hicolor/256x256/apps/com.app.vpfl.png
+/usr/share/metainfo/com.app.vpfl.metainfo.xml
+/usr/share/doc/vpfl/
+
+%post
+update-desktop-database -q /usr/share/applications || :
+
+%postun
+update-desktop-database -q /usr/share/applications || :
+
+%changelog
+* Sun Oct 04 2026 VPFL contributors <noreply@github.com> - @VERSION@-1
+- Package the Flutter Linux release bundle.

@@ -185,8 +185,10 @@ The bottom row has three anchored groups. More options, volume, subtitles,
 and speed sit at the left. Ten-second seek and play/pause stay centered in the
 video viewport. Repeat and fullscreen sit at the right edge. The seek bar is
 above them. The volume slider hides at narrower widths while mute remains
-available. Speed opens a rate menu; subtitles open a track menu when tracks
-are available. The overflow retains secondary actions.
+available. Speed opens a rate menu; subtitles always open a menu with Auto,
+Off, embedded tracks when present, and Load subtitle file. The latter uses the
+native picker for SRT, ASS, SSA, and WebVTT files, then selects the loaded
+track. The overflow retains secondary actions.
 
 Previous and next appear at the far sides, halfway down the video when a
 multi-item queue exists. Opening a local file builds a queue from video files
