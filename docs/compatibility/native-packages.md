@@ -100,3 +100,56 @@ its `/usr/sbin/vpfl` path resolves to the installed `/usr/bin/vpfl`; the check
 now verifies that the command is available and `/usr/bin/vpfl` is executable.
 This was a check-script issue, not a package-install failure. Xvfb does not
 verify visible pixels, file-manager presentation, or performance on a real GPU.
+
+## Arch Linux (vpfl-bin)
+
+The Arch package is `vpfl-bin`, defined by `packaging/arch/PKGBUILD` and
+`packaging/arch/vpfl-bin.install`. It is the prebuilt release for x86_64 Arch,
+the first step toward an AUR package. A later source package (`vpfl`) would
+build with Flutter and install the same runtime files. Official `extra`
+inclusion is an Arch Package Maintainer decision, not an upstream upload.
+
+`packaging/scripts/package-arch.sh` builds the release bundle, validates it
+with the same stage checks as DEB and RPM, and writes
+`dist/vpfl-linux-x86_64.tar.gz`. The archive contains only a `usr/` tree and
+uses a root owner and sorted entry names. The script prints the sha256 to put in the PKGBUILD.
+
+The PKGBUILD installs the bundle under `/usr/lib/vpfl`, the launcher as
+`/usr/bin/vpfl`, the desktop entry, hicolor icons, AppStream metadata, and
+licenses under `/usr/share/licenses/vpfl-bin/`. Its runtime dependencies are
+`gtk3`, `mpv` (which provides `libmpv.so.2`), `libepoxy`, `libglvnd` (for the
+EGL and GLES libraries Flutter loads with `dlopen`), `desktop-file-utils`,
+`hicolor-icon-theme`, and `shared-mime-info`. `libdartjni.so` is excluded, as
+it is for DEB and RPM. The install hook refreshes the desktop and icon caches
+on install, upgrade, and removal.
+
+Until the first upstream release exists, `sha256sums` is `SKIP` and the
+source URL points at `v1.0.0`; publishing requires replacing both with the
+release asset and its checksum. The maintainer line is a placeholder.
+
+### Arch checks
+
+```bash
+makepkg --printsrcinfo > .SRCINFO       # regenerate after PKGBUILD edits
+namcap PKGBUILD                          # needs the namcap package
+namcap dist/vpfl-bin-<version>-1-x86_64.pkg.tar.zst
+desktop-file-validate /usr/share/applications/com.app.vpfl.desktop
+pacman -Ql vpfl-bin | grep -E '/usr/bin/vpfl$|com.app.vpfl'
+```
+
+After installation, `gio mime video/mp4` should report `com.app.vpfl.desktop`
+only after the user chooses **Make VPFL default** in Settings. Removing the
+package leaves the user's `~/.config/mimeapps.list` unchanged.
+
+### Arch limits
+
+* The runner requests XWayland (`GDK_BACKEND=x11`) when `DISPLAY` is set. The
+  window is frameless; native Wayland on KDE drew a second title bar above
+  VPFL's own controls. A pure-Wayland session without XWayland still uses the
+  native Wayland backend and has not been verified.
+* Thumbnails come from the Freedesktop cache when it is valid, then from a
+  VPFL frame captured after 10 seconds of natural playback. Videos that have
+  never played that far, or whose cache entry is stale, show the placeholder.
+* Only the Arch build host and a clean Arch install are validated. Other
+  distributions and GPUs are not claimed.
+
