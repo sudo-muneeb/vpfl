@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'persistence_providers.dart';
 import 'services/playback_history_recorder.dart';
 import 'playback_service_provider.dart';
+import 'thumbnail_providers.dart';
 
 final Provider<PlaybackHistoryRecorder> playbackHistoryRecorderProvider =
     Provider<PlaybackHistoryRecorder>((Ref ref) {
@@ -12,6 +13,7 @@ final Provider<PlaybackHistoryRecorder> playbackHistoryRecorderProvider =
         playback: ref.watch(playbackServiceProvider),
         history: ref.watch(playbackHistoryRepositoryProvider),
         settings: ref.watch(settingsRepositoryProvider),
+        thumbnails: ref.watch(thumbnailServiceProvider),
       );
       ref.onDispose(() => unawaited(recorder.dispose()));
       return recorder;
