@@ -5,6 +5,8 @@
 // All rights reserved.
 // Use of this source code is governed by MIT license that can be found in the
 // LICENSE file.
+// VPFL shared-context renderer modifications: Copyright 2026 Sheikh Muneeb Ahmed.
+// Upstream source and this modified file retain the MIT license above.
 
 #include "include/media_kit_video/texture_gl.h"
 

@@ -18,6 +18,11 @@ modules:
       - install -D -m 755 vpfl-launcher /app/bin/vpfl
       - install -D -m 644 com.app.vpfl.desktop /app/share/applications/com.app.vpfl.desktop
       - install -D -m 644 vpfl-logo-512.png /app/share/icons/hicolor/512x512/apps/com.app.vpfl.png
+      - install -D -m 644 LICENSE /app/share/doc/vpfl/LICENSE
+      - install -D -m 644 NOTICE /app/share/doc/vpfl/NOTICE
+      - install -D -m 644 AUTHORS /app/share/doc/vpfl/AUTHORS
+      - install -D -m 644 THIRD_PARTY_NOTICES.md /app/share/doc/vpfl/THIRD_PARTY_NOTICES.md
+      - install -D -m 644 LICENSE.media_kit_video /app/share/doc/vpfl/LICENSE.media_kit_video
     sources:
       - type: dir
         path: ../build/linux/x64/release/bundle
@@ -28,3 +33,14 @@ modules:
         path: com.app.vpfl.desktop
       - type: file
         path: vpfl-logo-512.png
+      - type: file
+        path: ../LICENSE
+      - type: file
+        path: ../NOTICE
+      - type: file
+        path: ../AUTHORS
+      - type: file
+        path: ../THIRD_PARTY_NOTICES.md
+      - type: file
+        path: ../third_party/media_kit_video/LICENSE
+        dest-filename: LICENSE.media_kit_video

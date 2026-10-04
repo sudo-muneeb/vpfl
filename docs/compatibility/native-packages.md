@@ -54,9 +54,13 @@ an Android transitive dependency, but VPFL's Linux code does not load it.
 It is excluded from runtime dependency scanning so Java is not required for
 Linux playback. Recheck this if platform dependencies change.
 
-The repository currently has no project-wide license file. Package metadata
-uses `LicenseRef-proprietary` until the project owner chooses and records a
-license; this needs resolution before distributing the packages publicly.
+Original VPFL work is Apache-2.0. Both packages include `LICENSE`, `NOTICE`,
+`AUTHORS`, `THIRD_PARTY_NOTICES.md`, and the vendored `media_kit_video` MIT
+license in `/usr/share/doc/vpfl/`. Flutter's generated `NOTICES.Z` remains in
+the application bundle. See [third-party notices](../../THIRD_PARTY_NOTICES.md)
+for the distinction between bundled code and dynamically linked system
+libraries. Review the exact distribution's libmpv obligations before
+redistributing a package with its system dependencies.
 
 Debug ELF files are stored outside the installable packages at
 `dist/symbols/<version>-1-x86_64-<commit>/`. `BUILD-INFO` records the full

@@ -1,3 +1,6 @@
+// Copyright 2026 Sheikh Muneeb Ahmed
+// SPDX-License-Identifier: Apache-2.0
+
 #include "include/default_manager_linux/default_manager_linux_plugin.h"
 
 #include <flutter_linux/flutter_linux.h>

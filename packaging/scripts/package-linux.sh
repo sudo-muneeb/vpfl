@@ -27,6 +27,10 @@ mkdir -p "$stage/usr/lib/vpfl" "$stage/usr/bin" \
 flutter build linux --release
 "$root/packaging/scripts/validate-package.sh" bundle "$bundle"
 cp -a "$bundle/." "$stage/usr/lib/vpfl/"
+install -m 644 LICENSE NOTICE AUTHORS THIRD_PARTY_NOTICES.md \
+  "$stage/usr/share/doc/vpfl/"
+install -m 644 third_party/media_kit_video/LICENSE \
+  "$stage/usr/share/doc/vpfl/LICENSE.media_kit_video"
 install -m 755 packaging/linux/vpfl-launcher "$stage/usr/bin/vpfl"
 install -m 644 packaging/linux/com.app.vpfl.desktop "$stage/usr/share/applications/"
 sed -E "s/(<release version=\")[^\"]+/\1$version/" \
@@ -72,7 +76,7 @@ if [[ "$kind" == deb ]]; then
 Source: vpfl
 Section: video
 Priority: optional
-Maintainer: VPFL contributors <noreply@github.com>
+Maintainer: Sheikh Muneeb Ahmed <muneebahmed2250@gmail.com>
 Standards-Version: 4.6.2
 
 Package: vpfl
@@ -97,7 +101,7 @@ EOF
 Package: vpfl
 Version: $version-1
 Architecture: amd64
-Maintainer: VPFL contributors <noreply@github.com>
+Maintainer: Sheikh Muneeb Ahmed <muneebahmed2250@gmail.com>
 Section: video
 Priority: optional
 Homepage: https://github.com/sudo-muneeb/vpfl

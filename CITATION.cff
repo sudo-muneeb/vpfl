@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use VPFL in research, please cite this software."
+title: VPFL
+type: software
+authors:
+  - family-names: Ahmed
+    given-names: Sheikh Muneeb
+    email: muneebahmed2250@gmail.com
+repository-code: https://github.com/sudo-muneeb/vpfl
+license: Apache-2.0
+preferred-citation:
+  type: software
+  title: VPFL
+  authors:
+    - family-names: Ahmed
+      given-names: Sheikh Muneeb
+  year: 2026
+  repository-code: https://github.com/sudo-muneeb/vpfl

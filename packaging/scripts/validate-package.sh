@@ -37,6 +37,15 @@ case "$mode" in
       || fail 'desktop MIME types mismatch'
     grep -q "<id>$app_id</id>" "$meta" || fail 'AppStream ID mismatch'
     grep -q "<release version=\"$version\"" "$meta" || fail 'AppStream version mismatch'
+    grep -q '<project_license>Apache-2.0</project_license>' "$meta" \
+      || fail 'AppStream license mismatch'
+    doc="$target/usr/share/doc/vpfl"
+    for notice in LICENSE NOTICE AUTHORS THIRD_PARTY_NOTICES.md LICENSE.media_kit_video; do
+      [[ -s "$doc/$notice" ]] || fail "$notice missing from package documentation"
+    done
+    cmp -s "$doc/LICENSE" "$root/LICENSE" || fail 'project license text changed'
+    cmp -s "$doc/LICENSE.media_kit_video" "$root/third_party/media_kit_video/LICENSE" \
+      || fail 'media_kit_video license text changed'
     for size in 48 64 128 256; do
       [[ -s "$target/usr/share/icons/hicolor/${size}x${size}/apps/$app_id.png" ]] \
         || fail "${size}px icon missing"
@@ -54,19 +63,26 @@ case "$mode" in
     dpkg-deb -f "$target" Depends | grep -q libgles2 || fail 'DEB lacks GLES dependency'
     dpkg-deb -f "$target" Depends | grep -q desktop-file-utils || fail 'DEB lacks desktop database tool'
     dpkg-deb -c "$target" | grep './usr/bin/vpfl$' >/dev/null || fail 'DEB launcher missing'
+    dpkg-deb -c "$target" | grep './usr/share/doc/vpfl/THIRD_PARTY_NOTICES.md$' >/dev/null \
+      || fail 'DEB third-party notices missing'
     ;;
   rpm)
     [[ -f "$target" ]] || fail 'RPM artifact missing'
     if command -v rpm >/dev/null; then
       [[ $(rpm -qp --qf '%{VERSION}' "$target") == "$version" ]] || fail 'RPM version mismatch'
+      [[ $(rpm -qp --qf '%{LICENSE}' "$target") == Apache-2.0 ]] || fail 'RPM license mismatch'
       rpm -qpl "$target" | grep -x /usr/bin/vpfl >/dev/null || fail 'RPM launcher missing'
+      rpm -qpl "$target" | grep -x /usr/share/doc/vpfl/THIRD_PARTY_NOTICES.md >/dev/null \
+        || fail 'RPM third-party notices missing'
       rpm -qpR "$target" | grep 'libmpv.so.2' >/dev/null || fail 'RPM lacks libmpv dependency'
       rpm -qpR "$target" | grep -x libglvnd-gles >/dev/null || fail 'RPM lacks GLES dependency'
       rpm -qpR "$target" | grep -x desktop-file-utils >/dev/null || fail 'RPM lacks desktop database tool'
     elif command -v docker >/dev/null; then
       docker run --rm -v "$(realpath "$target"):/vpfl.rpm:ro" fedora:44 sh -ec '
         test "$(rpm -qp --qf "%{VERSION}" /vpfl.rpm)" = "$1"
+        test "$(rpm -qp --qf "%{LICENSE}" /vpfl.rpm)" = Apache-2.0
         rpm -qpl /vpfl.rpm | grep -x /usr/bin/vpfl >/dev/null
+        rpm -qpl /vpfl.rpm | grep -x /usr/share/doc/vpfl/THIRD_PARTY_NOTICES.md >/dev/null
         rpm -qpR /vpfl.rpm | grep "libmpv.so.2" >/dev/null
         rpm -qpR /vpfl.rpm | grep -x libglvnd-gles >/dev/null
         rpm -qpR /vpfl.rpm | grep -x desktop-file-utils >/dev/null
