@@ -105,6 +105,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
+  Future<void> _pickSubtitleFile() async {
+    try {
+      final String? path = await pickSubtitlePath();
+      if (path == null) return;
+      await _playback.loadSubtitleFile(path);
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load subtitles: $error')),
+        );
+      }
+    }
+  }
+
   void _showSettings() {
     ThemeMode themeMode = widget.themeMode;
     bool historyEnabled = widget.historyEnabled;
@@ -479,6 +493,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     tracks: _playback.tracks,
     tracksStream: _playback.tracksStream,
     onSetTrack: _playback.setTrack,
+    onLoadSubtitleFile: _pickSubtitleFile,
     onSeekBy: _playback.seekBy,
     onPrevious: _playback.previous,
     onNext: _playback.next,
@@ -490,7 +505,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       return 'VPFL';
     }
     final List<String> segments = Uri.parse(uri).pathSegments;
-    return segments.isEmpty ? 'VPFL' : Uri.decodeComponent(segments.last);
+    // Uri.pathSegments is already decoded; decoding again rejects some
+    // Unicode filenames.
+    return segments.isEmpty ? 'VPFL' : segments.last;
   }
 }
 

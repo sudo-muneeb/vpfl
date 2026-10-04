@@ -36,6 +36,7 @@ class PlayerControls extends StatelessWidget {
     required this.tracks,
     required this.tracksStream,
     required this.onSetTrack,
+    required this.onLoadSubtitleFile,
     required this.onPrevious,
     required this.onNext,
     required this.onToggleFullscreen,
@@ -73,6 +74,7 @@ class PlayerControls extends StatelessWidget {
   final Tracks tracks;
   final Stream<Tracks> tracksStream;
   final Future<void> Function(Object) onSetTrack;
+  final Future<void> Function() onLoadSubtitleFile;
   final Future<void> Function() onPrevious;
   final Future<void> Function() onNext;
   final Future<void> Function() onToggleFullscreen;
@@ -131,6 +133,7 @@ class PlayerControls extends StatelessWidget {
                             tracks: tracks,
                             tracksStream: tracksStream,
                             onSetTrack: onSetTrack,
+                            onLoadSubtitleFile: onLoadSubtitleFile,
                           ),
                           _RateButton(
                             rate: rate,
@@ -394,11 +397,13 @@ class _SubtitleButton extends StatelessWidget {
     required this.tracks,
     required this.tracksStream,
     required this.onSetTrack,
+    required this.onLoadSubtitleFile,
   });
 
   final Tracks tracks;
   final Stream<Tracks> tracksStream;
   final Future<void> Function(Object) onSetTrack;
+  final Future<void> Function() onLoadSubtitleFile;
 
   @override
   Widget build(BuildContext context) => StreamBuilder<Tracks>(
@@ -406,16 +411,32 @@ class _SubtitleButton extends StatelessWidget {
     initialData: tracks,
     builder: (context, snapshot) {
       final subtitles = (snapshot.data ?? tracks).subtitle;
-      return PopupMenuButton<SubtitleTrack>(
+      return PopupMenuButton<Object>(
         tooltip: 'Subtitles',
-        enabled: subtitles.isNotEmpty,
-        onSelected: onSetTrack,
+        onSelected: (selection) async {
+          if (selection is SubtitleTrack) {
+            await onSetTrack(selection);
+          } else {
+            await onLoadSubtitleFile();
+          }
+        },
         itemBuilder: (context) => [
-          for (final track in subtitles)
+          for (final track in [
+            SubtitleTrack.auto(),
+            SubtitleTrack.no(),
+            ...subtitles.where(
+              (track) => track.id != 'auto' && track.id != 'no',
+            ),
+          ])
             PopupMenuItem(
               value: track,
               child: Text(_OverflowMenu._trackLabel(track)),
             ),
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'load-file',
+            child: Text('Load subtitle file…'),
+          ),
         ],
         icon: const Icon(Icons.closed_caption_outlined),
       );

@@ -14,12 +14,15 @@ const List<String> videoExtensions = [
   'mpeg',
   'mpg',
   'mts',
+  'mxf',
   'ogv',
   'ts',
   'vob',
   'webm',
   'wmv',
 ];
+
+const List<String> subtitleExtensions = ['srt', 'ass', 'ssa', 'vtt'];
 
 /// Opens the native file picker and returns the selected video as a file URI.
 Future<String?> pickVideoUri() async {
@@ -34,3 +37,13 @@ Future<String?> pickVideoUri() async {
 
 /// Opens the desktop folder chooser for a library root.
 Future<String?> pickLibraryFolder() => getDirectoryPath();
+
+/// Opens the native picker for an external subtitle track.
+Future<String?> pickSubtitlePath() async {
+  final XFile? file = await openFile(
+    acceptedTypeGroups: const [
+      XTypeGroup(label: 'Subtitle files', extensions: subtitleExtensions),
+    ],
+  );
+  return file?.path;
+}

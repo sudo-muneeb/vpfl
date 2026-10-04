@@ -203,6 +203,30 @@ class PlaybackService {
     _ => Future<void>.error(ArgumentError.value(track, 'track')),
   };
 
+  /// Adds and selects a local SRT, ASS, SSA, or WebVTT subtitle track.
+  Future<void> loadSubtitleFile(String filePath) async {
+    if (!await File(filePath).exists()) {
+      throw FileSystemException('Subtitle file does not exist', filePath);
+    }
+    final extension = path
+        .extension(filePath)
+        .replaceFirst('.', '')
+        .toLowerCase();
+    if (!subtitleExtensions.contains(extension)) {
+      throw ArgumentError.value(
+        filePath,
+        'filePath',
+        'Unsupported subtitle format',
+      );
+    }
+    await _player.setSubtitleTrack(
+      SubtitleTrack.uri(
+        Uri.file(filePath).toString(),
+        title: path.basename(filePath),
+      ),
+    );
+  }
+
   /// Releases the media player and its native resources.
   Future<void> dispose() => _player.dispose();
 }

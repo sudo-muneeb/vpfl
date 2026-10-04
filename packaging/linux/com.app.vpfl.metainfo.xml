@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.app.vpfl</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <name>VPFL</name>
+  <summary>Play local videos on the Linux desktop</summary>
+  <description>
+    <p>VPFL plays local video files, remembers playback progress, and browses folders added to its library. Playback controls include seeking, speed, audio, and subtitles.</p>
+  </description>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Video</category>
+    <category>Player</category>
+  </categories>
+  <launchable type="desktop-id">com.app.vpfl.desktop</launchable>
+  <url type="homepage">https://github.com/sudo-muneeb/vpfl</url>
+  <developer id="com.app.vpfl">
+    <name>VPFL contributors</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.0" date="2026-10-04"/>
+  </releases>
+</component>

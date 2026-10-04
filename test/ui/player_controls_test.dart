@@ -202,6 +202,7 @@ PlayerControls _controls({
   tracks: tracks,
   tracksStream: const Stream<Tracks>.empty(),
   onSetTrack: onSetTrack ?? (_) async {},
+  onLoadSubtitleFile: () async {},
   onPrevious: () async {},
   onNext: () async {},
   onToggleFullscreen: () async {},
