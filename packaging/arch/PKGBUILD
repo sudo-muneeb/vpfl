@@ -1,0 +1,40 @@
+# Maintainer: <your name> <your email>
+#
+# Prebuilt VPFL for x86_64 Arch Linux. The release archive is produced by
+# packaging/scripts/package-arch.sh and contains only the usr/ tree.
+# Build with: makepkg -si   (from packaging/arch, after the release exists)
+pkgname=vpfl-bin
+pkgver=1.0.0
+pkgrel=1
+pkgdesc='Local video player for Linux (prebuilt release)'
+arch=('x86_64')
+url='https://github.com/sudo-muneeb/vpfl'
+license=('Apache-2.0' 'MIT')
+depends=(
+  'desktop-file-utils'
+  'gtk3'
+  'hicolor-icon-theme'
+  'libepoxy'
+  'libglvnd'
+  'mpv'
+  'shared-mime-info'
+)
+provides=('vpfl')
+conflicts=('vpfl')
+# The Flutter bundle is shipped as built; there is nothing to strip or debug.
+options=('!strip' '!debug')
+install=vpfl-bin.install
+source=("vpfl-${pkgver}-linux-x86_64.tar.gz::${url}/releases/download/v${pkgver}/vpfl-linux-x86_64.tar.gz")
+# Replace SKIP with the sha256 printed by packaging/scripts/package-arch.sh
+# (or the release asset checksum) before publishing.
+sha256sums=('SKIP')
+
+package() {
+  cp -a "$srcdir/usr" "$pkgdir/"
+
+  local doc="$srcdir/usr/share/doc/vpfl" file
+  install -dm755 "$pkgdir/usr/share/licenses/$pkgname"
+  for file in LICENSE NOTICE THIRD_PARTY_NOTICES.md LICENSE.media_kit_video; do
+    install -Dm644 "$doc/$file" "$pkgdir/usr/share/licenses/$pkgname/$file"
+  done
+}
