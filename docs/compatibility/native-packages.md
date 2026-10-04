@@ -35,6 +35,12 @@ Both packages refresh the freedesktop desktop-entry database on install and
 removal, so GLib file managers can list VPFL in Open With. The refresh does
 not set a default application.
 
+The release bundle also includes `libdefault_manager_linux_plugin.so`. The
+plugin reads or changes per-user MIME defaults through GIO only after the
+user confirms the action in VPFL. Removing the DEB or RPM does not delete the
+user's MIME preferences. See [default application integration](../linux/default-applications.md)
+for the prompt schedule and isolated GIO check.
+
 The media kit Linux plugin links to **system** `libmpv.so.2` and `libepoxy.so.0`.
 The DEB therefore depends on `libmpv2` and `libepoxy0`; the Fedora RPM should
 require the corresponding SONAMEs, provided by `mpv-libs` and `libepoxy`.

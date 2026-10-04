@@ -386,6 +386,14 @@ Desktop integration
   Use system accent color
 ```
 
+The implemented Settings screen also shows the default video-player status
+for supported Linux MIME types and a **Make VPFL default** action when its
+desktop entry is installed. The action asks for confirmation and reports
+per-format failures. After the third successful play, a compact invitation
+appears directly below the player top bar with **Maybe later** and
+**Make default**. Maybe later delays the next invitation by 21 days; no more
+than five invitations are shown. The player controls remain over the video.
+
 System integration changes selected theme tokens only.
 
 It does not replace VPFL component design.

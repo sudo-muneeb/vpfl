@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vpfl/ui/player/video_controls_overlay.dart';
+import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
 
 void main() {
   testWidgets('fullscreen title bar activates only at the top edge', (
@@ -40,7 +41,13 @@ void main() {
 
     await tester.pump(const Duration(seconds: 4));
     expect(find.byTooltip('Exit fullscreen'), findsNothing);
-    expect(find.text('Visible controls'), findsNothing);
+    final bottom = tester.widget<AnimatedOpacity>(
+      find.ancestor(
+        of: find.text('Visible controls'),
+        matching: find.byType(AnimatedOpacity),
+      ),
+    );
+    expect(bottom.opacity, 0);
   });
 
   testWidgets('normal playback keeps top bar hidden', (tester) async {
@@ -58,6 +65,7 @@ void main() {
 }
 
 Widget _overlay({required bool fullscreen}) => MaterialApp(
+  theme: VpflTheme.light,
   home: Scaffold(
     body: SizedBox.expand(
       child: VideoControlsOverlay(

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../data/default_app_prompt_provider.dart';
+import 'default_app_controls.dart';
 
 /// Basic appearance settings for the application shell.
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({
     required this.themeMode,
     required this.onThemeModeChanged,
@@ -20,7 +24,7 @@ class SettingsScreen extends StatelessWidget {
   final ValueChanged<bool>? onResumeEnabledChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
       padding: const EdgeInsets.all(32),
       children: [
@@ -78,6 +82,8 @@ class SettingsScreen extends StatelessWidget {
           value: resumeEnabled,
           onChanged: onResumeEnabledChanged,
         ),
+        const SizedBox(height: 28),
+        DefaultAppSettingsControl(service: ref.read(defaultAppPromptProvider)),
       ],
     );
   }
