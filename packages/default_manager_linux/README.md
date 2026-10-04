@@ -26,6 +26,9 @@ is responsible for obtaining the user's consent and choosing MIME types.
 The package uses a Flutter method channel and GIO's `GDesktopAppInfo` and
 `GAppInfo` APIs. It currently supports Linux only.
 
+Original plugin code is Copyright © 2026 Sheikh Muneeb Ahmed and licensed
+under [Apache License 2.0](LICENSE).
+
 Tests from the VPFL repository root:
 
 ```bash

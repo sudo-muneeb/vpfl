@@ -90,3 +90,29 @@ video dependency after an upstream release, run
 `./tool/update_media_kit_video.sh <version>`. The implementation tracker and
 remaining product goals are in
 [GOALS.md](GOALS.md).
+
+## License
+
+VPFL is free and open-source software licensed under the
+[Apache License 2.0](LICENSE). Original VPFL work is Copyright © 2026
+Sheikh Muneeb Ahmed, creator and primary developer.
+
+Individuals, universities, companies, and other organizations may use VPFL
+personally, academically, internally, commercially, and as part of another
+product. They may modify and redistribute it under Apache-2.0 and applicable
+third-party licenses. Preserve the notices and attribution required by those
+licenses when redistributing. The warranty and liability terms are those in
+Apache-2.0. See [NOTICE](NOTICE) and
+[third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Commercial use
+
+Commercial use is free and permitted under Apache-2.0. Companies do not need
+to buy a separate license or obtain author permission. Sheikh Muneeb Ahmed
+would appreciate hearing from organizations that use VPFL at
+**muneebahmed2250@gmail.com**. Contact is completely optional and is not a
+condition of the license.
+
+Publicly naming an organization or displaying its logo requires separate,
+explicit permission. See the [optional notification and consent template](COMMERCIAL_USE.md)
+and the [public adopters page](ADOPTERS.md).

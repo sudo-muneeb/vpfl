@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>com.app.vpfl</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>LicenseRef-proprietary</project_license>
+  <project_license>Apache-2.0</project_license>
   <name>VPFL</name>
   <summary>Play local videos on the Linux desktop</summary>
   <description>
@@ -16,7 +16,7 @@
   <launchable type="desktop-id">com.app.vpfl.desktop</launchable>
   <url type="homepage">https://github.com/sudo-muneeb/vpfl</url>
   <developer id="com.app.vpfl">
-    <name>VPFL contributors</name>
+    <name>Sheikh Muneeb Ahmed</name>
   </developer>
   <content_rating type="oars-1.1"/>
   <releases>

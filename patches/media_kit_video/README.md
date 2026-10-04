@@ -1,5 +1,11 @@
 # Updating the local `media_kit_video` patch
 
+This VPFL `media_kit_video` Linux compatibility patch contains modifications
+by Sheikh Muneeb Ahmed (Copyright © 2026 Sheikh Muneeb Ahmed). It is based on
+the upstream `media_kit_video` project, which is licensed under the MIT
+License and retains the upstream authors' copyright and license notices. This
+attribution applies to the VPFL modifications, not to the original project.
+
 VPFL uses the published package source with a checked-in patch for Linux
 rendering and renderer status. Dart Pub does not apply source patches to hosted
 dependencies, so the patched package is kept at `third_party/media_kit_video`.

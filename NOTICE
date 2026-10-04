@@ -1,0 +1,25 @@
+VPFL
+Copyright 2026 Sheikh Muneeb Ahmed
+
+VPFL was originally created and developed by Sheikh Muneeb Ahmed. Original
+VPFL work includes Linux desktop integration, playback architecture, packaging,
+diagnostics, UI, and video renderer compatibility work.
+
+VPFL modifies parts of the MIT-licensed media_kit_video project for Linux
+Flutter/EGL compatibility, shared-context rendering, fallback, and diagnostics.
+The original media_kit_video source and copyright remain the work of its
+upstream authors. See third_party/media_kit_video/LICENSE and
+THIRD_PARTY_NOTICES.md for third-party terms and credits.
+
+Unless otherwise noted, original VPFL source authored by Sheikh Muneeb Ahmed,
+including such source in repository history before this LICENSE file was
+added, is offered under Apache License 2.0 from this declaration onward. This
+statement does not determine the legality of acts performed before the license
+was granted or change the terms of third-party material.
+
+Where Apache License 2.0 requires preservation of NOTICE attribution, retain
+the applicable attribution in redistributed derivative works.
+
+Project repository: https://github.com/sudo-muneeb/vpfl
+Creator and primary developer: Sheikh Muneeb Ahmed
+Contact: muneebahmed2250@gmail.com

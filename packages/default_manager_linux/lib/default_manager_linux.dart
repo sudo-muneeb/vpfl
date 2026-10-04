@@ -1,3 +1,6 @@
+// Copyright 2026 Sheikh Muneeb Ahmed
+// SPDX-License-Identifier: Apache-2.0
+
 import 'package:flutter/services.dart';
 
 /// Per-MIME results after asking the desktop to change its default handler.
