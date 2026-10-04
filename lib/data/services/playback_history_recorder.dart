@@ -5,14 +5,19 @@ import 'package:media_kit/media_kit.dart';
 
 import '../repositories/playback_history_repository.dart';
 import 'playback_service.dart';
+import 'thumbnail_service.dart';
 
 /// Stores only sessions that reach the playing state and periodically saves
 /// their resume position.
 class PlaybackHistoryRecorder {
+  /// Seconds of natural playback before VPFL may keep a frame as artwork.
+  static const Duration thumbnailAfter = Duration(seconds: 10);
+
   PlaybackHistoryRecorder({
     required PlaybackService playback,
     required this.history,
     required this.settings,
+    this.thumbnails,
   }) : _playback = playback {
     _playlistSubscription = playback.playlistStream.listen(_onPlaylist);
     _playingSubscription = playback.playingStream.listen(_onPlaying);
@@ -26,6 +31,7 @@ class PlaybackHistoryRecorder {
   final PlaybackService _playback;
   final PlaybackHistoryRepository history;
   final SettingsRepository settings;
+  final ThumbnailService? thumbnails;
   late final StreamSubscription<Playlist> _playlistSubscription;
   late final StreamSubscription<bool> _playingSubscription;
   late final StreamSubscription<Duration> _positionSubscription;
@@ -33,6 +39,7 @@ class PlaybackHistoryRecorder {
   String? _uri;
   String? _recordedUri;
   String? _startingUri;
+  String? _capturedUri;
   int _lastSavedPositionMs = 0;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -65,12 +72,44 @@ class PlaybackHistoryRecorder {
 
   void _onPosition(Duration position) {
     _position = position;
+    _maybeCaptureFrame(position);
     if (_recordedUri == null ||
         (position.inMilliseconds - _lastSavedPositionMs).abs() < 5000) {
       return;
     }
     _lastSavedPositionMs = position.inMilliseconds;
     _queueProgressSave();
+  }
+
+  /// Keeps the frame from natural playback as artwork. It never seeks, and
+  /// it runs once per session for each file that has no thumbnail yet.
+  void _maybeCaptureFrame(Duration position) {
+    final String? uri = _recordedUri;
+    if (thumbnails == null ||
+        uri == null ||
+        uri == _capturedUri ||
+        position < thumbnailAfter ||
+        !_playback.isPlaying ||
+        !uri.startsWith('file:')) {
+      return;
+    }
+    _capturedUri = uri;
+    unawaited(_captureFrame(uri));
+  }
+
+  Future<void> _captureFrame(String uri) async {
+    try {
+      if (!await settings.getBool('historyEnabled', defaultValue: true)) return;
+      final ThumbnailService service = thumbnails!;
+      final String path = Uri.parse(uri).toFilePath();
+      if (await service.resolve(path) != null) return;
+      final frame = await _playback.screenshot();
+      // The user may have switched media while the frame was being read.
+      if (frame == null || frame.isEmpty || _uri != uri) return;
+      await service.captureFrame(path, frame);
+    } on Object {
+      // Artwork is optional; playback and history must not depend on it.
+    }
   }
 
   void _onDuration(Duration duration) {

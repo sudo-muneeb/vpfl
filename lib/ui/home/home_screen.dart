@@ -73,6 +73,7 @@ class HomeScreen extends ConsumerWidget {
                         title: item.displayName,
                         status: 'Ready to play',
                         detail: item.path,
+                        filePath: item.path,
                         onTap: () => onOpenMedia(item.uri),
                       ),
                   ],
@@ -105,8 +106,14 @@ class _RecentMediaCard extends StatelessWidget {
           : 'Played ${entry.watchCount} ${entry.watchCount == 1 ? 'time' : 'times'}',
       detail: entry.completed ? 'Completed' : 'Recent playback',
       progress: hasDuration ? entry.positionMs / entry.durationMs : null,
+      filePath: _localPath(entry.uri),
       onTap: onTap,
     );
+  }
+
+  static String? _localPath(String uri) {
+    final Uri? parsed = Uri.tryParse(uri);
+    return parsed?.scheme == 'file' ? parsed!.toFilePath() : null;
   }
 
   String _time(int milliseconds) {
