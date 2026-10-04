@@ -1,0 +1,24 @@
+pkgbase = vpfl-bin
+	pkgdesc = Local video player for Linux (prebuilt release)
+	pkgver = 1.0.0
+	pkgrel = 1
+	url = https://github.com/sudo-muneeb/vpfl
+	install = vpfl-bin.install
+	arch = x86_64
+	license = Apache-2.0
+	license = MIT
+	depends = desktop-file-utils
+	depends = gtk3
+	depends = hicolor-icon-theme
+	depends = libepoxy
+	depends = libglvnd
+	depends = mpv
+	depends = shared-mime-info
+	provides = vpfl
+	conflicts = vpfl
+	options = !strip
+	options = !debug
+	source = vpfl-1.0.0-linux-x86_64.tar.gz::https://github.com/sudo-muneeb/vpfl/releases/download/v1.0.0/vpfl-linux-x86_64.tar.gz
+	sha256sums = SKIP
+
+pkgname = vpfl-bin

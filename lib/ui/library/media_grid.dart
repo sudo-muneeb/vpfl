@@ -24,6 +24,7 @@ class MediaGrid extends StatelessWidget {
         title: item.displayName,
         status: 'Ready to play',
         detail: item.path,
+        filePath: item.path,
         onTap: () => onOpenMedia(item.uri),
       );
     }, childCount: items.length),

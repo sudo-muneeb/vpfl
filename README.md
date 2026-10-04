@@ -75,6 +75,39 @@ Install on Ubuntu 24.04 or Linux Mint 22.x with
 See [native package targets and installation checks](docs/compatibility/native-packages.md)
 for supported targets, clean-install checks, and remaining limitations.
 
+## Build and install on Arch Linux
+
+Arch uses the prebuilt `vpfl-bin` package in `packaging/arch/`. It installs
+the same Flutter release bundle as the DEB and RPM packages, with Arch
+dependencies. On an x86_64 Arch host with the Flutter SDK on `PATH`, install
+the build tools first:
+
+```bash
+sudo pacman -S --needed base-devel clang cmake ninja pkgconf gtk3 mpv \
+  libepoxy imagemagick desktop-file-utils appstream
+```
+
+Create the release archive from the repository root:
+
+```bash
+./packaging/scripts/package-arch.sh
+```
+
+The archive is `dist/vpfl-linux-x86_64.tar.gz`, and the script prints its
+sha256. Build the package from a copy of `packaging/arch/` that points at that
+archive, so the committed PKGBUILD keeps the upstream release URL. Replace the
+`sha256sums` value with the printed checksum, then run:
+
+```bash
+makepkg -si
+```
+
+Install an existing package with `sudo pacman -U dist/vpfl-bin-<version>-1-x86_64.pkg.tar.zst`.
+Launch with `vpfl` or `vpfl /path/to/video.mkv`. Then open **Settings** and
+choose **Make VPFL default**; the button is enabled only after the desktop
+entry is installed. See [Arch packaging](docs/compatibility/native-packages.md#arch-linux-vpfl-bin)
+for the checks and known limits.
+
 ## Development checks
 
 ```bash
