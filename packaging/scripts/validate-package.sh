@@ -14,6 +14,7 @@ case "$mode" in
     [[ -d "$target/lib" && -d "$target/data" ]] || fail 'incomplete Flutter bundle'
     [[ -f "$target/lib/libflutter_linux_gtk.so" ]] || fail 'Flutter engine missing'
     [[ -f "$target/lib/libmedia_kit_video_plugin.so" ]] || fail 'video plugin missing'
+    [[ -f "$target/lib/libdefault_manager_linux_plugin.so" ]] || fail 'default-app plugin missing'
     if readelf -d "$target/vpfl" "$target"/lib/*.so 2>/dev/null \
       | grep 'Library runpath: \[/' >/dev/null; then
       fail 'absolute build path in ELF RUNPATH'

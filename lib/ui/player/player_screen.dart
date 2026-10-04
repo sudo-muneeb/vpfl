@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../data/playback_service_provider.dart';
+import '../../data/default_app_prompt_provider.dart';
 import '../../data/playback_history_recorder_provider.dart';
 import '../../data/persistence_providers.dart';
 import '../../data/services/media_file_picker.dart';
@@ -14,6 +15,7 @@ import '../../data/services/playback_service.dart';
 import '../core/widgets/app_top_bar.dart';
 import '../core/themes/vpfl_theme_extension.dart';
 import '../settings/settings_screen.dart';
+import '../settings/default_app_controls.dart';
 import 'player_controls.dart';
 import 'video_controls_overlay.dart';
 
@@ -54,7 +56,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   String? _mediaError;
   String? _renderingMode;
   StreamSubscription<dynamic>? _playlistSubscription;
+  StreamSubscription<bool>? _playingSubscription;
   String? _playingUri;
+  int _playGeneration = 0;
+  int _countedGeneration = 0;
   ValueNotifier<String?>? _renderingModeSource;
   BoxFit _videoFit = BoxFit.contain;
 
@@ -70,7 +75,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           queue.index >= queue.medias.length) {
         return;
       }
-      setState(() => _playingUri = queue.medias[queue.index].uri);
+      final String uri = queue.medias[queue.index].uri;
+      if (uri != _playingUri) _playGeneration += 1;
+      setState(() => _playingUri = uri);
+    });
+    _playingSubscription = _playback.playingStream.listen((playing) {
+      if (playing) _recordPromptPlayIfNeeded();
     });
     ref.read(playbackHistoryRecorderProvider);
     unawaited(_readRenderingMode());
@@ -224,6 +234,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   void dispose() {
     unawaited(_playlistSubscription?.cancel());
+    unawaited(_playingSubscription?.cancel());
     _renderingModeSource?.removeListener(_updateRenderingMode);
     super.dispose();
   }
@@ -329,6 +340,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<void> _openMedia(String uri) async {
+    _playGeneration += 1;
     Duration? resumePosition;
     try {
       final settings = ref.read(settingsRepositoryProvider);
@@ -348,6 +360,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     try {
       await _waitForVideoRenderer();
       await _playback.openWithDirectory(uri);
+      if (_playback.isPlaying) _recordPromptPlayIfNeeded();
       if (resumePosition != null) {
         await _playback.seek(resumePosition);
       }
@@ -356,6 +369,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         setState(() => _mediaError = 'Could not open this media file: $error');
       }
     }
+  }
+
+  void _recordPromptPlayIfNeeded() {
+    if (!mounted || _playGeneration == _countedGeneration) return;
+    _countedGeneration = _playGeneration;
+    unawaited(ref.read(defaultAppPromptProvider).recordPlay());
   }
 
   Future<void> _waitForVideoRenderer() async {
@@ -423,6 +442,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 renderingMode: widget.initialMediaUri == null
                     ? null
                     : _renderingMode,
+              ),
+              DefaultAppPromptBanner(
+                service: ref.read(defaultAppPromptProvider),
               ),
               Expanded(
                 child: Container(

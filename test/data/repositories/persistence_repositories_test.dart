@@ -23,7 +23,7 @@ void main() {
   test(
     'creates the current versioned schema and persists preferences',
     () async {
-      expect(database.schemaVersion, 1);
+      expect(database.schemaVersion, 2);
       expect(
         await settings.getBool('historyEnabled', defaultValue: true),
         isTrue,

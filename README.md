@@ -25,6 +25,11 @@ software rendering. This is the rendering path, not the video decoder mode.
 Use the CC control over the video to select a subtitle track or load an
 external SRT, ASS, SSA, or WebVTT file.
 
+After three successful plays, an installed VPFL may invite you to make it the
+default for its supported video formats. **Maybe later** delays another
+invitation for 21 days. You can also inspect and change defaults in Settings.
+See [Linux default-application integration](docs/linux/default-applications.md).
+
 ## Build DEB and RPM packages
 
 Builds currently target x86_64 Linux. From the repository root, use a host

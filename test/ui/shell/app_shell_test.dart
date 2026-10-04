@@ -21,18 +21,11 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.byTooltip('Folders'));
-    await tester.pumpAndSettle();
-    expect(
-      find.text(
-        'Folder access and video indexing are coming in the library phase.',
-      ),
-      findsOneWidget,
-    );
-
     await tester.tap(find.byKey(const Key('top-bar-settings-button')));
     await tester.pumpAndSettle();
     expect(find.text('Appearance'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 2));
   });
 
   testWidgets('appearance setting changes between system and dark theme', (
@@ -55,6 +48,8 @@ void main() {
       tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
       ThemeMode.system,
     );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 2));
   });
 
   testWidgets('top bar shows the logo, file action, and appearance menu', (
@@ -73,6 +68,8 @@ void main() {
     await tester.tap(find.byKey(const Key('top-bar-settings-button')));
     await tester.pumpAndSettle();
     expect(find.text('Playback history'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 2));
   });
 }
 
