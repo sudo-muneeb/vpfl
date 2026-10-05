@@ -51,8 +51,9 @@ Buttons use themed hover, focus, and tooltips. The runner sets a 760 × 480
 minimum window size.
 
 The shared top bar keeps the logo, current filename while playing, renderer
-badge, Open file, appearance, and Settings. The player uses a Home navigation
-button. At compact widths, Open file becomes icon-only with a tooltip.
+badge, Open file, and appearance. Settings is reached from the sidebar. The
+player uses a Home navigation button. At compact widths, Open file becomes
+icon-only with a tooltip.
 
 ## Sidebar
 

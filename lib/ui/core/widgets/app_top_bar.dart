@@ -8,7 +8,6 @@ class AppTopBar extends StatelessWidget {
     required this.title,
     required this.themeMode,
     required this.onOpenFile,
-    required this.onOpenSettings,
     required this.onThemeModeChanged,
     this.renderingMode,
     this.onBack,
@@ -18,7 +17,6 @@ class AppTopBar extends StatelessWidget {
   final String title;
   final ThemeMode themeMode;
   final VoidCallback onOpenFile;
-  final VoidCallback onOpenSettings;
   final ValueChanged<ThemeMode> onThemeModeChanged;
   final String? renderingMode;
   final VoidCallback? onBack;
@@ -121,12 +119,6 @@ class AppTopBar extends StatelessWidget {
                     child: Text('Dark appearance'),
                   ),
                 ],
-              ),
-              IconButton(
-                key: const Key('top-bar-settings-button'),
-                tooltip: 'Settings',
-                onPressed: onOpenSettings,
-                icon: const Icon(Icons.settings_outlined),
               ),
               const SizedBox(width: 8),
               const WindowControlButtons(),

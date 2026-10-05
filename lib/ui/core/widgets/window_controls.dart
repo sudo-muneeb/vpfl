@@ -53,6 +53,7 @@ abstract final class WindowCommands {
 
   static Future<void> startDrag(Offset position) async {
     if (!Platform.isLinux) return;
+    LifecycleTrace.event('window.drag.requested');
     try {
       await _channel.invokeMethod<void>('startDrag', {
         'x': position.dx.round(),
@@ -144,6 +145,9 @@ class WindowDragHandle extends StatelessWidget {
     behavior: HitTestBehavior.translucent,
     onDoubleTap: () => unawaited(WindowCommands.toggleMaximize()),
     child: Listener(
+      // Empty portions of the row have no render object that wins a hit test.
+      // The listener itself must cover the full drag region.
+      behavior: HitTestBehavior.opaque,
       onPointerDown: (event) {
         if (event.buttons == kPrimaryMouseButton) {
           unawaited(WindowCommands.startDrag(event.position));

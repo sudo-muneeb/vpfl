@@ -65,8 +65,6 @@ class _AppShellState extends ConsumerState<AppShell> {
               title: '',
               themeMode: widget.themeMode,
               onOpenFile: _pickAndOpenFile,
-              onOpenSettings: () =>
-                  setState(() => _destination = AppDestination.settings),
               onThemeModeChanged: widget.onThemeModeChanged,
             ),
             Expanded(
@@ -78,6 +76,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                       _Sidebar(
                         compact: compact,
                         destination: _destination,
+                        selectedFolderId: _selectedFolder?.id,
                         folders: folders.value ?? const <SavedFolder>[],
                         onAddFolder: _addFolder,
                         onFolderSelected: (SavedFolder folder) => setState(() {
@@ -184,6 +183,7 @@ class _Sidebar extends StatelessWidget {
   const _Sidebar({
     required this.compact,
     required this.destination,
+    required this.selectedFolderId,
     required this.folders,
     required this.onAddFolder,
     required this.onFolderSelected,
@@ -192,6 +192,7 @@ class _Sidebar extends StatelessWidget {
 
   final bool compact;
   final AppDestination destination;
+  final int? selectedFolderId;
   final List<SavedFolder> folders;
   final VoidCallback onAddFolder;
   final ValueChanged<SavedFolder> onFolderSelected;
@@ -239,7 +240,7 @@ class _Sidebar extends StatelessWidget {
             _NavigationItem(
               compact: compact,
               destination: AppDestination.folders,
-              selected: destination == AppDestination.folders,
+              selected: false,
               icon: Icons.folder_outlined,
               label: 'Add Folder',
               onPressed: (_) => onAddFolder(),
@@ -251,7 +252,9 @@ class _Sidebar extends StatelessWidget {
                   child: _NavigationItem(
                     compact: false,
                     destination: AppDestination.folders,
-                    selected: destination == AppDestination.folders,
+                    selected:
+                        destination == AppDestination.folders &&
+                        selectedFolderId == folder.id,
                     icon: Icons.folder_outlined,
                     label: folder.displayName,
                     onPressed: (_) => onFolderSelected(folder),
