@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -62,6 +63,18 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
       expect(playback.isPlaying, isTrue, reason: 'reopen cycle $cycle');
+      if (cycle == 0) {
+        final pausedAfterReturn = playback.playingStream
+            .firstWhere((playing) => !playing)
+            .timeout(const Duration(seconds: 10));
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        expect(await pausedAfterReturn, isFalse);
+        final resumedAfterReturn = playback.playingStream
+            .firstWhere((playing) => playing)
+            .timeout(const Duration(seconds: 10));
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        expect(await resumedAfterReturn, isTrue);
+      }
       debugPrint('lifecycle cycle ${cycle + 1}/$cycles: playing');
       expect(identical(controller, playback.videoController), isTrue);
     }
@@ -80,12 +93,14 @@ void main() {
           return Uri.tryParse(current)?.pathSegments.lastOrNull ==
               Uri.parse(expected).pathSegments.last;
         }
+
         final event = playback.playlistStream
             .firstWhere(selected)
             .timeout(const Duration(seconds: 10));
         await action();
         await event;
       }
+
       await expectSource(b, () => playback.open(b));
       await expectSource(c, () => playback.open(c));
       await expectSource(uri, () => playback.open(uri));

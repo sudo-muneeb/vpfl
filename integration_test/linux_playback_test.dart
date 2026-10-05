@@ -1,10 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:vpfl/data/model/app_database.dart';
 import 'package:vpfl/data/playback_service_provider.dart';
 import 'package:vpfl/data/playback_history_recorder_provider.dart';
@@ -44,6 +47,61 @@ void main() {
     }
     await videoOutput.waitUntilFirstFrameRendered.timeout(eventTimeout);
     expect(videoOutput.renderingMode.value, anyOf('gpu', 'software'));
+    expect(playback.isPlaying, isTrue);
+
+    // Playback shortcuts must work before an arrow key or control receives
+    // focus. This uses the real player route and native video surface.
+    final pausedBySpace = playback.playingStream
+        .firstWhere((playing) => !playing)
+        .timeout(eventTimeout);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    expect(await pausedBySpace, isFalse);
+    final resumedBySpace = playback.playingStream
+        .firstWhere((playing) => playing)
+        .timeout(eventTimeout);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    expect(await resumedBySpace, isTrue);
+
+    final positionBeforeArrow = playback.position;
+    final seekedByArrow = playback.positionStream
+        .firstWhere(
+          (position) =>
+              position >= positionBeforeArrow + const Duration(seconds: 8),
+        )
+        .timeout(eventTimeout);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    expect(
+      await seekedByArrow,
+      greaterThanOrEqualTo(positionBeforeArrow + const Duration(seconds: 8)),
+    );
+
+    final videoRect = tester.getRect(find.byType(Video));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: videoRect.center);
+    await mouse.moveTo(videoRect.bottomCenter - const Offset(0, 40));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Mute'));
+    await tester.pump();
+    final pausedAfterControlClick = playback.playingStream
+        .firstWhere((playing) => !playing)
+        .timeout(eventTimeout);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    expect(await pausedAfterControlClick, isFalse);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.state<VideoState>(find.byType(Video)).isFullscreen(), isTrue);
+    final resumedInFullscreen = playback.playingStream
+        .firstWhere((playing) => playing)
+        .timeout(eventTimeout);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    expect(await resumedInFullscreen, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      tester.state<VideoState>(find.byType(Video)).isFullscreen(),
+      isFalse,
+    );
     final Duration firstPosition = await playback.positionStream
         .firstWhere((Duration position) => position > Duration.zero)
         .timeout(eventTimeout);

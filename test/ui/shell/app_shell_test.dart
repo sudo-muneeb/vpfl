@@ -21,7 +21,7 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.byKey(const Key('top-bar-settings-button')));
+    await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     expect(find.text('Appearance'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -32,7 +32,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(_testApp());
-    await tester.tap(find.byKey(const Key('top-bar-settings-button')));
+    await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Dark'));
@@ -65,17 +65,90 @@ void main() {
     await tester.tap(find.text('Dark appearance'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('top-bar-settings-button')));
+    expect(find.byKey(const Key('top-bar-settings-button')), findsNothing);
+    await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     expect(find.text('Playback history'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 2));
   });
+
+  testWidgets('only the selected saved folder is highlighted', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final folders = [
+      SavedFolder(
+        id: 1,
+        path: '/missing/data',
+        displayName: 'data',
+        addedAt: DateTime(2026),
+      ),
+      SavedFolder(
+        id: 2,
+        path: '/missing/downloads',
+        displayName: 'Downloads',
+        addedAt: DateTime(2026),
+      ),
+      SavedFolder(
+        id: 3,
+        path: '/missing/minty',
+        displayName: 'minty',
+        addedAt: DateTime(2026),
+      ),
+    ];
+    await tester.pumpWidget(_testApp(folders: folders));
+    await tester.pumpAndSettle();
+
+    expect(_selectedNavigationLabels(tester), ['Home']);
+    await tester.tap(find.byTooltip('data'));
+    await tester.pumpAndSettle();
+    expect(_selectedNavigationLabels(tester), ['data']);
+
+    await tester.tap(find.byTooltip('Downloads'));
+    await tester.pumpAndSettle();
+    expect(_selectedNavigationLabels(tester), ['Downloads']);
+
+    await tester.tap(find.byTooltip('All Videos'));
+    await tester.pumpAndSettle();
+    expect(_selectedNavigationLabels(tester), ['All Videos']);
+
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    expect(_selectedNavigationLabels(tester), ['Settings']);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 2));
+  });
 }
 
-Widget _testApp() => ProviderScope(
+List<String> _selectedNavigationLabels(WidgetTester tester) {
+  final selected = <String>[];
+  for (final label in [
+    'Home',
+    'All Videos',
+    'Add Folder',
+    'data',
+    'Downloads',
+    'minty',
+    'Settings',
+  ]) {
+    final material = tester.widget<Material>(
+      find
+          .descendant(
+            of: find.byTooltip(label),
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    if (material.color != Colors.transparent) selected.add(label);
+  }
+  return selected;
+}
+
+Widget _testApp({List<SavedFolder> folders = const []}) => ProviderScope(
   overrides: [
     recentPlaybackProvider.overrideWith((ref) => Stream.value(const [])),
+    if (folders.isNotEmpty)
+      savedFoldersProvider.overrideWith((ref) => Stream.value(folders)),
     appDatabaseProvider.overrideWith((ref) {
       final AppDatabase database = AppDatabase(NativeDatabase.memory());
       ref.onDispose(() => database.close());

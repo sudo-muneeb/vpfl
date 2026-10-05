@@ -15,7 +15,6 @@ import '../../data/services/playback_service.dart';
 import '../../data/services/lifecycle_trace.dart';
 import '../core/widgets/app_top_bar.dart';
 import '../core/themes/vpfl_theme_extension.dart';
-import '../settings/settings_screen.dart';
 import '../settings/default_app_controls.dart';
 import 'player_controls.dart';
 import 'video_controls_overlay.dart';
@@ -53,6 +52,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   final GlobalKey<VideoState> _videoKey = GlobalKey<VideoState>();
+  final FocusNode _shortcutFocus = FocusNode(debugLabel: 'Player shortcuts');
   late final PlaybackService _playback;
   String? _mediaError;
   String? _renderingMode;
@@ -109,8 +109,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     if (oldWidget.initialMediaUri != uri && uri != null) {
       _mediaError = null;
       _playingUri = uri;
+      _focusShortcuts();
       unawaited(_openMedia(uri));
     }
+  }
+
+  void _focusShortcuts() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+        _shortcutFocus.requestFocus();
+      }
+    });
   }
 
   Future<void> _pickAndOpenFile() async {
@@ -140,41 +149,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         );
       }
     }
-  }
-
-  void _showSettings() {
-    ThemeMode themeMode = widget.themeMode;
-    bool historyEnabled = widget.historyEnabled;
-    bool resumeEnabled = widget.resumeEnabled;
-    showDialog<void>(
-      context: context,
-      builder: (BuildContext context) => Dialog(
-        child: SizedBox(
-          width: 620,
-          height: 560,
-          child: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setDialogState) =>
-                SettingsScreen(
-                  themeMode: themeMode,
-                  onThemeModeChanged: (ThemeMode value) {
-                    widget.onThemeModeChanged(value);
-                    setDialogState(() => themeMode = value);
-                  },
-                  historyEnabled: historyEnabled,
-                  resumeEnabled: resumeEnabled,
-                  onHistoryEnabledChanged: (bool value) {
-                    widget.onHistoryEnabledChanged(value);
-                    setDialogState(() => historyEnabled = value);
-                  },
-                  onResumeEnabledChanged: (bool value) {
-                    widget.onResumeEnabledChanged(value);
-                    setDialogState(() => resumeEnabled = value);
-                  },
-                ),
-          ),
-        ),
-      ),
-    );
   }
 
   bool get _textEntryHasFocus =>
@@ -247,6 +221,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   void dispose() {
     ++_openGeneration;
+    _shortcutFocus.dispose();
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_errorSubscription?.cancel());
@@ -459,54 +434,58 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         const SingleActivator(LogicalKeyboardKey.keyO, control: true):
             _pickAndOpenFile,
       },
-      child: Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              AppTopBar(
-                title: _titleFor(_playingUri),
-                themeMode: widget.themeMode,
-                onOpenFile: _pickAndOpenFile,
-                onOpenSettings: _showSettings,
-                onThemeModeChanged: widget.onThemeModeChanged,
-                onBack: widget.onBack,
-                renderingMode: widget.initialMediaUri == null
-                    ? null
-                    : _renderingMode,
-              ),
-              DefaultAppPromptBanner(
-                service: ref.read(defaultAppPromptProvider),
-              ),
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  color: Theme.of(context)
-                      .extension<VpflThemeExtension>()!
-                      .playerBackground,
-                  alignment: Alignment.center,
-                  child: error == null && widget.initialMediaUri != null
-                      ? Video(
-                          key: _videoKey,
-                          controller: _playback.videoController,
-                          fit: _videoFit,
-                          controls: (VideoState state) => VideoControlsOverlay(
-                            title: _titleFor(_playingUri),
-                            fullscreen: state.isFullscreen(),
-                            playlist: _playback.playlist,
-                            playlistStream: _playback.playlistStream,
-                            onPrevious: _playback.previous,
-                            onNext: _playback.next,
-                            controls: _buildPlayerControls(
-                              onToggleFullscreen: state.toggleFullscreen,
-                            ),
-                            onExit: state.exitFullscreen,
-                            bindings: _fullscreenShortcuts(state),
-                          ),
-                        )
-                      : _EmptyPlayer(error: error),
+      child: Focus(
+        focusNode: _shortcutFocus,
+        autofocus: true,
+        child: Scaffold(
+          body: SafeArea(
+            child: Column(
+              children: [
+                AppTopBar(
+                  title: _titleFor(_playingUri),
+                  themeMode: widget.themeMode,
+                  onOpenFile: _pickAndOpenFile,
+                  onThemeModeChanged: widget.onThemeModeChanged,
+                  onBack: widget.onBack,
+                  renderingMode: widget.initialMediaUri == null
+                      ? null
+                      : _renderingMode,
                 ),
-              ),
-            ],
+                DefaultAppPromptBanner(
+                  service: ref.read(defaultAppPromptProvider),
+                ),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    color: Theme.of(context)
+                        .extension<VpflThemeExtension>()!
+                        .playerBackground,
+                    alignment: Alignment.center,
+                    child: error == null && widget.initialMediaUri != null
+                        ? Video(
+                            key: _videoKey,
+                            controller: _playback.videoController,
+                            fit: _videoFit,
+                            controls: (VideoState state) =>
+                                VideoControlsOverlay(
+                                  title: _titleFor(_playingUri),
+                                  fullscreen: state.isFullscreen(),
+                                  playlist: _playback.playlist,
+                                  playlistStream: _playback.playlistStream,
+                                  onPrevious: _playback.previous,
+                                  onNext: _playback.next,
+                                  controls: _buildPlayerControls(
+                                    onToggleFullscreen: state.toggleFullscreen,
+                                  ),
+                                  onExit: state.exitFullscreen,
+                                  bindings: _fullscreenShortcuts(state),
+                                ),
+                          )
+                        : _EmptyPlayer(error: error),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
