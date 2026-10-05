@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:media_kit/media_kit.dart';
@@ -15,6 +16,11 @@ class PlaybackService {
     : _player = Player(
         configuration: const PlayerConfiguration(libass: true, title: 'VPFL'),
       ) {
+    _nativePlaylistSubscription = _player.stream.playlist.listen((playlist) {
+      if (_directoryQueue == null && !_playlistController.isClosed) {
+        _playlistController.add(playlist);
+      }
+    });
     LifecycleTrace.event(
       'player.create',
       session: sessionId,
@@ -26,6 +32,10 @@ class PlaybackService {
   final int sessionId = ++_nextSessionId;
 
   final Player _player;
+  final StreamController<Playlist> _playlistController =
+      StreamController<Playlist>.broadcast(sync: true);
+  late final StreamSubscription<Playlist> _nativePlaylistSubscription;
+  Playlist? _directoryQueue;
   final PlaybackOpenCoordinator _openCoordinator = PlaybackOpenCoordinator();
   late final VideoController _videoController = _createVideoController();
   bool _videoControllerCreated = false;
@@ -65,7 +75,7 @@ class PlaybackService {
   PlaylistMode get playlistMode => _player.state.playlistMode;
 
   /// Current queue and its selected index.
-  Playlist get playlist => _player.state.playlist;
+  Playlist get playlist => _directoryQueue ?? _player.state.playlist;
 
   /// Available audio, subtitle, and video tracks for the current media.
   Tracks get tracks => _player.state.tracks;
@@ -95,7 +105,10 @@ class PlaybackService {
   Stream<PlaylistMode> get playlistModeStream => _player.stream.playlistMode;
 
   /// Emits queue changes and the active queue index.
-  Stream<Playlist> get playlistStream => _player.stream.playlist;
+  Stream<Playlist> get playlistStream => _playlistController.stream;
+
+  /// Decoder/open errors reported asynchronously by media_kit.
+  Stream<String> get errorStream => _player.stream.error;
 
   /// Emits available track changes for the active media.
   Stream<Tracks> get tracksStream => _player.stream.tracks;
@@ -105,8 +118,25 @@ class PlaybackService {
 
   /// Opens and starts playing a media URI.
   Future<void> open(String uri) {
+    _rejectUnsupportedLocalUri(uri);
+    _clearDirectoryQueue();
     ++_requestGeneration;
     return _enqueueOpen(() => _openPlayer(Media(uri), uri));
+  }
+
+  void _rejectUnsupportedLocalUri(String uri) {
+    final source = Uri.tryParse(uri);
+    if (source == null) throw UnsupportedMediaException();
+    if (source.scheme.isNotEmpty && source.scheme != 'file') return;
+    final filePath = source.scheme == 'file' ? source.toFilePath() : uri;
+    if (!MediaFormatPolicy.mayOpenExplicitly(filePath)) {
+      LifecycleTrace.event(
+        'media.open.failed',
+        session: sessionId,
+        detail: 'reason=unsupported-or-invalid',
+      );
+      throw UnsupportedMediaException();
+    }
   }
 
   Future<void> _openPlayer(Playable media, String uri) async {
@@ -124,33 +154,60 @@ class PlaybackService {
       ? Future<void>.error(StateError('Player is closed'))
       : _openCoordinator.run(operation);
 
+  void _clearDirectoryQueue() {
+    if (_directoryQueue == null) return;
+    _directoryQueue = null;
+    if (!_playlistController.isClosed) {
+      _playlistController.add(_player.state.playlist);
+    }
+  }
+
   /// Opens nearby video files as a queue so edge controls can navigate them.
   /// A file picker grant may only cover one file; in that case open it alone.
   Future<void> openWithDirectory(String uri) async {
     if (_closed) throw StateError('Player is closed');
+    _rejectUnsupportedLocalUri(uri);
     final request = ++_requestGeneration;
     final source = Uri.tryParse(uri);
     if (source == null || source.scheme != 'file') {
-      return _enqueueOpen(() => _openPlayer(Media(uri), uri));
+      return open(uri);
     }
     final selected = source.toFilePath();
+    FileSystemEntityType selectedType;
+    try {
+      selectedType = (await File(selected).stat()).type;
+    } on FileSystemException {
+      selectedType = FileSystemEntityType.notFound;
+    }
+    if (selectedType != FileSystemEntityType.file) {
+      LifecycleTrace.event(
+        'media.open.failed',
+        session: sessionId,
+        detail: 'reason=unsupported-or-invalid',
+      );
+      throw UnsupportedMediaException();
+    }
     final siblings = <String>[];
     try {
       await for (final entity in Directory(
         path.dirname(selected),
       ).list(followLinks: false)) {
         if (siblings.length >= 2000) break;
-        if (entity is File && MediaFormatPolicy.mayScan(entity.path)) {
+        if (entity is File &&
+            MediaFormatPolicy.mayScan(entity.path) &&
+            await MediaFormatPolicy.hasTransportStreamSignature(entity)) {
           siblings.add(entity.path);
         }
       }
     } on FileSystemException {
       if (request != _requestGeneration || _closed) return;
+      _clearDirectoryQueue();
       return _enqueueOpen(() => _openPlayer(Media(uri), uri));
     }
     if (request != _requestGeneration || _closed) return;
     if (!siblings.contains(selected)) siblings.add(selected);
     if (siblings.length < 2) {
+      _clearDirectoryQueue();
       return _enqueueOpen(() => _openPlayer(Media(uri), uri));
     }
     siblings.sort(
@@ -163,7 +220,11 @@ class PlaybackService {
       siblings.map((file) => Media(Uri.file(file).toString())).toList(),
       index: siblings.indexOf(selected),
     );
-    return _enqueueOpen(() => _openPlayer(queue, uri));
+    // Keep the directory for manual next/previous navigation. Passing the
+    // entire queue to mpv makes it auto-skip a file that fails to decode.
+    _directoryQueue = queue;
+    _playlistController.add(queue);
+    return _enqueueOpen(() => _openPlayer(Media(uri), uri));
   }
 
   /// Opens a queue and starts at [startIndex].
@@ -172,12 +233,19 @@ class PlaybackService {
       throw ArgumentError.value(uris, 'uris', 'Queue cannot be empty.');
     }
     RangeError.checkValidIndex(startIndex, uris, 'startIndex');
+    for (final uri in uris) {
+      _rejectUnsupportedLocalUri(uri);
+    }
     final Playlist queue = Playlist(
       uris.map(Media.new).toList(growable: false),
       index: startIndex,
     );
     ++_requestGeneration;
-    return _enqueueOpen(() => _openPlayer(queue, uris[startIndex]));
+    _directoryQueue = queue;
+    _playlistController.add(queue);
+    return _enqueueOpen(
+      () => _openPlayer(queue.medias[startIndex], uris[startIndex]),
+    );
   }
 
   /// Toggles playback.
@@ -203,6 +271,13 @@ class PlaybackService {
 
   /// Moves to the next item when the queue contains multiple items.
   Future<void> next() async {
+    if (_directoryQueue case final queue?) {
+      final nextIndex = queue.index + 1;
+      if (nextIndex < queue.medias.length) {
+        await _selectDirectoryIndex(nextIndex);
+      }
+      return;
+    }
     if (playlist.medias.length > 1) {
       await _player.next();
     }
@@ -210,9 +285,25 @@ class PlaybackService {
 
   /// Moves to the previous item when the queue contains multiple items.
   Future<void> previous() async {
+    if (_directoryQueue case final queue?) {
+      final previousIndex = queue.index - 1;
+      if (previousIndex >= 0) {
+        await _selectDirectoryIndex(previousIndex);
+      }
+      return;
+    }
     if (playlist.medias.length > 1) {
       await _player.previous();
     }
+  }
+
+  Future<void> _selectDirectoryIndex(int index) async {
+    final queue = _directoryQueue;
+    if (queue == null) return;
+    final media = queue.medias[index];
+    _directoryQueue = Playlist(queue.medias, index: index);
+    _playlistController.add(_directoryQueue!);
+    await _enqueueOpen(() => _openPlayer(media, media.uri));
   }
 
   /// Sets volume, clamped to media_kit's 0–100 range.
@@ -281,6 +372,7 @@ class PlaybackService {
   /// Stops the foreground session while retaining the one player for reuse.
   Future<void> stop() async {
     if (_closed) return;
+    _clearDirectoryQueue();
     LifecycleTrace.event('player.stop.begin', session: sessionId);
     final request = ++_requestGeneration;
     await _openCoordinator.cancelPending();
@@ -303,6 +395,8 @@ class PlaybackService {
       );
     }
     await _player.dispose();
+    await _nativePlaylistSubscription.cancel();
+    await _playlistController.close();
     if (_videoControllerCreated) {
       LifecycleTrace.event(
         'video_controller.dispose.complete',
@@ -311,4 +405,9 @@ class PlaybackService {
     }
     LifecycleTrace.event('player.dispose.complete', session: sessionId);
   }
+}
+
+class UnsupportedMediaException implements Exception {
+  @override
+  String toString() => 'VPFL could not open this file.';
 }

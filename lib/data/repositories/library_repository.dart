@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:path/path.dart' as path;
 
 import '../model/app_database.dart';
+import '../services/media_format_policy.dart';
 
 class LibraryRepository {
   LibraryRepository(this._database);
@@ -11,11 +14,22 @@ class LibraryRepository {
     _database.savedFolders,
   )..orderBy([(SavedFolders f) => OrderingTerm.asc(f.displayName)])).watch();
 
+  Future<List<SavedFolder>> allFolders() =>
+      _database.select(_database.savedFolders).get();
+
   Stream<List<LibraryMediaItem>> watchAllMedia() =>
       (_database.select(_database.libraryMediaItems)..orderBy([
             (LibraryMediaItems m) => OrderingTerm.asc(m.displayName),
           ]))
-          .watch();
+          .watch()
+          .map(
+            (items) => items
+                .where(
+                  (item) =>
+                      MediaFormatPolicy.shouldAutomaticallyIndex(item.path),
+                )
+                .toList(growable: false),
+          );
 
   Stream<List<LibraryMediaItem>> watchFolderMedia(int folderId) =>
       (_database.select(_database.libraryMediaItems)
@@ -23,7 +37,15 @@ class LibraryRepository {
             ..orderBy([
               (LibraryMediaItems m) => OrderingTerm.asc(m.displayName),
             ]))
-          .watch();
+          .watch()
+          .map(
+            (items) => items
+                .where(
+                  (item) =>
+                      MediaFormatPolicy.shouldAutomaticallyIndex(item.path),
+                )
+                .toList(growable: false),
+          );
 
   Future<List<LibraryMediaItem>> mediaForFolder(int folderId) =>
       (_database.select(
@@ -31,7 +53,12 @@ class LibraryRepository {
       )..where((LibraryMediaItems m) => m.folderId.equals(folderId))).get();
 
   Future<SavedFolder> addFolder(String folderPath) async {
-    final String normalized = path.normalize(folderPath);
+    String normalized;
+    try {
+      normalized = await Directory(folderPath).resolveSymbolicLinks();
+    } on FileSystemException {
+      normalized = path.normalize(path.absolute(folderPath));
+    }
     await _database
         .into(_database.savedFolders)
         .insertOnConflictUpdate(
@@ -66,16 +93,25 @@ class LibraryRepository {
     });
   }
 
-  Future<void> removeMissing(int folderId, Set<String> seen) async {
+  Future<int> removeMissing(int folderId, Set<String> seen) async {
     final List<LibraryMediaItem> existing = await mediaForFolder(folderId);
     final List<String> missing = [
       for (final item in existing)
         if (!seen.contains(item.uri)) item.uri,
     ];
-    if (missing.isEmpty) return;
-    await (_database.delete(
-      _database.libraryMediaItems,
-    )..where((LibraryMediaItems m) => m.uri.isIn(missing))).go();
+    if (missing.isEmpty) return 0;
+    await removeUris(folderId, missing);
+    return missing.length;
+  }
+
+  Future<void> removeUris(int folderId, Iterable<String> uris) async {
+    final values = uris.toList(growable: false);
+    for (var offset = 0; offset < values.length; offset += 400) {
+      final chunk = values.skip(offset).take(400).toList(growable: false);
+      await (_database.delete(
+        _database.libraryMediaItems,
+      )..where((m) => m.folderId.equals(folderId) & m.uri.isIn(chunk))).go();
+    }
   }
 
   Future<void> markScanned(int folderId, DateTime time) =>

@@ -40,6 +40,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   AppDestination _destination = AppDestination.home;
   SavedFolder? _selectedFolder;
   final Set<int> _scanningFolderIds = {};
+  final Set<int> _scannedFolderIds = {};
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +111,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       onRemoveFolder: _removeFolder,
       onRescan: _selectedFolder == null
           ? null
-          : () => _scanFolder(_selectedFolder!),
+          : () => _scanFolder(_selectedFolder!, force: true),
     ),
     AppDestination.settings => SettingsScreen(
       themeMode: widget.themeMode,
@@ -145,7 +146,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         _selectedFolder = folder;
         _destination = AppDestination.folders;
       });
-      await _scanFolder(folder);
+      await _scanFolder(folder, force: true);
     } on Object catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -155,10 +156,12 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
   }
 
-  Future<void> _scanFolder(SavedFolder folder) async {
+  Future<void> _scanFolder(SavedFolder folder, {bool force = false}) async {
+    if (!force && _scannedFolderIds.contains(folder.id)) return;
     if (!_scanningFolderIds.add(folder.id)) return;
     try {
       await ref.read(libraryScannerProvider).scan(folder);
+      _scannedFolderIds.add(folder.id);
     } on Object catch (error) {
       debugPrint('Could not scan saved folder ${folder.path}: $error');
     } finally {
