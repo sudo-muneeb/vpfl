@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 
 part 'app_database.g.dart';
@@ -94,5 +95,10 @@ Future<String> _applicationDataDirectory() async {
       : path.join(home, '.local', 'share');
   final Directory directory = Directory(path.join(dataHome, 'vpfl'));
   await directory.create(recursive: true);
+  if (kDebugMode) {
+    debugPrint(
+      'VPFL database path: ${path.join(directory.absolute.path, 'vpfl.sqlite')}',
+    );
+  }
   return directory.path;
 }

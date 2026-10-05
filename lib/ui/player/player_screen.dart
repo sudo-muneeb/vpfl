@@ -12,6 +12,7 @@ import '../../data/playback_history_recorder_provider.dart';
 import '../../data/persistence_providers.dart';
 import '../../data/services/media_file_picker.dart';
 import '../../data/services/playback_service.dart';
+import '../../data/services/lifecycle_trace.dart';
 import '../core/widgets/app_top_bar.dart';
 import '../core/themes/vpfl_theme_extension.dart';
 import '../settings/settings_screen.dart';
@@ -57,6 +58,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   String? _renderingMode;
   StreamSubscription<dynamic>? _playlistSubscription;
   StreamSubscription<bool>? _playingSubscription;
+  StreamSubscription<String>? _errorSubscription;
   String? _playingUri;
   int _playGeneration = 0;
   int _openGeneration = 0;
@@ -82,6 +84,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     });
     _playingSubscription = _playback.playingStream.listen((playing) {
       if (playing) _recordPromptPlayIfNeeded();
+    });
+    _errorSubscription = _playback.errorStream.listen((_) {
+      if (!mounted || widget.initialMediaUri == null) return;
+      LifecycleTrace.event(
+        'media.open.failed',
+        session: _playback.sessionId,
+        detail: 'reason=unsupported-or-invalid',
+      );
+      unawaited(_playback.stop());
+      setState(() => _mediaError = 'VPFL could not open this file.');
     });
     ref.read(playbackHistoryRecorderProvider);
     unawaited(_readRenderingMode());
@@ -237,6 +249,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     ++_openGeneration;
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
+    unawaited(_errorSubscription?.cancel());
     _renderingModeSource?.removeListener(_updateRenderingMode);
     super.dispose();
   }
@@ -372,7 +385,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
     } on Object catch (error) {
       if (mounted) {
-        setState(() => _mediaError = 'Could not open this media file: $error');
+        await _playback.stop();
+        if (mounted) {
+          LifecycleTrace.event(
+            'media.open.failed',
+            session: _playback.sessionId,
+            detail: 'reason=unsupported-or-invalid',
+          );
+          setState(
+            () => _mediaError = error is UnsupportedMediaException
+                ? 'VPFL could not open this file.'
+                : 'Could not open this media file: $error',
+          );
+        }
       }
     }
   }
