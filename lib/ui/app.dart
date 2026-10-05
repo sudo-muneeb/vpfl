@@ -6,6 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/themes/vpfl_theme.dart';
 import 'core/widgets/window_controls.dart';
 import '../data/persistence_providers.dart';
+import '../data/playback_service_provider.dart';
+import '../data/playback_history_recorder_provider.dart';
+import '../data/thumbnail_providers.dart';
+import '../data/services/application_shutdown.dart';
+import '../data/services/lifecycle_trace.dart';
 import 'player/player_screen.dart';
 import 'shell/app_shell.dart';
 
@@ -30,11 +35,38 @@ class _VpflAppState extends ConsumerState<VpflApp> {
   bool _resumeEnabled = true;
   late String? _activeMediaUri = widget.initialMediaUri;
   late String? _activeStartupError = widget.startupError;
+  ApplicationShutdown? _shutdown;
+  bool _closing = false;
 
   @override
   void initState() {
     super.initState();
+    LifecycleTrace.event('app.start');
+    WindowCommands.shutdownHandler = _shutdownAndClose;
+    WindowCommands.installCloseHandler();
     _loadPreferences();
+  }
+
+  Future<void> _shutdownAndClose() async {
+    LifecycleTrace.event('app.shutdown.begin');
+    if (!_closing && mounted) {
+      setState(() => _closing = true);
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    final shutdown = _shutdown ??= ApplicationShutdown(
+      playback: ref.read(playbackServiceProvider),
+      history: ref.read(playbackHistoryRecorderProvider),
+      thumbnails: ref.read(thumbnailServiceProvider),
+      database: ref.read(appDatabaseProvider),
+    );
+    await shutdown.shutdown();
+    LifecycleTrace.event('app.shutdown.complete');
+  }
+
+  @override
+  void dispose() {
+    WindowCommands.shutdownHandler = null;
+    super.dispose();
   }
 
   Future<void> _loadPreferences() async {
@@ -93,6 +125,7 @@ class _VpflAppState extends ConsumerState<VpflApp> {
   }
 
   void _openMedia(String uri) {
+    LifecycleTrace.event('route.player.enter');
     setState(() {
       _activeMediaUri = uri;
       _activeStartupError = null;
@@ -100,6 +133,9 @@ class _VpflAppState extends ConsumerState<VpflApp> {
   }
 
   void _returnToLibrary() {
+    LifecycleTrace.event('route.player.exit');
+    unawaited(ref.read(playbackServiceProvider).stop());
+    LifecycleTrace.event('route.home.enter');
     setState(() {
       _activeMediaUri = null;
       _activeStartupError = null;
@@ -108,6 +144,7 @@ class _VpflAppState extends ConsumerState<VpflApp> {
 
   @override
   Widget build(BuildContext context) {
+    if (_closing) return const SizedBox.shrink();
     return MaterialApp(
       title: 'VPFL',
       debugShowCheckedModeBanner: false,

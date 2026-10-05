@@ -5,7 +5,8 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path/path.dart' as path;
 
-import 'media_file_picker.dart';
+import 'media_format_policy.dart';
+import 'lifecycle_trace.dart';
 import 'playback_open_coordinator.dart';
 
 /// Owns the single foreground media player session.
@@ -13,11 +14,31 @@ class PlaybackService {
   PlaybackService()
     : _player = Player(
         configuration: const PlayerConfiguration(libass: true, title: 'VPFL'),
-      );
+      ) {
+    LifecycleTrace.event(
+      'player.create',
+      session: sessionId,
+      detail: 'object=${identityHashCode(_player)}',
+    );
+  }
+
+  static int _nextSessionId = 0;
+  final int sessionId = ++_nextSessionId;
 
   final Player _player;
   final PlaybackOpenCoordinator _openCoordinator = PlaybackOpenCoordinator();
-  late final VideoController _videoController = VideoController(_player);
+  late final VideoController _videoController = _createVideoController();
+  bool _videoControllerCreated = false;
+
+  VideoController _createVideoController() {
+    _videoControllerCreated = true;
+    LifecycleTrace.event('video_controller.create', session: sessionId);
+    return VideoController(_player);
+  }
+
+  Future<void>? _disposeFuture;
+  bool _closed = false;
+  int _requestGeneration = 0;
 
   /// The video surface controller consumed by the player UI.
   VideoController get videoController => _videoController;
@@ -83,14 +104,35 @@ class PlaybackService {
   Stream<Track> get selectedTracksStream => _player.stream.track;
 
   /// Opens and starts playing a media URI.
-  Future<void> open(String uri) =>
-      _openCoordinator.run(() => _player.open(Media(uri)));
+  Future<void> open(String uri) {
+    ++_requestGeneration;
+    return _enqueueOpen(() => _openPlayer(Media(uri), uri));
+  }
+
+  Future<void> _openPlayer(Playable media, String uri) async {
+    final name = Uri.tryParse(uri)?.pathSegments.lastOrNull ?? 'media';
+    LifecycleTrace.event(
+      'player.open.begin',
+      session: sessionId,
+      detail: 'file=${Uri.encodeComponent(name)}',
+    );
+    await _player.open(media);
+    LifecycleTrace.event('player.open.complete', session: sessionId);
+  }
+
+  Future<void> _enqueueOpen(Future<void> Function() operation) => _closed
+      ? Future<void>.error(StateError('Player is closed'))
+      : _openCoordinator.run(operation);
 
   /// Opens nearby video files as a queue so edge controls can navigate them.
   /// A file picker grant may only cover one file; in that case open it alone.
   Future<void> openWithDirectory(String uri) async {
+    if (_closed) throw StateError('Player is closed');
+    final request = ++_requestGeneration;
     final source = Uri.tryParse(uri);
-    if (source == null || source.scheme != 'file') return open(uri);
+    if (source == null || source.scheme != 'file') {
+      return _enqueueOpen(() => _openPlayer(Media(uri), uri));
+    }
     final selected = source.toFilePath();
     final siblings = <String>[];
     try {
@@ -98,28 +140,30 @@ class PlaybackService {
         path.dirname(selected),
       ).list(followLinks: false)) {
         if (siblings.length >= 2000) break;
-        if (entity is File &&
-            videoExtensions.contains(
-              path.extension(entity.path).replaceFirst('.', '').toLowerCase(),
-            )) {
+        if (entity is File && MediaFormatPolicy.mayScan(entity.path)) {
           siblings.add(entity.path);
         }
       }
     } on FileSystemException {
-      return open(uri);
+      if (request != _requestGeneration || _closed) return;
+      return _enqueueOpen(() => _openPlayer(Media(uri), uri));
     }
+    if (request != _requestGeneration || _closed) return;
     if (!siblings.contains(selected)) siblings.add(selected);
-    if (siblings.length < 2) return open(uri);
+    if (siblings.length < 2) {
+      return _enqueueOpen(() => _openPlayer(Media(uri), uri));
+    }
     siblings.sort(
       (a, b) => path
           .basename(a)
           .toLowerCase()
           .compareTo(path.basename(b).toLowerCase()),
     );
-    return openQueue(
-      siblings.map((file) => Uri.file(file).toString()).toList(),
-      startIndex: siblings.indexOf(selected),
+    final queue = Playlist(
+      siblings.map((file) => Media(Uri.file(file).toString())).toList(),
+      index: siblings.indexOf(selected),
     );
+    return _enqueueOpen(() => _openPlayer(queue, uri));
   }
 
   /// Opens a queue and starts at [startIndex].
@@ -132,11 +176,18 @@ class PlaybackService {
       uris.map(Media.new).toList(growable: false),
       index: startIndex,
     );
-    return _openCoordinator.run(() => _player.open(queue));
+    ++_requestGeneration;
+    return _enqueueOpen(() => _openPlayer(queue, uris[startIndex]));
   }
 
   /// Toggles playback.
-  Future<void> playOrPause() => _player.playOrPause();
+  Future<void> playOrPause() async {
+    LifecycleTrace.event(
+      isPlaying ? 'player.pause' : 'player.play',
+      session: sessionId,
+    );
+    await _player.playOrPause();
+  }
 
   /// Seeks to [position].
   Future<void> seek(Duration position) => _player.seek(position);
@@ -212,7 +263,7 @@ class PlaybackService {
         .extension(filePath)
         .replaceFirst('.', '')
         .toLowerCase();
-    if (!subtitleExtensions.contains(extension)) {
+    if (!MediaFormatPolicy.supportedSubtitleExtensions.contains(extension)) {
       throw ArgumentError.value(
         filePath,
         'filePath',
@@ -227,6 +278,37 @@ class PlaybackService {
     );
   }
 
-  /// Releases the media player and its native resources.
-  Future<void> dispose() => _player.dispose();
+  /// Stops the foreground session while retaining the one player for reuse.
+  Future<void> stop() async {
+    if (_closed) return;
+    LifecycleTrace.event('player.stop.begin', session: sessionId);
+    final request = ++_requestGeneration;
+    await _openCoordinator.cancelPending();
+    if (request == _requestGeneration && !_closed) await _player.stop();
+    LifecycleTrace.event('player.stop.complete', session: sessionId);
+  }
+
+  /// Releases the player; media_kit releases VideoController via its callback.
+  Future<void> dispose() => _disposeFuture ??= _dispose();
+
+  Future<void> _dispose() async {
+    LifecycleTrace.event('player.dispose.begin', session: sessionId);
+    _closed = true;
+    ++_requestGeneration;
+    await _openCoordinator.close();
+    if (_videoControllerCreated) {
+      LifecycleTrace.event(
+        'video_controller.dispose.begin',
+        session: sessionId,
+      );
+    }
+    await _player.dispose();
+    if (_videoControllerCreated) {
+      LifecycleTrace.event(
+        'video_controller.dispose.complete',
+        session: sessionId,
+      );
+    }
+    LifecycleTrace.event('player.dispose.complete', session: sessionId);
+  }
 }

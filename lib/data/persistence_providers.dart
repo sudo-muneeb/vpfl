@@ -35,22 +35,21 @@ final Provider<LibraryScanner> libraryScannerProvider =
       (Ref ref) => LibraryScanner(ref.watch(libraryRepositoryProvider)),
     );
 
-final StreamProvider<List<PlaybackHistory>> recentPlaybackProvider =
-    StreamProvider<List<PlaybackHistory>>(
+final recentPlaybackProvider =
+    StreamProvider.autoDispose<List<PlaybackHistory>>(
       (Ref ref) => ref.watch(playbackHistoryRepositoryProvider).watchRecent(),
     );
 
-final StreamProvider<List<SavedFolder>> savedFoldersProvider =
-    StreamProvider<List<SavedFolder>>(
-      (Ref ref) => ref.watch(libraryRepositoryProvider).watchFolders(),
-    );
-
-final StreamProvider<List<LibraryMediaItem>> libraryMediaProvider =
-    StreamProvider<List<LibraryMediaItem>>(
-      (Ref ref) => ref.watch(libraryRepositoryProvider).watchAllMedia(),
-    );
-
-final folderMediaProvider = StreamProvider.family<List<LibraryMediaItem>, int>(
-  (Ref ref, int folderId) =>
-      ref.watch(libraryRepositoryProvider).watchFolderMedia(folderId),
+final savedFoldersProvider = StreamProvider.autoDispose<List<SavedFolder>>(
+  (Ref ref) => ref.watch(libraryRepositoryProvider).watchFolders(),
 );
+
+final libraryMediaProvider = StreamProvider.autoDispose<List<LibraryMediaItem>>(
+  (Ref ref) => ref.watch(libraryRepositoryProvider).watchAllMedia(),
+);
+
+final folderMediaProvider = StreamProvider.autoDispose
+    .family<List<LibraryMediaItem>, int>(
+      (Ref ref, int folderId) =>
+          ref.watch(libraryRepositoryProvider).watchFolderMedia(folderId),
+    );

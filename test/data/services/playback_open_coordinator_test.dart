@@ -50,4 +50,25 @@ void main() {
       await Future.wait([staleFailure, latest]);
     },
   );
+
+  test('cancel drops queued opens and close rejects later work', () async {
+    final coordinator = PlaybackOpenCoordinator();
+    final started = Completer<void>();
+    final release = Completer<void>();
+    var opened = 0;
+    final first = coordinator.run(() async {
+      started.complete();
+      await release.future;
+      opened++;
+    });
+    await started.future;
+    final queued = coordinator.run(() async => opened++);
+    final drained = coordinator.cancelPending();
+    release.complete();
+    await Future.wait([first, queued, drained]);
+    expect(opened, 1);
+    await coordinator.close();
+    await expectLater(coordinator.run(() async => opened++), throwsStateError);
+    expect(opened, 1);
+  });
 }
