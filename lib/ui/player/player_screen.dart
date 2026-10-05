@@ -59,6 +59,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription<bool>? _playingSubscription;
   String? _playingUri;
   int _playGeneration = 0;
+  int _openGeneration = 0;
   int _countedGeneration = 0;
   ValueNotifier<String?>? _renderingModeSource;
   BoxFit _videoFit = BoxFit.contain;
@@ -233,6 +234,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   void dispose() {
+    ++_openGeneration;
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     _renderingModeSource?.removeListener(_updateRenderingMode);
@@ -340,6 +342,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<void> _openMedia(String uri) async {
+    final int openGeneration = ++_openGeneration;
     _playGeneration += 1;
     Duration? resumePosition;
     try {
@@ -348,6 +351,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         'resumeEnabled',
         defaultValue: true,
       );
+      if (!mounted || openGeneration != _openGeneration) return;
       resumePosition = resumeEnabled
           ? await ref
                 .read(playbackHistoryRepositoryProvider)
@@ -359,7 +363,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     try {
       await _waitForVideoRenderer();
+      if (!mounted || openGeneration != _openGeneration) return;
       await _playback.openWithDirectory(uri);
+      if (!mounted || openGeneration != _openGeneration) return;
       if (_playback.isPlaying) _recordPromptPlayIfNeeded();
       if (resumePosition != null) {
         await _playback.seek(resumePosition);

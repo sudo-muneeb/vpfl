@@ -8,20 +8,67 @@ struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
   FlMethodChannel* window_channel;
+  GtkWindow* window;
+  gboolean allow_close;
+  gboolean close_requested;
+  guint close_timeout;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
+
+static void lifecycle_log(const gchar* event) {
+  if (g_strcmp0(g_getenv("VPFL_LIFECYCLE_TRACE"), "1") == 0) {
+    g_message("vpfl.lifecycle ts_us=%" G_GINT64_FORMAT " thread=%p event=%s",
+              g_get_real_time(), g_thread_self(), event);
+  }
+}
 
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+// Both the window-manager close and our Flutter button use the same awaited
+// Dart shutdown. A timeout still lets GTK close if Dart cannot respond.
+static gboolean window_delete_cb(GtkWidget* widget, GdkEvent* event,
+                                 gpointer user_data) {
+  MyApplication* self = MY_APPLICATION(user_data);
+  lifecycle_log("window.close.requested.native");
+  if (self->allow_close) return FALSE;
+  if (self->close_requested) return TRUE;
+  self->close_requested = TRUE;
+  if (self->window_channel != nullptr) {
+    fl_method_channel_invoke_method(self->window_channel, "requestClose",
+                                    nullptr, nullptr, nullptr, nullptr);
+  }
+  self->close_timeout = g_timeout_add_seconds(10, [](gpointer data) -> gboolean {
+    MyApplication* app = MY_APPLICATION(data);
+    app->close_timeout = 0;
+    if (app->window != nullptr) {
+      g_warning("VPFL shutdown timed out; closing the window");
+      app->allow_close = TRUE;
+      gtk_window_close(app->window);
+    }
+    return G_SOURCE_REMOVE;
+  }, self);
+  return TRUE;
+}
+
+static void window_destroy_cb(GtkWidget* widget, gpointer user_data) {
+  MyApplication* self = MY_APPLICATION(user_data);
+  self->window = nullptr;
+  if (self->close_timeout != 0) {
+    g_source_remove(self->close_timeout);
+    self->close_timeout = 0;
+  }
+}
+
 // Native window actions used by VPFL's Flutter-drawn title bar.
 static void window_method_call(FlMethodChannel* channel,
                                FlMethodCall* call,
                                gpointer user_data) {
-  GtkWindow* window = GTK_WINDOW(user_data);
+  MyApplication* self = MY_APPLICATION(user_data);
+  GtkWindow* window = self->window;
   const gchar* method = fl_method_call_get_name(call);
   g_autoptr(FlMethodResponse) response = nullptr;
   if (g_strcmp0(method, "minimize") == 0) {
@@ -33,6 +80,8 @@ static void window_method_call(FlMethodChannel* channel,
       gtk_window_maximize(window);
     }
   } else if (g_strcmp0(method, "close") == 0) {
+    lifecycle_log("window.close.native");
+    self->allow_close = TRUE;
     g_idle_add([](gpointer data) -> gboolean {
       gtk_window_close(GTK_WINDOW(data));
       g_object_unref(data);
@@ -83,6 +132,11 @@ static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
+  self->window = window;
+  self->allow_close = FALSE;
+  self->close_requested = FALSE;
+  g_signal_connect(window, "delete-event", G_CALLBACK(window_delete_cb), self);
+  g_signal_connect(window, "destroy", G_CALLBACK(window_destroy_cb), self);
   gtk_window_set_icon_name(window, "com.app.vpfl");
   g_autofree gchar* executable_path = g_file_read_link("/proc/self/exe", nullptr);
   if (executable_path != nullptr) {
@@ -130,7 +184,7 @@ static void my_application_activate(GApplication* application) {
       fl_engine_get_binary_messenger(fl_view_get_engine(view)),
       "com.app.vpfl/window", codec);
   fl_method_channel_set_method_call_handler(
-      self->window_channel, window_method_call, g_object_ref(window),
+      self->window_channel, window_method_call, g_object_ref(self),
       g_object_unref);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
@@ -171,6 +225,8 @@ static void my_application_shutdown(GApplication* application) {
   // MyApplication* self = MY_APPLICATION(object);
 
   // Perform any actions required at application shutdown.
+
+  lifecycle_log("app.shutdown.native");
 
   G_APPLICATION_CLASS(my_application_parent_class)->shutdown(application);
 }

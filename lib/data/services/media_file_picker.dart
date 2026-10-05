@@ -1,28 +1,10 @@
 import 'package:file_selector/file_selector.dart';
 
-const List<String> videoExtensions = [
-  '3g2',
-  '3gp',
-  'asf',
-  'avi',
-  'flv',
-  'm2ts',
-  'm4v',
-  'mkv',
-  'mov',
-  'mp4',
-  'mpeg',
-  'mpg',
-  'mts',
-  'mxf',
-  'ogv',
-  'ts',
-  'vob',
-  'webm',
-  'wmv',
-];
+import 'media_format_policy.dart';
 
-const List<String> subtitleExtensions = ['srt', 'ass', 'ssa', 'vtt'];
+const List<String> videoExtensions = MediaFormatPolicy.supportedForExplicitOpen;
+const List<String> subtitleExtensions =
+    MediaFormatPolicy.supportedSubtitleExtensions;
 
 /// Opens the native file picker and returns the selected video as a file URI.
 Future<String?> pickVideoUri() async {

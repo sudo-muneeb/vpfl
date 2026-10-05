@@ -63,6 +63,11 @@ class AppDatabase extends _$AppDatabase {
             ),
       );
 
+  Future<void>? _closeFuture;
+
+  @override
+  Future<void> close() => _closeFuture ??= super.close();
+
   @override
   int get schemaVersion => 2;
 

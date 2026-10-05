@@ -19,11 +19,12 @@ class ThumbnailService {
 
   final String _cacheHome;
   final StreamController<String> _saved = StreamController<String>.broadcast();
+  Future<void>? _closeFuture;
 
   /// Emits the normalized path of a media file each time VPFL stores a frame.
   Stream<String> get savedFrames => _saved.stream;
 
-  Future<void> close() => _saved.close();
+  Future<void> close() => _closeFuture ??= _saved.close();
 
   /// Returns the thumbnail file for [path], or null when none is valid.
   Future<File?> resolve(String path) async {

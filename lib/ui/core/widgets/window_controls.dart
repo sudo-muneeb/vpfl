@@ -5,9 +5,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
+import '../../../data/services/lifecycle_trace.dart';
+
 abstract final class WindowCommands {
   static const _channel = MethodChannel('com.app.vpfl/window');
   static final maximized = ValueNotifier<bool>(false);
+  static Future<void> Function()? shutdownHandler;
+  static bool _handlerInstalled = false;
+  static Future<void>? _closeFuture;
+
+  static void installCloseHandler() {
+    if (_handlerInstalled) return;
+    _handlerInstalled = true;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'requestClose') {
+        await close();
+        return null;
+      }
+      throw MissingPluginException('Unknown window method: ${call.method}');
+    });
+  }
 
   static Future<void> minimize() => _call('minimize');
   static Future<bool> toggleMaximize() async {
@@ -23,7 +40,16 @@ abstract final class WindowCommands {
   }
 
   static Future<bool> isMaximized() => _readState('isMaximized');
-  static Future<void> close() => _call('close');
+  static Future<void> close() => _closeFuture ??= _close();
+
+  static Future<void> _close() async {
+    LifecycleTrace.event('window.close.requested');
+    try {
+      await shutdownHandler?.call();
+    } finally {
+      await _call('close');
+    }
+  }
 
   static Future<void> startDrag(Offset position) async {
     if (!Platform.isLinux) return;
