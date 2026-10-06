@@ -12,9 +12,97 @@ struct _MyApplication {
   gboolean allow_close;
   gboolean close_requested;
   guint close_timeout;
+  GtkWidget* resize_handles[8];
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
+
+struct ResizeHandleData {
+  GtkWindow* window;
+  GdkWindowEdge edge;
+  const gchar* cursor_name;
+  GdkCursorType fallback_cursor;
+};
+
+// Keep the hit area and cursor in GTK, outside Flutter's pointer hit testing.
+// This also gives the resize drag the original GDK button event and timestamp.
+static void resize_handle_realize_cb(GtkWidget* widget, gpointer user_data) {
+  const auto* data = static_cast<ResizeHandleData*>(user_data);
+  GdkWindow* gdk_window = gtk_widget_get_window(widget);
+  GdkDisplay* display = gdk_window_get_display(gdk_window);
+  GdkCursor* cursor = gdk_cursor_new_from_name(display, data->cursor_name);
+  if (cursor == nullptr) {
+    cursor = gdk_cursor_new_for_display(display, data->fallback_cursor);
+  }
+  if (cursor != nullptr) {
+    gdk_window_set_cursor(gdk_window, cursor);
+    g_object_unref(cursor);
+  }
+}
+
+static gboolean resize_handle_press_cb(GtkWidget*,
+                                       GdkEventButton* event,
+                                       gpointer user_data) {
+  const auto* data = static_cast<ResizeHandleData*>(user_data);
+  if (event->button != GDK_BUTTON_PRIMARY ||
+      gtk_window_is_maximized(data->window)) {
+    return FALSE;
+  }
+  GdkWindow* gdk_window = gtk_widget_get_window(GTK_WIDGET(data->window));
+  if (gdk_window == nullptr ||
+      (gdk_window_get_state(gdk_window) & GDK_WINDOW_STATE_FULLSCREEN)) {
+    return FALSE;
+  }
+  gtk_window_begin_resize_drag(data->window, data->edge, event->button,
+                               static_cast<gint>(event->x_root),
+                               static_cast<gint>(event->y_root), event->time);
+  return TRUE;
+}
+
+static gboolean window_state_cb(GtkWidget*,
+                                GdkEventWindowState* event,
+                                gpointer user_data) {
+  MyApplication* self = MY_APPLICATION(user_data);
+  const gboolean resizable =
+      !(event->new_window_state &
+        (GDK_WINDOW_STATE_MAXIMIZED | GDK_WINDOW_STATE_FULLSCREEN));
+  for (GtkWidget* handle : self->resize_handles) {
+    if (handle == nullptr) continue;
+    if (resizable) {
+      gtk_widget_show(handle);
+    } else {
+      gtk_widget_hide(handle);
+    }
+  }
+  return FALSE;
+}
+
+static void add_resize_handle(MyApplication* self, GtkOverlay* overlay,
+                              guint index, GdkWindowEdge edge,
+                              const gchar* cursor_name,
+                              GdkCursorType fallback_cursor, GtkAlign halign,
+                              GtkAlign valign, gint width, gint height) {
+  GtkWidget* handle = gtk_event_box_new();
+  gtk_event_box_set_visible_window(GTK_EVENT_BOX(handle), FALSE);
+  gtk_widget_set_halign(handle, halign);
+  gtk_widget_set_valign(handle, valign);
+  gtk_widget_set_size_request(handle, width, height);
+  gtk_widget_add_events(handle, GDK_BUTTON_PRESS_MASK);
+  auto* data = g_new0(ResizeHandleData, 1);
+  data->window = self->window;
+  data->edge = edge;
+  data->cursor_name = cursor_name;
+  data->fallback_cursor = fallback_cursor;
+  g_object_set_data_full(G_OBJECT(handle), "vpfl-resize-handle", data, g_free);
+  g_signal_connect(handle, "realize", G_CALLBACK(resize_handle_realize_cb),
+                   data);
+  g_signal_connect(handle, "button-press-event",
+                   G_CALLBACK(resize_handle_press_cb), data);
+  gtk_overlay_add_overlay(overlay, handle);
+  gtk_overlay_set_overlay_pass_through(overlay, handle, FALSE);
+  gtk_widget_show(handle);
+  self->resize_handles[index] = handle;
+}
 
 static void lifecycle_log(const gchar* event) {
   if (g_strcmp0(g_getenv("VPFL_LIFECYCLE_TRACE"), "1") == 0) {
@@ -57,6 +145,9 @@ static gboolean window_delete_cb(GtkWidget* widget, GdkEvent* event,
 static void window_destroy_cb(GtkWidget* widget, gpointer user_data) {
   MyApplication* self = MY_APPLICATION(user_data);
   self->window = nullptr;
+  for (GtkWidget*& handle : self->resize_handles) {
+    handle = nullptr;
+  }
   if (self->close_timeout != 0) {
     g_source_remove(self->close_timeout);
     self->close_timeout = 0;
@@ -87,8 +178,7 @@ static void window_method_call(FlMethodChannel* channel,
       g_object_unref(data);
       return G_SOURCE_REMOVE;
     }, g_object_ref(window));
-  } else if (g_strcmp0(method, "startDrag") == 0 ||
-             g_strcmp0(method, "startResize") == 0) {
+  } else if (g_strcmp0(method, "startDrag") == 0) {
     FlValue* args = fl_method_call_get_args(call);
     FlValue* x = fl_value_lookup_string(args, "x");
     FlValue* y = fl_value_lookup_string(args, "y");
@@ -99,19 +189,8 @@ static void window_method_call(FlMethodChannel* channel,
       gdk_window_get_origin(gdk_window, &origin_x, &origin_y);
       const gint root_x = origin_x + fl_value_get_int(x);
       const gint root_y = origin_y + fl_value_get_int(y);
-      if (g_strcmp0(method, "startResize") == 0) {
-        FlValue* edge = fl_value_lookup_string(args, "edge");
-        if (edge != nullptr && fl_value_get_int(edge) >= 0 &&
-            fl_value_get_int(edge) <= 7 && !gtk_window_is_maximized(window) &&
-            !(gdk_window_get_state(gdk_window) & GDK_WINDOW_STATE_FULLSCREEN)) {
-          gtk_window_begin_resize_drag(
-              window, static_cast<GdkWindowEdge>(fl_value_get_int(edge)),
-              1, root_x, root_y, GDK_CURRENT_TIME);
-        }
-      } else {
-        gtk_window_begin_move_drag(window, 1, root_x, root_y,
-                                   GDK_CURRENT_TIME);
-      }
+      gtk_window_begin_move_drag(window, 1, root_x, root_y,
+                                 GDK_CURRENT_TIME);
     }
   } else if (g_strcmp0(method, "isMaximized") != 0) {
     response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
@@ -137,6 +216,8 @@ static void my_application_activate(GApplication* application) {
   self->close_requested = FALSE;
   g_signal_connect(window, "delete-event", G_CALLBACK(window_delete_cb), self);
   g_signal_connect(window, "destroy", G_CALLBACK(window_destroy_cb), self);
+  g_signal_connect(window, "window-state-event", G_CALLBACK(window_state_cb),
+                   self);
   gtk_window_set_icon_name(window, "com.app.vpfl");
   g_autofree gchar* executable_path = g_file_read_link("/proc/self/exe", nullptr);
   if (executable_path != nullptr) {
@@ -166,8 +247,39 @@ static void my_application_activate(GApplication* application) {
   // for transparent.
   gdk_rgba_parse(&background_color, "#000000");
   fl_view_set_background_color(view, &background_color);
+  GtkWidget* overlay = gtk_overlay_new();
+  gtk_container_add(GTK_CONTAINER(overlay), GTK_WIDGET(view));
+  gtk_container_add(GTK_CONTAINER(window), overlay);
   gtk_widget_show(GTK_WIDGET(view));
-  gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
+  gtk_widget_show(overlay);
+
+  // Native, input-only GTK edge windows sit over the Flutter surface. The
+  // corners are added last so their diagonal cursors win at intersections.
+  GtkOverlay* resize_overlay = GTK_OVERLAY(overlay);
+  add_resize_handle(self, resize_overlay, 0, GDK_WINDOW_EDGE_NORTH,
+                    "n-resize", GDK_TOP_SIDE, GTK_ALIGN_FILL, GTK_ALIGN_START,
+                    -1, 7);
+  add_resize_handle(self, resize_overlay, 1, GDK_WINDOW_EDGE_SOUTH,
+                    "s-resize", GDK_BOTTOM_SIDE, GTK_ALIGN_FILL, GTK_ALIGN_END,
+                    -1, 7);
+  add_resize_handle(self, resize_overlay, 2, GDK_WINDOW_EDGE_WEST,
+                    "w-resize", GDK_LEFT_SIDE, GTK_ALIGN_START, GTK_ALIGN_FILL,
+                    7, -1);
+  add_resize_handle(self, resize_overlay, 3, GDK_WINDOW_EDGE_EAST,
+                    "e-resize", GDK_RIGHT_SIDE, GTK_ALIGN_END, GTK_ALIGN_FILL,
+                    7, -1);
+  add_resize_handle(self, resize_overlay, 4, GDK_WINDOW_EDGE_NORTH_WEST,
+                    "nw-resize", GDK_TOP_LEFT_CORNER, GTK_ALIGN_START,
+                    GTK_ALIGN_START, 12, 12);
+  add_resize_handle(self, resize_overlay, 5, GDK_WINDOW_EDGE_NORTH_EAST,
+                    "ne-resize", GDK_TOP_RIGHT_CORNER, GTK_ALIGN_END,
+                    GTK_ALIGN_START, 12, 12);
+  add_resize_handle(self, resize_overlay, 6, GDK_WINDOW_EDGE_SOUTH_WEST,
+                    "sw-resize", GDK_BOTTOM_LEFT_CORNER, GTK_ALIGN_START,
+                    GTK_ALIGN_END, 12, 12);
+  add_resize_handle(self, resize_overlay, 7, GDK_WINDOW_EDGE_SOUTH_EAST,
+                    "se-resize", GDK_BOTTOM_RIGHT_CORNER, GTK_ALIGN_END,
+                    GTK_ALIGN_END, 12, 12);
 
   // Show the window when Flutter renders.
   // Requires the view to be realized so we can start rendering.

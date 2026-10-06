@@ -151,8 +151,6 @@ class _VpflAppState extends ConsumerState<VpflApp> {
       theme: VpflTheme.light,
       darkTheme: VpflTheme.dark,
       themeMode: _themeMode,
-      builder: (context, child) =>
-          WindowResizeBorder(child: child ?? const SizedBox.shrink()),
       home: _activeMediaUri != null || _activeStartupError != null
           ? PlayerScreen(
               initialMediaUri: _activeMediaUri,

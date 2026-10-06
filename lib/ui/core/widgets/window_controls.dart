@@ -64,19 +64,6 @@ abstract final class WindowCommands {
     }
   }
 
-  static Future<void> startResize(Offset position, int edge) async {
-    if (!Platform.isLinux) return;
-    try {
-      await _channel.invokeMethod<void>('startResize', {
-        'x': position.dx.round(),
-        'y': position.dy.round(),
-        'edge': edge,
-      });
-    } on MissingPluginException {
-      // Widget tests do not have the GTK runner.
-    }
-  }
-
   static Future<void> _call(String method) async {
     if (!Platform.isLinux) return;
     try {
@@ -96,43 +83,6 @@ abstract final class WindowCommands {
       return false;
     }
   }
-}
-
-/// Enables edge resizing for the decoration-free GTK window.
-class WindowResizeBorder extends StatelessWidget {
-  const WindowResizeBorder({required this.child, super.key});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: (event) {
-        if (event.buttons != kPrimaryMouseButton) return;
-        const edgeWidth = 7.0;
-        final p = event.localPosition;
-        final left = p.dx <= edgeWidth;
-        final right = p.dx >= constraints.maxWidth - edgeWidth;
-        final top = p.dy <= edgeWidth;
-        final bottom = p.dy >= constraints.maxHeight - edgeWidth;
-        final edge = switch ((left, right, top, bottom)) {
-          (true, _, true, _) => 0,
-          (_, true, true, _) => 2,
-          (true, _, _, true) => 5,
-          (_, true, _, true) => 7,
-          (_, _, true, _) => 1,
-          (true, _, _, _) => 3,
-          (_, true, _, _) => 4,
-          (_, _, _, true) => 6,
-          _ => null,
-        };
-        if (edge != null) {
-          unawaited(WindowCommands.startResize(event.position, edge));
-        }
-      },
-      child: child,
-    ),
-  );
 }
 
 /// A draggable region inside VPFL's own title bar.

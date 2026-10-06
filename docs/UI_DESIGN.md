@@ -46,7 +46,18 @@ Current desktop structure:
 Flutter draws the top bar and VPFL's own minimize, maximize/restore, and close
 buttons. The GTK runner removes system decorations and handles those actions
 through a window method channel. The title region drags the window and
-double-clicking it toggles maximize. The window edges support resizing.
+double-clicking it toggles maximize. GTK owns the window's resize hit areas:
+7 px along each edge and 12 px at each corner. Its native cursors appear on
+hover, and a primary-button press starts the window manager's resize drag.
+The hit areas are hidden while maximized or fullscreen.
+The previous Flutter `Listener` only requested a resize after pointer down, so
+the cursor did not change on hover. Keep hover, press, and edge selection in
+the GTK runner to avoid two competing resize paths.
+
+For a Linux desktop check, hover all four sides and four corners before
+clicking, drag from both side edges, then maximize the window. The resize
+cursors should disappear while maximized and return after restoring it.
+
 Buttons use themed hover, focus, and tooltips. The runner sets a 760 × 480
 minimum window size.
 
