@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 
+import '../core/themes/vpfl_theme_extension.dart';
+import '../core/themes/vpfl_typography.dart';
+
 /// Event-driven playback controls. Each stream only rebuilds the control that
 /// displays its value, keeping position updates away from the rest of the UI.
 class PlayerControls extends StatelessWidget {
@@ -85,8 +88,9 @@ class PlayerControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<VpflThemeExtension>()!;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 15),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -150,27 +154,45 @@ class PlayerControls extends StatelessWidget {
                         IconButton(
                           tooltip: 'Seek backward 10 seconds',
                           onPressed: () => onSeekBy(-_seekStep),
+                          iconSize: 23,
+                          constraints: const BoxConstraints(
+                            minWidth: 44,
+                            minHeight: 44,
+                          ),
                           icon: const Icon(Icons.replay_10_rounded),
                         ),
                         StreamBuilder<bool>(
                           stream: playingStream,
                           initialData: isPlaying,
-                          builder: (context, snapshot) =>
-                              IconButton.filledTonal(
-                                tooltip: (snapshot.data ?? isPlaying)
-                                    ? 'Pause'
-                                    : 'Play',
-                                onPressed: onPlayPause,
-                                icon: Icon(
-                                  (snapshot.data ?? isPlaying)
-                                      ? Icons.pause_rounded
-                                      : Icons.play_arrow_rounded,
-                                ),
-                              ),
+                          builder: (context, snapshot) => IconButton.filled(
+                            tooltip: (snapshot.data ?? isPlaying)
+                                ? 'Pause'
+                                : 'Play',
+                            onPressed: onPlayPause,
+                            iconSize: 27,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 46,
+                              height: 46,
+                            ),
+                            style: IconButton.styleFrom(
+                              backgroundColor: tokens.playerControlSurface,
+                              foregroundColor: tokens.playerControlForeground,
+                            ),
+                            icon: Icon(
+                              (snapshot.data ?? isPlaying)
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                            ),
+                          ),
                         ),
                         IconButton(
                           tooltip: 'Seek forward 10 seconds',
                           onPressed: () => onSeekBy(_seekStep),
+                          iconSize: 23,
+                          constraints: const BoxConstraints(
+                            minWidth: 44,
+                            minHeight: 44,
+                          ),
                           icon: const Icon(Icons.forward_10_rounded),
                         ),
                       ],
@@ -188,6 +210,7 @@ class PlayerControls extends StatelessWidget {
                           IconButton(
                             tooltip: 'Toggle fullscreen',
                             onPressed: onToggleFullscreen,
+                            iconSize: 22,
                             icon: const Icon(Icons.open_in_full_rounded),
                           ),
                         ],
@@ -221,6 +244,7 @@ class _SeekBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<VpflThemeExtension>()!;
     return StreamBuilder<Duration>(
       stream: durationStream,
       initialData: duration,
@@ -239,28 +263,49 @@ class _SeekBar extends StatelessWidget {
                 return Row(
                   children: [
                     SizedBox(
-                      width: 54,
-                      child: Text(_formatTime(currentMilliseconds)),
+                      width: 58,
+                      child: Text(
+                        _formatTime(currentMilliseconds),
+                        style: VpflTypography.timecode.copyWith(
+                          color: tokens.playerOverlayForeground,
+                        ),
+                      ),
                     ),
                     Expanded(
-                      child: Slider(
-                        min: 0,
-                        max: totalMilliseconds > 0
-                            ? totalMilliseconds.toDouble()
-                            : 1,
-                        value: currentMilliseconds.toDouble(),
-                        onChanged: totalMilliseconds > 0 ? (_) {} : null,
-                        onChangeEnd: totalMilliseconds > 0
-                            ? (double value) =>
-                                  onSeek(Duration(milliseconds: value.round()))
-                            : null,
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: tokens.playbackProgress,
+                          inactiveTrackColor: tokens.playerOverlayForeground
+                              .withValues(alpha: 0.35),
+                          thumbColor: tokens.playbackProgress,
+                          overlayColor: tokens.playbackProgress.withValues(
+                            alpha: 0.18,
+                          ),
+                          trackHeight: 3,
+                        ),
+                        child: Slider(
+                          min: 0,
+                          max: totalMilliseconds > 0
+                              ? totalMilliseconds.toDouble()
+                              : 1,
+                          value: currentMilliseconds.toDouble(),
+                          onChanged: totalMilliseconds > 0 ? (_) {} : null,
+                          onChangeEnd: totalMilliseconds > 0
+                              ? (double value) => onSeek(
+                                  Duration(milliseconds: value.round()),
+                                )
+                              : null,
+                        ),
                       ),
                     ),
                     SizedBox(
-                      width: 54,
+                      width: 58,
                       child: Text(
                         _formatTime(totalMilliseconds),
                         textAlign: TextAlign.end,
+                        style: VpflTypography.timecode.copyWith(
+                          color: tokens.playerOverlayForeground,
+                        ),
                       ),
                     ),
                   ],
@@ -273,7 +318,7 @@ class _SeekBar extends StatelessWidget {
 
   static String _formatTime(int milliseconds) {
     final Duration duration = Duration(milliseconds: milliseconds);
-    final String minutes = duration.inMinutes.toString().padLeft(2, '0');
+    final String minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
     final String seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
     if (duration.inHours > 0) {
       return '${duration.inHours}:$minutes:$seconds';

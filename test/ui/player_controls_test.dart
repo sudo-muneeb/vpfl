@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
 import 'package:vpfl/ui/player/player_controls.dart';
 
 void main() {
@@ -156,7 +157,10 @@ void main() {
   });
 }
 
-Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
+Widget _app(Widget child) => MaterialApp(
+  theme: VpflTheme.dark,
+  home: Scaffold(body: child),
+);
 
 PlayerControls _controls({
   Duration duration = const Duration(minutes: 2),

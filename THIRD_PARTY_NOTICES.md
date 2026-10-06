@@ -39,6 +39,11 @@ files shipped with the exact versions you redistribute.
 - **cupertino_icons 1.0.9** —
   [upstream](https://github.com/flutter/packages/tree/main/third_party/packages/cupertino_icons),
   MIT; copyright © Vladimir Kharlampidi. Bundled font asset.
+- **Noto Sans Display** — [upstream](https://github.com/notofonts/latin-greek-cyrillic),
+  SIL Open Font License 1.1; copyright © 2010, 2012–2020 Google Inc. and
+  © 2015–2020 Google LLC. VPFL bundles the Regular and Bold font files for its
+  interface. The license text and attribution are in
+  `assets/fonts/NOTO-COPYRIGHT` and included in the Flutter asset bundle.
 - **path 1.9.1 and jni 1.1.0** —
   [Dart packages](https://github.com/dart-lang), BSD-3-Clause; copyright © the
   Dart project authors. Pub dependencies. `libdartjni.so` is included as a

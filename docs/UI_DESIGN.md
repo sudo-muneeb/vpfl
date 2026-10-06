@@ -61,8 +61,9 @@ cursors should disappear while maximized and return after restoring it.
 Buttons use themed hover, focus, and tooltips. The runner sets a 760 × 480
 minimum window size.
 
-The shared top bar keeps the logo, current filename while playing, renderer
-badge, Open file, and appearance. Settings is reached from the sidebar. The
+The shared top bar keeps the canonical red and white VPFL logo, current
+filename while playing, understated renderer status, Open file, and
+appearance. Settings is reached from the sidebar. The
 player uses a Home navigation button. At compact widths, Open file becomes
 icon-only with a tooltip.
 
@@ -88,7 +89,10 @@ Settings
 * Add Folder opens the system folder picker.
 * Added folders appear below the Folders section.
 * Clicking a saved folder opens folder browsing for that root.
-* Sidebar should support narrow and normal width modes.
+* Sidebar supports narrow icon-only and normal labeled modes; saved folders
+  remain reachable in both.
+* One destination at a time uses a soft selected surface and small accent
+  indicator. Focus has a visible outline. Add Folder remains an action.
 * Do not use Android-style bottom navigation on desktop.
 
 ## Home screen
@@ -105,18 +109,20 @@ Each card may show:
 * placeholder if no thumbnail exists
 * title
 * playback progress
-* duration when known
 * last played time when useful
 
 Clicking the card opens the player.
 
 Recent and indexed media use a shared video-card component. A 16:9 preview
-area sits above the title and two short metadata lines. The current preview
-uses a themed placeholder and play icon; cached thumbnail display can be wired
-in when the artwork provider is available. Recent cards show watched
-progress on the preview when duration is known. Home uses responsive card
-rows; the full library and saved-folder views use a lazy grid. Entering the
-grid does not decode video or generate thumbnails.
+area sits above the title and short metadata. The preview uses a cached
+thumbnail when available and a themed placeholder otherwise. Recent cards
+show a red progress line when duration is known. Their watched position is
+hidden at rest and appears over the thumbnail on hover or keyboard focus,
+without changing the card's size. The full title is available in a tooltip.
+Completed videos keep a full progress line and a Completed label; they do not
+show a watched-time overlay.
+Home uses responsive card rows; the full library and saved-folder views use a
+lazy grid. Entering the grid does not decode video or generate thumbnails.
 
 A partially watched item resumes according to the resume policy.
 
@@ -412,7 +418,9 @@ It does not replace VPFL component design.
 
 ## Typography
 
-Keep typography centralized.
+VPFL bundles Noto Sans Display Regular and Bold under OFL-1.1 for an offline,
+consistent desktop sans-serif. The shared type scale lives in
+`ui/core/themes/vpfl_typography.dart`; player timecodes use tabular figures.
 
 Define roles instead of styling text ad hoc:
 

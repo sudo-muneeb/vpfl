@@ -11,22 +11,33 @@ class MediaGrid extends StatelessWidget {
   final ValueChanged<String> onOpenMedia;
 
   @override
-  Widget build(BuildContext context) => SliverGrid(
-    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-      maxCrossAxisExtent: 290,
-      mainAxisExtent: 248,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 20,
-    ),
-    delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
-      final item = items[index];
-      return MediaCard(
-        title: item.displayName,
-        status: 'Ready to play',
-        detail: item.path,
-        filePath: item.path,
-        onTap: () => onOpenMedia(item.uri),
+  Widget build(BuildContext context) => SliverLayoutBuilder(
+    builder: (context, constraints) {
+      const gap = 16.0;
+      final columns = ((constraints.crossAxisExtent + gap) / (290 + gap))
+          .ceil()
+          .clamp(1, 8);
+      final cardWidth =
+          (constraints.crossAxisExtent - gap * (columns - 1)) / columns;
+      final metadataHeight = MediaQuery.textScalerOf(context).scale(96);
+      return SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columns,
+          mainAxisExtent: cardWidth * 9 / 16 + metadataHeight,
+          crossAxisSpacing: gap,
+          mainAxisSpacing: 20,
+        ),
+        delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
+          final item = items[index];
+          return MediaCard(
+            title: item.displayName,
+            status: 'Ready to play',
+            detail: item.path,
+            filePath: item.path,
+            onTap: () => onOpenMedia(item.uri),
+          );
+        }, childCount: items.length),
       );
-    }, childCount: items.length),
+    },
   );
 }
