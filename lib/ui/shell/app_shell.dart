@@ -5,6 +5,7 @@ import '../../data/services/media_file_picker.dart';
 import '../../data/persistence_providers.dart';
 import '../../data/model/app_database.dart';
 import '../core/widgets/app_top_bar.dart';
+import '../core/themes/vpfl_theme_extension.dart';
 import '../folders/folders_screen.dart';
 import '../home/home_screen.dart';
 import '../library/library_screen.dart';
@@ -201,83 +202,93 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double width = compact ? 76 : 232;
-    return SizedBox(
-      width: width,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 16),
-            _NavigationItem(
-              compact: compact,
-              destination: AppDestination.home,
-              selected: destination == AppDestination.home,
-              icon: Icons.home_outlined,
-              label: 'Home',
-              onPressed: onDestinationSelected,
-            ),
-            _NavigationItem(
-              compact: compact,
-              destination: AppDestination.allVideos,
-              selected: destination == AppDestination.allVideos,
-              icon: Icons.video_library_outlined,
-              label: 'All Videos',
-              onPressed: onDestinationSelected,
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(compact ? 10 : 14, 24, 8, 8),
-              child: compact
-                  ? const Divider()
-                  : Text(
-                      'FOLDERS',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        letterSpacing: 1.1,
+    final tokens = Theme.of(context).extension<VpflThemeExtension>()!;
+    return ColoredBox(
+      color: tokens.sidebarBackground,
+      child: SizedBox(
+        width: width,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 16),
+              _NavigationItem(
+                compact: compact,
+                destination: AppDestination.home,
+                selected: destination == AppDestination.home,
+                icon: Icons.home_outlined,
+                label: 'Home',
+                onPressed: onDestinationSelected,
+              ),
+              _NavigationItem(
+                compact: compact,
+                destination: AppDestination.allVideos,
+                selected: destination == AppDestination.allVideos,
+                icon: Icons.video_library_outlined,
+                label: 'All Videos',
+                onPressed: onDestinationSelected,
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(compact ? 10 : 14, 24, 8, 8),
+                child: compact
+                    ? const Divider()
+                    : Text(
+                        'FOLDERS',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          letterSpacing: 1.1,
+                        ),
                       ),
-                    ),
-            ),
-            _NavigationItem(
-              compact: compact,
-              destination: AppDestination.folders,
-              selected: false,
-              icon: Icons.folder_outlined,
-              label: 'Add Folder',
-              onPressed: (_) => onAddFolder(),
-            ),
-            if (!compact)
-              for (final SavedFolder folder in folders)
-                Padding(
-                  padding: const EdgeInsets.only(left: 10),
-                  child: _NavigationItem(
-                    compact: false,
-                    destination: AppDestination.folders,
-                    selected:
-                        destination == AppDestination.folders &&
-                        selectedFolderId == folder.id,
-                    icon: Icons.folder_outlined,
-                    label: folder.displayName,
-                    onPressed: (_) => onFolderSelected(folder),
-                  ),
+              ),
+              _NavigationItem(
+                compact: compact,
+                destination: AppDestination.folders,
+                selected: false,
+                icon: Icons.create_new_folder_outlined,
+                label: 'Add Folder',
+                onPressed: (_) => onAddFolder(),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: folders.length,
+                  itemBuilder: (context, index) {
+                    final folder = folders[index];
+                    return Padding(
+                      padding: EdgeInsets.only(left: compact ? 0 : 10),
+                      child: _NavigationItem(
+                        compact: compact,
+                        destination: AppDestination.folders,
+                        selected:
+                            destination == AppDestination.folders &&
+                            selectedFolderId == folder.id,
+                        icon: Icons.folder_outlined,
+                        label: folder.displayName,
+                        onPressed: (_) => onFolderSelected(folder),
+                      ),
+                    );
+                  },
                 ),
-            const Spacer(),
-            _NavigationItem(
-              compact: compact,
-              destination: AppDestination.settings,
-              selected: destination == AppDestination.settings,
-              icon: Icons.settings_outlined,
-              label: 'Settings',
-              onPressed: onDestinationSelected,
-            ),
-            const SizedBox(height: 16),
-          ],
+              ),
+              _NavigationItem(
+                compact: compact,
+                destination: AppDestination.settings,
+                selected: destination == AppDestination.settings,
+                icon: Icons.settings_outlined,
+                label: 'Settings',
+                onPressed: onDestinationSelected,
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _NavigationItem extends StatelessWidget {
+class _NavigationItem extends StatefulWidget {
   const _NavigationItem({
     required this.compact,
     required this.destination,
@@ -295,39 +306,83 @@ class _NavigationItem extends StatelessWidget {
   final ValueChanged<AppDestination> onPressed;
 
   @override
+  State<_NavigationItem> createState() => _NavigationItemState();
+}
+
+class _NavigationItemState extends State<_NavigationItem> {
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
-    final Color foreground = selected
-        ? Theme.of(context).colorScheme.primary
+    final tokens = Theme.of(context).extension<VpflThemeExtension>()!;
+    final Color foreground = widget.selected
+        ? Theme.of(context).colorScheme.onSurface
         : Theme.of(context).colorScheme.onSurfaceVariant;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Tooltip(
-        message: label,
-        child: Material(
-          color: selected
-              ? Theme.of(context).colorScheme.secondaryContainer
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: () => onPressed(destination),
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              height: 46,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 14),
-                child: compact
-                    ? Center(child: Icon(icon, color: foreground))
-                    : Row(
-                        children: [
-                          Icon(icon, color: foreground, size: 20),
-                          const SizedBox(width: 12),
-                          Text(
-                            label,
-                            style: Theme.of(context).textTheme.labelLarge
-                                ?.copyWith(color: foreground),
-                          ),
-                        ],
-                      ),
+        message: widget.label,
+        child: AnimatedContainer(
+          duration: MediaQuery.maybeOf(context)?.disableAnimations == true
+              ? Duration.zero
+              : const Duration(milliseconds: 120),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: _focused ? tokens.sidebarFocus : Colors.transparent,
+            ),
+          ),
+          child: Material(
+            color: widget.selected
+                ? tokens.sidebarSelected
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              onTap: () => widget.onPressed(widget.destination),
+              onFocusChange: (value) => setState(() => _focused = value),
+              hoverColor: tokens.sidebarHover,
+              focusColor: Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                height: 42,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: widget.compact ? 0 : 12,
+                  ),
+                  child: widget.compact
+                      ? Center(child: Icon(widget.icon, color: foreground))
+                      : Row(
+                          children: [
+                            if (widget.selected) ...[
+                              Container(
+                                width: 3,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: tokens.sidebarFocus,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Icon(widget.icon, color: foreground, size: 19),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Text(
+                                widget.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      color: foreground,
+                                      fontWeight: widget.selected
+                                          ? FontWeight.w700
+                                          : FontWeight.w400,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
 import 'package:vpfl/ui/core/widgets/app_top_bar.dart';
 import 'package:vpfl/ui/core/widgets/window_controls.dart';
 
@@ -31,6 +32,7 @@ void main() {
     var openCount = 0;
     await tester.pumpWidget(
       MaterialApp(
+        theme: VpflTheme.light,
         home: Scaffold(
           body: AppTopBar(
             title: 'movie.mp4',

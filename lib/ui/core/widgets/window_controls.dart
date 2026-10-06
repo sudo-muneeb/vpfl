@@ -185,8 +185,8 @@ class _WindowButton extends StatelessWidget {
             ? scheme.errorContainer
             : scheme.secondaryContainer,
         iconSize: 19,
-        constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
-        icon: Icon(icon, color: close ? scheme.error : scheme.onSurfaceVariant),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+        icon: Icon(icon, color: scheme.onSurfaceVariant),
       ),
     );
   }

@@ -14,78 +14,89 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recent = ref.watch(recentPlaybackProvider);
     final library = ref.watch(libraryMediaProvider);
-    return ListView(
-      padding: const EdgeInsets.all(32),
-      children: [
-        Text('Home', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 8),
-        Text(
-          'Your local videos, ready when you are.',
-          style: Theme.of(context).textTheme.bodyLarge
-              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
-        const SizedBox(height: 32),
-        _SectionHeading(
-          title: 'Recent videos',
-          subtitle: 'Pick up where you left off.',
-        ),
-        const SizedBox(height: 12),
-        recent.when(
-          data: (List<PlaybackHistory> entries) => entries.isEmpty
-              ? const _EmptyLibraryCard(
-                  icon: Icons.history,
-                  title: 'Nothing played yet',
-                  message: 'Videos you play will appear here.',
-                )
-              : _HomeCardGrid(
-                  cards: [
-                    for (final entry in entries.take(8))
-                      _RecentMediaCard(
-                        entry: entry,
-                        onTap: () => onOpenMedia(entry.uri),
-                      ),
-                  ],
-                ),
-          loading: () => const LinearProgressIndicator(),
-          error: (Object error, StackTrace stack) => _EmptyLibraryCard(
-            icon: Icons.error_outline,
-            title: 'History is unavailable',
-            message: error.toString(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final horizontalPadding = constraints.maxWidth < 700 ? 24.0 : 36.0;
+        return ListView(
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            34,
+            horizontalPadding,
+            40,
           ),
-        ),
-        const SizedBox(height: 32),
-        _SectionHeading(
-          title: 'All videos',
-          subtitle: 'Your indexed video library.',
-        ),
-        const SizedBox(height: 12),
-        library.when(
-          data: (items) => items.isEmpty
-              ? const _EmptyLibraryCard(
-                  icon: Icons.video_library_outlined,
-                  title: 'Your library is empty',
-                  message: 'Add a folder to start building your library.',
-                )
-              : _HomeCardGrid(
-                  cards: [
-                    for (final item in items.take(8))
-                      MediaCard(
-                        title: item.displayName,
-                        status: 'Ready to play',
-                        detail: item.path,
-                        filePath: item.path,
-                        onTap: () => onOpenMedia(item.uri),
-                      ),
-                  ],
-                ),
-          loading: () => const LinearProgressIndicator(),
-          error: (Object error, StackTrace stack) => _EmptyLibraryCard(
-            icon: Icons.error_outline,
-            title: 'Library is unavailable',
-            message: error.toString(),
-          ),
-        ),
-      ],
+          children: [
+            Text('Home', style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: 8),
+            Text(
+              'Your local videos, ready when you are.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 40),
+            _SectionHeading(
+              title: 'Recent videos',
+              subtitle: 'Pick up where you left off.',
+            ),
+            const SizedBox(height: 16),
+            recent.when(
+              data: (List<PlaybackHistory> entries) => entries.isEmpty
+                  ? const _EmptyLibraryCard(
+                      icon: Icons.history,
+                      title: 'Nothing played yet',
+                      message: 'Videos you play will appear here.',
+                    )
+                  : _HomeCardGrid(
+                      cards: [
+                        for (final entry in entries.take(8))
+                          _RecentMediaCard(
+                            entry: entry,
+                            onTap: () => onOpenMedia(entry.uri),
+                          ),
+                      ],
+                    ),
+              loading: () => const LinearProgressIndicator(),
+              error: (Object error, StackTrace stack) => _EmptyLibraryCard(
+                icon: Icons.error_outline,
+                title: 'History is unavailable',
+                message: error.toString(),
+              ),
+            ),
+            const SizedBox(height: 42),
+            _SectionHeading(
+              title: 'All videos',
+              subtitle: 'Your indexed video library.',
+            ),
+            const SizedBox(height: 16),
+            library.when(
+              data: (items) => items.isEmpty
+                  ? const _EmptyLibraryCard(
+                      icon: Icons.video_library_outlined,
+                      title: 'Your library is empty',
+                      message: 'Add a folder to start building your library.',
+                    )
+                  : _HomeCardGrid(
+                      cards: [
+                        for (final item in items.take(8))
+                          MediaCard(
+                            title: item.displayName,
+                            status: 'Ready to play',
+                            detail: item.path,
+                            filePath: item.path,
+                            onTap: () => onOpenMedia(item.uri),
+                          ),
+                      ],
+                    ),
+              loading: () => const LinearProgressIndicator(),
+              error: (Object error, StackTrace stack) => _EmptyLibraryCard(
+                icon: Icons.error_outline,
+                title: 'Library is unavailable',
+                message: error.toString(),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -101,11 +112,16 @@ class _RecentMediaCard extends StatelessWidget {
     final hasDuration = entry.durationMs > 0;
     return MediaCard(
       title: entry.displayName,
-      status: hasDuration
-          ? '${_time(entry.positionMs)} / ${_time(entry.durationMs)} watched'
-          : 'Played ${entry.watchCount} ${entry.watchCount == 1 ? 'time' : 'times'}',
-      detail: entry.completed ? 'Completed' : 'Recent playback',
-      progress: hasDuration ? entry.positionMs / entry.durationMs : null,
+      status: entry.completed ? 'Completed' : 'Recent playback',
+      detail: null,
+      watchedTime: hasDuration && !entry.completed
+          ? '${_time(entry.positionMs)} / ${_time(entry.durationMs)}'
+          : null,
+      progress: entry.completed
+          ? 1
+          : hasDuration
+          ? entry.positionMs / entry.durationMs
+          : null,
       filePath: _localPath(entry.uri),
       onTap: onTap,
     );
@@ -118,9 +134,11 @@ class _RecentMediaCard extends StatelessWidget {
 
   String _time(int milliseconds) {
     final duration = Duration(milliseconds: milliseconds);
-    final minutes = duration.inMinutes.toString().padLeft(2, '0');
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
     final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
+    return duration.inHours > 0
+        ? '${duration.inHours}:$minutes:$seconds'
+        : '$minutes:$seconds';
   }
 }
 
@@ -132,12 +150,12 @@ class _HomeCardGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      const gap = 16.0;
-      final columns = ((constraints.maxWidth + gap) / 250).floor().clamp(1, 5);
+      const gap = 18.0;
+      final columns = ((constraints.maxWidth + gap) / 260).floor().clamp(1, 5);
       final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
       return Wrap(
         spacing: gap,
-        runSpacing: 20,
+        runSpacing: 18,
         children: [
           for (final card in cards) SizedBox(width: width, child: card),
         ],
@@ -158,7 +176,7 @@ class _SectionHeading extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 3),
+        const SizedBox(height: 5),
         Text(
           subtitle,
           style: Theme.of(context).textTheme.bodyMedium
