@@ -213,6 +213,9 @@ multi-item queue exists. Opening a local file builds a queue from video files
 in the same directory if folder access permits it. The end buttons disable
 at the start and end of the queue. A single file or inaccessible parent
 folder has no edge navigation.
+If a file fails to open, show its error with Previous and Next actions for
+the retained directory queue. Keep the selected item in place until the user
+chooses another; decoder warnings that recover must not replace the video.
 
 When controls are active, a light gray translucent gradient improves their
 legibility on bright frames. Controls and edge buttons fade out after idle

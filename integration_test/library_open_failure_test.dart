@@ -22,11 +22,13 @@ void main() {
     tester,
   ) async {
     final directory = await Directory.systemTemp.createTemp('vpfl-open-');
+    final before = File('${directory.path}/a-valid.mp4');
     final declaration = File('${directory.path}/a.d.mts');
     final corrupt = File('${directory.path}/b-broken.mp4');
     final valid = File('${directory.path}/c-valid.mp4');
     await declaration.writeAsString('export type X = string;');
     await corrupt.writeAsString('not a video');
+    await File(source).copy(before.path);
     await File(source).copy(valid.path);
     final declarationUri = Uri.file(declaration.path).toString();
     final corruptUri = Uri.file(corrupt.path).toString();
@@ -65,6 +67,8 @@ void main() {
       }
       expect(find.text('VPFL could not open this file.'), findsOneWidget);
       expect(playback.isPlaying, isFalse);
+      expect(playback.playlist.medias, hasLength(3));
+      expect(playback.playlist.index, 1);
       expect(
         selectedDuringFailure.every(
           (uri) => Uri.tryParse(uri)?.pathSegments.last == 'b-broken.mp4',
@@ -72,11 +76,35 @@ void main() {
         isTrue,
       );
 
-      await playback.openWithDirectory(validUri);
-      for (var i = 0; i < 100 && !playback.isPlaying; i++) {
+      await tester.tap(find.text('Previous video'));
+      for (var i = 0; i < 100 && !playback.hasVideoOutput; i++) {
         await tester.pump(const Duration(milliseconds: 200));
       }
+      expect(find.text('VPFL could not open this file.'), findsNothing);
+      expect(playback.hasVideoOutput, isTrue);
       expect(playback.isPlaying, isTrue);
+      expect(playback.playlist.index, 0);
+
+      await playback.openWithDirectory(corruptUri);
+      for (
+        var i = 0;
+        i < 100 &&
+            find.text('VPFL could not open this file.').evaluate().isEmpty;
+        i++
+      ) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      expect(find.text('VPFL could not open this file.'), findsOneWidget);
+      expect(playback.playlist.index, 1);
+
+      await tester.tap(find.text('Next video'));
+      for (var i = 0; i < 100 && !playback.hasVideoOutput; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      expect(find.text('VPFL could not open this file.'), findsNothing);
+      expect(playback.hasVideoOutput, isTrue);
+      expect(playback.isPlaying, isTrue);
+      expect(playback.playlist.index, 2);
       expect(
         Uri.tryParse(playback.playlist.medias[playback.playlist.index].uri)
             ?.pathSegments

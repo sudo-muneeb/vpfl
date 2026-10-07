@@ -16,6 +16,9 @@ class PlaybackService {
     : _player = Player(
         configuration: const PlayerConfiguration(libass: true, title: 'VPFL'),
       ) {
+    _nativeErrorSubscription = _player.stream.error.listen((message) {
+      stderr.writeln('VPFL playback error: $message');
+    });
     _nativePlaylistSubscription = _player.stream.playlist.listen((playlist) {
       if (_directoryQueue == null && !_playlistController.isClosed) {
         _playlistController.add(playlist);
@@ -32,6 +35,7 @@ class PlaybackService {
   final int sessionId = ++_nextSessionId;
 
   final Player _player;
+  late final StreamSubscription<String> _nativeErrorSubscription;
   final StreamController<Playlist> _playlistController =
       StreamController<Playlist>.broadcast(sync: true);
   late final StreamSubscription<Playlist> _nativePlaylistSubscription;
@@ -61,6 +65,10 @@ class PlaybackService {
 
   /// The loaded media duration.
   Duration get duration => _player.state.duration;
+
+  /// Whether mpv has produced video dimensions for the current source.
+  bool get hasVideoOutput =>
+      (_player.state.width ?? 0) > 0 && (_player.state.height ?? 0) > 0;
 
   /// Current playback rate.
   double get rate => _player.state.rate;
@@ -380,6 +388,9 @@ class PlaybackService {
     LifecycleTrace.event('player.stop.complete', session: sessionId);
   }
 
+  /// Stops a failed source without discarding its directory navigation queue.
+  Future<void> stopFailedMedia() => _enqueueOpen(() => _player.stop());
+
   /// Releases the player; media_kit releases VideoController via its callback.
   Future<void> dispose() => _disposeFuture ??= _dispose();
 
@@ -395,6 +406,7 @@ class PlaybackService {
       );
     }
     await _player.dispose();
+    await _nativeErrorSubscription.cancel();
     await _nativePlaylistSubscription.cancel();
     await _playlistController.close();
     if (_videoControllerCreated) {

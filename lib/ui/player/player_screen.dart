@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../data/playback_service_provider.dart';
@@ -59,7 +61,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription<dynamic>? _playlistSubscription;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<String>? _errorSubscription;
+  Timer? _errorProbe;
   String? _playingUri;
+  int? _selectedQueueIndex;
+  int _errorGeneration = 0;
   int _playGeneration = 0;
   int _openGeneration = 0;
   int _countedGeneration = 0;
@@ -79,22 +84,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         return;
       }
       final String uri = queue.medias[queue.index].uri;
-      if (uri != _playingUri) _playGeneration += 1;
+      if (uri != _playingUri) ++_openGeneration;
+      if (uri != _playingUri || queue.index != _selectedQueueIndex) {
+        _resetMediaError();
+        _playGeneration += 1;
+      }
+      _selectedQueueIndex = queue.index;
       setState(() => _playingUri = uri);
     });
     _playingSubscription = _playback.playingStream.listen((playing) {
       if (playing) _recordPromptPlayIfNeeded();
     });
-    _errorSubscription = _playback.errorStream.listen((_) {
-      if (!mounted || widget.initialMediaUri == null) return;
-      LifecycleTrace.event(
-        'media.open.failed',
-        session: _playback.sessionId,
-        detail: 'reason=unsupported-or-invalid',
-      );
-      unawaited(_playback.stop());
-      setState(() => _mediaError = 'VPFL could not open this file.');
-    });
+    _errorSubscription = _playback.errorStream.listen(_handlePlayerError);
     ref.read(playbackHistoryRecorderProvider);
     unawaited(_readRenderingMode());
     if (widget.initialMediaUri case final String uri) {
@@ -121,6 +122,62 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       }
     });
   }
+
+  void _resetMediaError() {
+    _errorProbe?.cancel();
+    ++_errorGeneration;
+    _mediaError = null;
+  }
+
+  void _handlePlayerError(String _) {
+    if (!mounted || _playingUri == null || _mediaError != null) return;
+    // media_kit forwards mpv decoder log messages as errors, including
+    // recoverable hardware-decoder failures. Wait for actual video or playback
+    // progress before deciding that the source cannot be opened.
+    final generation = _errorGeneration;
+    _errorProbe?.cancel();
+    _errorProbe = Timer(const Duration(seconds: 3), () {
+      if (!mounted || generation != _errorGeneration) return;
+      if (_playback.hasVideoOutput || _playback.position > Duration.zero) {
+        return;
+      }
+      _showMediaError('VPFL could not open this file.');
+    });
+  }
+
+  void _showMediaError(String message) {
+    if (!mounted) return;
+    _errorProbe?.cancel();
+    LifecycleTrace.event(
+      'media.open.failed',
+      session: _playback.sessionId,
+      detail: 'reason=unsupported-or-invalid',
+    );
+    setState(() => _mediaError = message);
+    unawaited(_stopFailedMedia());
+  }
+
+  Future<void> _stopFailedMedia() async {
+    try {
+      await _playback.stopFailedMedia();
+    } on Object catch (error, stackTrace) {
+      stderr.writeln('VPFL could not stop failed media: $error\n$stackTrace');
+    }
+  }
+
+  Future<void> _navigate(Future<void> Function() action) async {
+    try {
+      await action();
+    } on Object catch (error, stackTrace) {
+      stderr.writeln(
+        'VPFL could not open the selected video: $error\n$stackTrace',
+      );
+      _showMediaError('Could not open this media file: $error');
+    }
+  }
+
+  Future<void> _previousVideo() => _navigate(_playback.previous);
+  Future<void> _nextVideo() => _navigate(_playback.next);
 
   Future<void> _pickAndOpenFile() async {
     try {
@@ -221,6 +278,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   void dispose() {
     ++_openGeneration;
+    _errorProbe?.cancel();
     _shortcutFocus.dispose();
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
@@ -331,6 +389,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _openMedia(String uri) async {
     final int openGeneration = ++_openGeneration;
+    _resetMediaError();
     _playGeneration += 1;
     Duration? resumePosition;
     try {
@@ -358,21 +417,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (resumePosition != null) {
         await _playback.seek(resumePosition);
       }
-    } on Object catch (error) {
-      if (mounted) {
-        await _playback.stop();
-        if (mounted) {
-          LifecycleTrace.event(
-            'media.open.failed',
-            session: _playback.sessionId,
-            detail: 'reason=unsupported-or-invalid',
-          );
-          setState(
-            () => _mediaError = error is UnsupportedMediaException
-                ? 'VPFL could not open this file.'
-                : 'Could not open this media file: $error',
-          );
-        }
+    } on Object catch (error, stackTrace) {
+      stderr.writeln('VPFL could not open $uri: $error\n$stackTrace');
+      if (mounted && openGeneration == _openGeneration) {
+        _showMediaError(
+          error is UnsupportedMediaException
+              ? 'VPFL could not open this file.'
+              : 'Could not open this media file: $error',
+        );
       }
     }
   }
@@ -472,8 +524,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   fullscreen: state.isFullscreen(),
                                   playlist: _playback.playlist,
                                   playlistStream: _playback.playlistStream,
-                                  onPrevious: _playback.previous,
-                                  onNext: _playback.next,
+                                  onPrevious: _previousVideo,
+                                  onNext: _nextVideo,
                                   controls: _buildPlayerControls(
                                     onToggleFullscreen: state.toggleFullscreen,
                                   ),
@@ -481,7 +533,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   bindings: _fullscreenShortcuts(state),
                                 ),
                           )
-                        : _EmptyPlayer(error: error),
+                        : _EmptyPlayer(
+                            error: error,
+                            playlist: _playback.playlist,
+                            playlistStream: _playback.playlistStream,
+                            onPrevious: _previousVideo,
+                            onNext: _nextVideo,
+                          ),
                   ),
                 ),
               ],
@@ -527,8 +585,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     onSetTrack: _playback.setTrack,
     onLoadSubtitleFile: _pickSubtitleFile,
     onSeekBy: _playback.seekBy,
-    onPrevious: _playback.previous,
-    onNext: _playback.next,
+    onPrevious: _previousVideo,
+    onNext: _nextVideo,
     onToggleFullscreen: onToggleFullscreen,
   );
 
@@ -544,9 +602,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 }
 
 class _EmptyPlayer extends StatelessWidget {
-  const _EmptyPlayer({required this.error});
+  const _EmptyPlayer({
+    required this.error,
+    required this.playlist,
+    required this.playlistStream,
+    required this.onPrevious,
+    required this.onNext,
+  });
 
   final String? error;
+  final Playlist playlist;
+  final Stream<Playlist> playlistStream;
+  final Future<void> Function() onPrevious;
+  final Future<void> Function() onNext;
 
   @override
   Widget build(BuildContext context) {
@@ -564,6 +632,35 @@ class _EmptyPlayer extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium
                 ?.copyWith(color: foreground),
           ),
+          if (error != null) ...[
+            const SizedBox(height: 24),
+            StreamBuilder<Playlist>(
+              stream: playlistStream,
+              initialData: playlist,
+              builder: (context, snapshot) {
+                final queue = snapshot.data ?? playlist;
+                if (queue.medias.length < 2) return const SizedBox.shrink();
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: queue.index > 0 ? onPrevious : null,
+                      icon: const Icon(Icons.skip_previous_rounded),
+                      label: const Text('Previous video'),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: queue.index < queue.medias.length - 1
+                          ? onNext
+                          : null,
+                      icon: const Icon(Icons.skip_next_rounded),
+                      label: const Text('Next video'),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
         ],
       ),
     );
