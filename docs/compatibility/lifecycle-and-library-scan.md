@@ -107,9 +107,10 @@ does not call `next()`. The new path validates the selected local format and
 regular file, filters nearby items with the automatic policy, and gives mpv
 only the selected item. VPFL retains the directory list for explicit
 Next/Previous navigation. Explicit queues use the same one-item-at-a-time
-approach. An asynchronous media error stops playback and displays `VPFL could
-not open this file.`; failed opens log `media.open.failed` with the reason
-`unsupported-or-invalid` when lifecycle tracing is enabled. Successful normal
+approach. At the time, any asynchronous media error stopped playback and
+displayed `VPFL could not open this file.`; failed opens logged
+`media.open.failed` with the reason `unsupported-or-invalid` when lifecycle
+tracing was enabled. Successful normal
 end does not auto-advance through a directory; the user can press Next.
 
 Before modifying the populated database, a SQLite backup was saved at
@@ -146,6 +147,22 @@ passed, the active-database rescan test passed, and `flutter build linux
 --release` produced `build/linux/x64/release/bundle/vpfl`. The native test
 again printed the known renderer teardown warning `0x3002`; it did not fail
 or leave playback running.
+
+## Follow-up: recoverable decoder errors, 7 October 2026
+
+Commit `4ae9ef6` introduced a player error listener that treated every
+`media_kit` error message as a fatal open failure. `videos/2.mp4` is a valid
+H.264 10-bit file: libmpv emits `Could not open codec.` while trying a decoder,
+then renders the video through its fallback. The listener stopped playback
+before that recovery could complete and cleared the directory queue.
+
+VPFL now prints the exact engine message to standard error when run from a
+terminal. It waits briefly after an asynchronous error and shows the failure
+screen only if the source produces neither video output nor playback progress.
+A genuinely failed source stops without discarding its queue; the failure
+screen offers Previous and Next for the available neighbors. The native Linux
+regression tests cover `2.mp4` after the decoder warning and both directions
+from a corrupt MP4.
 
 ## Local validation and limits
 
