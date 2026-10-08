@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
+
+import '../../data/model/real_media_tracks.dart';
 
 import '../core/themes/vpfl_theme_extension.dart';
 import '../core/themes/vpfl_typography.dart';
@@ -34,8 +38,7 @@ class PlayerControls extends StatelessWidget {
     required this.fit,
     required this.onSetFit,
     required this.onScreenshot,
-    required this.onShowMediaInfo,
-    required this.onShowDiagnostics,
+    required this.onShowInfo,
     required this.tracks,
     required this.tracksStream,
     required this.onSetTrack,
@@ -72,8 +75,7 @@ class PlayerControls extends StatelessWidget {
   final BoxFit fit;
   final ValueChanged<BoxFit> onSetFit;
   final Future<void> Function() onScreenshot;
-  final VoidCallback onShowMediaInfo;
-  final VoidCallback onShowDiagnostics;
+  final VoidCallback onShowInfo;
   final Tracks tracks;
   final Stream<Tracks> tracksStream;
   final Future<void> Function(Object) onSetTrack;
@@ -124,8 +126,7 @@ class PlayerControls extends StatelessWidget {
                             fit: fit,
                             onSetFit: onSetFit,
                             onScreenshot: onScreenshot,
-                            onShowMediaInfo: onShowMediaInfo,
-                            onShowDiagnostics: onShowDiagnostics,
+                            onShowInfo: onShowInfo,
                           ),
                           _VolumeControl(
                             volume: volume,
@@ -421,13 +422,15 @@ class _VolumeControl extends StatelessWidget {
             ),
             if (showSlider)
               SizedBox(
-                width: 84,
+                width: 125,
                 child: Slider(
                   min: 0,
                   max: 100,
                   value: value,
-                  onChanged: (_) {},
-                  onChangeEnd: onSetVolume,
+                  label: '${value.round()}%',
+                  semanticFormatterCallback: (value) =>
+                      'Volume ${value.round()} percent',
+                  onChanged: (value) => unawaited(onSetVolume(value)),
                 ),
               ),
           ],
@@ -542,8 +545,7 @@ class _OverflowMenu extends StatelessWidget {
     required this.fit,
     required this.onSetFit,
     required this.onScreenshot,
-    required this.onShowMediaInfo,
-    required this.onShowDiagnostics,
+    required this.onShowInfo,
   });
 
   final Tracks tracks;
@@ -555,8 +557,7 @@ class _OverflowMenu extends StatelessWidget {
   final BoxFit fit;
   final ValueChanged<BoxFit> onSetFit;
   final Future<void> Function() onScreenshot;
-  final VoidCallback onShowMediaInfo;
-  final VoidCallback onShowDiagnostics;
+  final VoidCallback onShowInfo;
 
   @override
   Widget build(BuildContext context) => StreamBuilder<Tracks>(
@@ -628,19 +629,17 @@ class _OverflowMenu extends StatelessWidget {
                     if (selectedFit != null) onSetFit(selectedFit);
                   case _PlayerActionKind.screenshot:
                     await onScreenshot();
-                  case _PlayerActionKind.mediaInfo:
-                    onShowMediaInfo();
-                  case _PlayerActionKind.diagnostics:
-                    onShowDiagnostics();
+                  case _PlayerActionKind.info:
+                    onShowInfo();
                 }
               },
               itemBuilder: (BuildContext context) => [
-                if (available.audio.isNotEmpty)
+                if (RealMediaTracks(available).audio.isNotEmpty)
                   const PopupMenuItem<_PlayerAction>(
                     value: _PlayerAction(_PlayerActionKind.audioTracks),
                     child: Text('Audio tracks…'),
                   ),
-                if (available.video.length > 1)
+                if (RealMediaTracks(available).video.length > 1)
                   const PopupMenuItem<_PlayerAction>(
                     value: _PlayerAction(_PlayerActionKind.videoTracks),
                     child: Text('Video tracks…'),
@@ -659,12 +658,8 @@ class _OverflowMenu extends StatelessWidget {
                   child: Text('Save screenshot…'),
                 ),
                 const PopupMenuItem<_PlayerAction>(
-                  value: _PlayerAction(_PlayerActionKind.mediaInfo),
-                  child: Text('Media information'),
-                ),
-                const PopupMenuItem<_PlayerAction>(
-                  value: _PlayerAction(_PlayerActionKind.diagnostics),
-                  child: Text('Playback diagnostics'),
+                  value: _PlayerAction(_PlayerActionKind.info),
+                  child: Text('Info'),
                 ),
               ],
               icon: const Icon(Icons.more_vert),
@@ -735,8 +730,7 @@ enum _PlayerActionKind {
   playlistMode,
   fit,
   screenshot,
-  mediaInfo,
-  diagnostics,
+  info,
 }
 
 class _PlayerAction {

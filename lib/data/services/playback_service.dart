@@ -88,6 +88,9 @@ class PlaybackService {
   /// Available audio, subtitle, and video tracks for the current media.
   Tracks get tracks => _player.state.tracks;
 
+  VideoParams get videoParams => _player.state.videoParams;
+  AudioParams get audioParams => _player.state.audioParams;
+
   /// Currently selected tracks.
   Track get selectedTracks => _player.state.track;
 
@@ -120,6 +123,20 @@ class PlaybackService {
 
   /// Emits available track changes for the active media.
   Stream<Tracks> get tracksStream => _player.stream.tracks;
+  Stream<VideoParams> get videoParamsStream => _player.stream.videoParams;
+  Stream<AudioParams> get audioParamsStream => _player.stream.audioParams;
+
+  /// Native-only diagnostic, queried when the inspector is visible.
+  Future<String?> hardwareDecoder() async {
+    final platform = _player.platform;
+    if (platform is! NativePlayer) return null;
+    try {
+      final value = await platform.getProperty('hwdec-current');
+      return value.isEmpty ? null : value;
+    } on Object {
+      return null;
+    }
+  }
 
   /// Emits selected track changes.
   Stream<Track> get selectedTracksStream => _player.stream.track;

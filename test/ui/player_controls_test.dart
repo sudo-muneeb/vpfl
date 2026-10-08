@@ -121,18 +121,16 @@ void main() {
     expect(selectedFit, BoxFit.cover);
   });
 
-  testWidgets('overflow menu exposes screenshot, media info, and diagnostics', (
+  testWidgets('overflow menu exposes screenshot and one info action', (
     tester,
   ) async {
     bool screenshotRequested = false;
-    bool mediaInfoRequested = false;
-    bool diagnosticsRequested = false;
+    bool infoRequested = false;
     await tester.pumpWidget(
       _app(
         _controls(
           onScreenshot: () async => screenshotRequested = true,
-          onShowMediaInfo: () => mediaInfoRequested = true,
-          onShowDiagnostics: () => diagnosticsRequested = true,
+          onShowInfo: () => infoRequested = true,
         ),
       ),
     );
@@ -145,15 +143,35 @@ void main() {
 
     await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Media information'));
+    await tester.tap(find.text('Info'));
     await tester.pumpAndSettle();
-    expect(mediaInfoRequested, isTrue);
+    expect(infoRequested, isTrue);
+  });
 
-    await tester.tap(find.byTooltip('More playback options'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Playback diagnostics'));
-    await tester.pumpAndSettle();
-    expect(diagnosticsRequested, isTrue);
+  testWidgets('volume slider has usable travel and sends 0 to 100 values', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final values = <double>[];
+    await tester.pumpWidget(
+      _app(
+        _controls(volume: 35, onSetVolume: (value) async => values.add(value)),
+      ),
+    );
+    final volumeSlider = find.byType(Slider).last;
+    expect(tester.widget<Slider>(volumeSlider).value, 35);
+    expect(tester.getSize(volumeSlider).width, 125);
+    await tester.drag(volumeSlider, const Offset(35, 0));
+    await tester.pump();
+    expect(values, isNotEmpty);
+    expect(values.every((value) => value >= 0 && value <= 100), isTrue);
+    await tester.tap(find.byTooltip('Mute'));
+    expect(values.last, 0);
   });
 }
 
@@ -172,8 +190,9 @@ PlayerControls _controls({
   Future<void> Function(PlaylistMode)? onSetPlaylistMode,
   ValueChanged<BoxFit>? onSetFit,
   Future<void> Function()? onScreenshot,
-  VoidCallback? onShowMediaInfo,
-  VoidCallback? onShowDiagnostics,
+  VoidCallback? onShowInfo,
+  double volume = 100,
+  Future<void> Function(double)? onSetVolume,
 }) => PlayerControls(
   duration: duration,
   durationStream: const Stream<Duration>.empty(),
@@ -187,9 +206,9 @@ PlayerControls _controls({
   rate: 1,
   rateStream: const Stream<double>.empty(),
   onSetRate: onSetRate ?? (_) async {},
-  volume: 100,
+  volume: volume,
   volumeStream: const Stream<double>.empty(),
-  onSetVolume: (_) async {},
+  onSetVolume: onSetVolume ?? (_) async {},
   playlist: const Playlist([]),
   playlistStream: const Stream<Playlist>.empty(),
   shuffle: false,
@@ -201,8 +220,7 @@ PlayerControls _controls({
   fit: BoxFit.contain,
   onSetFit: onSetFit ?? (_) {},
   onScreenshot: onScreenshot ?? () async {},
-  onShowMediaInfo: onShowMediaInfo ?? () {},
-  onShowDiagnostics: onShowDiagnostics ?? () {},
+  onShowInfo: onShowInfo ?? () {},
   tracks: tracks,
   tracksStream: const Stream<Tracks>.empty(),
   onSetTrack: onSetTrack ?? (_) async {},

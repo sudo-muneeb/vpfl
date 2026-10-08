@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 
 import '../../data/model/app_database.dart';
 import 'media_card.dart';
@@ -19,7 +20,7 @@ class MediaGrid extends StatelessWidget {
           .clamp(1, 8);
       final cardWidth =
           (constraints.crossAxisExtent - gap * (columns - 1)) / columns;
-      final metadataHeight = MediaQuery.textScalerOf(context).scale(96);
+      final metadataHeight = MediaQuery.textScalerOf(context).scale(64);
       return SliverGrid(
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: columns,
@@ -30,9 +31,7 @@ class MediaGrid extends StatelessWidget {
         delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
           final item = items[index];
           return MediaCard(
-            title: item.displayName,
-            status: 'Ready to play',
-            detail: item.path,
+            title: path.basename(item.path),
             filePath: item.path,
             onTap: () => onOpenMedia(item.uri),
           );

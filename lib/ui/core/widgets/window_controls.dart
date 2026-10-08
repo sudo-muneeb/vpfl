@@ -138,19 +138,17 @@ class _WindowControlButtonsState extends State<WindowControlButtons> {
       children: [
         _WindowButton(
           tooltip: 'Minimize window',
-          icon: Icons.remove_rounded,
+          glyph: _WindowGlyph.minimize,
           onPressed: WindowCommands.minimize,
         ),
         _WindowButton(
           tooltip: maximized ? 'Restore window' : 'Maximize window',
-          icon: maximized
-              ? Icons.filter_none_rounded
-              : Icons.crop_square_rounded,
+          glyph: maximized ? _WindowGlyph.restore : _WindowGlyph.maximize,
           onPressed: _toggle,
         ),
         _WindowButton(
           tooltip: 'Close window',
-          icon: Icons.close_rounded,
+          glyph: _WindowGlyph.close,
           onPressed: WindowCommands.close,
           close: true,
         ),
@@ -162,13 +160,13 @@ class _WindowControlButtonsState extends State<WindowControlButtons> {
 class _WindowButton extends StatelessWidget {
   const _WindowButton({
     required this.tooltip,
-    required this.icon,
+    required this.glyph,
     required this.onPressed,
     this.close = false,
   });
 
   final String tooltip;
-  final IconData icon;
+  final _WindowGlyph glyph;
   final Future<void> Function() onPressed;
   final bool close;
 
@@ -177,17 +175,87 @@ class _WindowButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(left: 2),
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onPressed,
-        hoverColor: close ? scheme.errorContainer : scheme.surfaceContainerHigh,
-        highlightColor: close
-            ? scheme.errorContainer
-            : scheme.secondaryContainer,
-        iconSize: 19,
-        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-        icon: Icon(icon, color: scheme.onSurfaceVariant),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(6),
+            hoverColor: close
+                ? scheme.errorContainer
+                : scheme.surfaceContainerHigh,
+            focusColor: close
+                ? scheme.errorContainer
+                : scheme.secondaryContainer,
+            child: SizedBox.square(
+              dimension: 40,
+              child: Center(
+                child: CustomPaint(
+                  size: const Size.square(16),
+                  painter: _WindowGlyphPainter(
+                    glyph,
+                    scheme.onSurfaceVariant,
+                    View.of(context).devicePixelRatio,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
+}
+
+enum _WindowGlyph { minimize, maximize, restore, close }
+
+/// Stroke geometry is snapped to the display's pixel grid, including at
+/// fractional desktop scale. This avoids font glyph and splash raster edges.
+class _WindowGlyphPainter extends CustomPainter {
+  const _WindowGlyphPainter(this.glyph, this.color, this.dpr);
+
+  final _WindowGlyph glyph;
+  final Color color;
+  final double dpr;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    double snap(double value) => (value * dpr).round() / dpr;
+    final stroke = (1.4 * dpr).round().clamp(1, 4) / dpr;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.square;
+    void line(double x1, double y1, double x2, double y2) => canvas.drawLine(
+      Offset(snap(x1), snap(y1)),
+      Offset(snap(x2), snap(y2)),
+      paint,
+    );
+    void rect(double left, double top, double right, double bottom) =>
+        canvas.drawRect(
+          Rect.fromLTRB(snap(left), snap(top), snap(right), snap(bottom)),
+          paint,
+        );
+    switch (glyph) {
+      case _WindowGlyph.minimize:
+        line(2, 8, 14, 8);
+      case _WindowGlyph.maximize:
+        rect(2, 2, 14, 14);
+      case _WindowGlyph.restore:
+        rect(2, 4, 12, 14);
+        line(4, 2, 14, 2);
+        line(14, 2, 14, 12);
+      case _WindowGlyph.close:
+        line(2.5, 2.5, 13.5, 13.5);
+        line(13.5, 2.5, 2.5, 13.5);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WindowGlyphPainter oldDelegate) =>
+      glyph != oldDelegate.glyph ||
+      color != oldDelegate.color ||
+      dpr != oldDelegate.dpr;
 }

@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 
 import '../core/themes/vpfl_theme_extension.dart';
+import 'player_inspector.dart';
 
 /// Pointer-aware playback overlay used on the video surface.
 class VideoControlsOverlay extends StatefulWidget {
@@ -18,6 +20,8 @@ class VideoControlsOverlay extends StatefulWidget {
     this.playlistStream,
     this.onPrevious,
     this.onNext,
+    this.inspectorMode,
+    this.inspectorBuilder,
     super.key,
   });
 
@@ -30,6 +34,8 @@ class VideoControlsOverlay extends StatefulWidget {
   final Stream<Playlist>? playlistStream;
   final Future<void> Function()? onPrevious;
   final Future<void> Function()? onNext;
+  final ValueListenable<InspectorMode?>? inspectorMode;
+  final Widget Function(InspectorMode mode, String? uri)? inspectorBuilder;
 
   @override
   State<VideoControlsOverlay> createState() => _VideoControlsOverlayState();
@@ -112,6 +118,37 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
             child: Stack(
               fit: StackFit.expand,
               children: [
+                if (widget.inspectorMode != null &&
+                    widget.inspectorBuilder != null)
+                  ValueListenableBuilder<InspectorMode?>(
+                    valueListenable: widget.inspectorMode!,
+                    builder: (context, mode, _) {
+                      if (mode == null) return const SizedBox.shrink();
+                      return Positioned(
+                        top: 12,
+                        bottom: 100,
+                        right: 12,
+                        width: (MediaQuery.sizeOf(context).width - 24).clamp(
+                          220,
+                          360,
+                        ),
+                        child: StreamBuilder<Playlist>(
+                          stream: widget.playlistStream,
+                          initialData: widget.playlist,
+                          builder: (context, snapshot) {
+                            final queue = snapshot.data ?? widget.playlist;
+                            final uri =
+                                queue != null &&
+                                    queue.index >= 0 &&
+                                    queue.index < queue.medias.length
+                                ? queue.medias[queue.index].uri
+                                : null;
+                            return widget.inspectorBuilder!(mode, uri);
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 if (widget.fullscreen && _topVisible)
                   Positioned(
                     top: 0,

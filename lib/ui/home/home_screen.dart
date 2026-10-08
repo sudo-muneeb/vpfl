@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as path;
 
 import '../../data/persistence_providers.dart';
 import '../../data/model/app_database.dart';
@@ -79,9 +80,7 @@ class HomeScreen extends ConsumerWidget {
                       cards: [
                         for (final item in items.take(8))
                           MediaCard(
-                            title: item.displayName,
-                            status: 'Ready to play',
-                            detail: item.path,
+                            title: path.basename(item.path),
                             filePath: item.path,
                             onTap: () => onOpenMedia(item.uri),
                           ),
@@ -110,10 +109,9 @@ class _RecentMediaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasDuration = entry.durationMs > 0;
+    final localPath = _localPath(entry.uri);
     return MediaCard(
-      title: entry.displayName,
-      status: entry.completed ? 'Completed' : 'Recent playback',
-      detail: null,
+      title: localPath == null ? entry.displayName : path.basename(localPath),
       watchedTime: hasDuration && !entry.completed
           ? '${_time(entry.positionMs)} / ${_time(entry.durationMs)}'
           : null,
@@ -122,7 +120,7 @@ class _RecentMediaCard extends StatelessWidget {
           : hasDuration
           ? entry.positionMs / entry.durationMs
           : null,
-      filePath: _localPath(entry.uri),
+      filePath: localPath,
       onTap: onTap,
     );
   }

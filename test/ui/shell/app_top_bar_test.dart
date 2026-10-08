@@ -68,4 +68,63 @@ void main() {
     expect(calls, containsAll(['minimize', 'toggleMaximize']));
     expect(calls, isNot(contains('startDrag')));
   });
+
+  testWidgets('player filename exposes path and known facts on focus', (
+    tester,
+  ) async {
+    const details = '/deep/folder/movie.mp4\nH.264 · 1920 × 1080 · 30 fps';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: VpflTheme.light,
+        home: Scaffold(
+          body: AppTopBar(
+            title: 'movie.mp4',
+            titleTooltip: details,
+            themeMode: ThemeMode.system,
+            onOpenFile: () {},
+            onThemeModeChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+    expect(find.text('movie.mp4'), findsOneWidget);
+    expect(find.text(details), findsNothing);
+    Focus.of(tester.element(find.text('movie.mp4'))).requestFocus();
+    await tester.pumpAndSettle();
+    expect(find.text(details), findsOneWidget);
+  });
+
+  testWidgets('window controls keep matching targets at common scale factors', (
+    tester,
+  ) async {
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    for (final dpr in [1.0, 1.25, 1.5, 2.0]) {
+      tester.view.devicePixelRatio = dpr;
+      tester.view.physicalSize = Size(1280 * dpr, 800 * dpr);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: VpflTheme.light,
+          home: Scaffold(
+            body: AppTopBar(
+              title: 'movie.mp4',
+              themeMode: ThemeMode.system,
+              onOpenFile: () {},
+              onThemeModeChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      for (final label in [
+        'Minimize window',
+        'Maximize window',
+        'Close window',
+      ]) {
+        expect(tester.getSize(find.byTooltip(label)), const Size(40, 40));
+      }
+    }
+  });
 }
