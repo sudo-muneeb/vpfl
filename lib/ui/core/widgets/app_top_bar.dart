@@ -10,12 +10,14 @@ class AppTopBar extends StatelessWidget {
     required this.themeMode,
     required this.onOpenFile,
     required this.onThemeModeChanged,
+    this.titleTooltip,
     this.renderingMode,
     this.onBack,
     super.key,
   });
 
   final String title;
+  final String? titleTooltip;
   final ThemeMode themeMode;
   final VoidCallback onOpenFile;
   final ValueChanged<ThemeMode> onThemeModeChanged;
@@ -55,8 +57,8 @@ class AppTopBar extends StatelessWidget {
                       children: [
                         Image.asset(
                           'vpfl-logo.png',
-                          width: 29,
-                          height: 29,
+                          width: 33,
+                          height: 33,
                           semanticLabel: 'VPFL logo',
                         ),
                         if (!compact) ...[
@@ -73,10 +75,9 @@ class AppTopBar extends StatelessWidget {
                           ),
                           const SizedBox(width: 11),
                           Flexible(
-                            child: Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            child: _TitleTooltip(
+                              title: title,
+                              message: titleTooltip ?? title,
                               style: textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),
@@ -142,6 +143,51 @@ class AppTopBar extends StatelessWidget {
       },
     );
   }
+}
+
+class _TitleTooltip extends StatefulWidget {
+  const _TitleTooltip({
+    required this.title,
+    required this.message,
+    required this.style,
+  });
+
+  final String title;
+  final String message;
+  final TextStyle? style;
+
+  @override
+  State<_TitleTooltip> createState() => _TitleTooltipState();
+}
+
+class _TitleTooltipState extends State<_TitleTooltip> {
+  final GlobalKey<TooltipState> _tooltipKey = GlobalKey<TooltipState>();
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    key: _tooltipKey,
+    message: widget.message,
+    constraints: BoxConstraints(
+      maxWidth: (MediaQuery.sizeOf(context).width - 32).clamp(180, 560),
+    ),
+    child: Focus(
+      onFocusChange: (focused) {
+        if (focused) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _tooltipKey.currentState?.ensureTooltipVisible();
+          });
+        } else {
+          Tooltip.dismissAllToolTips();
+        }
+      },
+      child: Text(
+        widget.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: widget.style,
+      ),
+    ),
+  );
 }
 
 class _RendererBadge extends StatelessWidget {

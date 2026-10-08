@@ -9,6 +9,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../data/playback_service_provider.dart';
+import '../../data/model/real_media_tracks.dart';
 import '../../data/default_app_prompt_provider.dart';
 import '../../data/playback_history_recorder_provider.dart';
 import '../../data/persistence_providers.dart';
@@ -19,6 +20,7 @@ import '../core/widgets/app_top_bar.dart';
 import '../core/themes/vpfl_theme_extension.dart';
 import '../settings/default_app_controls.dart';
 import 'player_controls.dart';
+import 'player_inspector.dart';
 import 'video_controls_overlay.dart';
 
 /// Minimal playback surface used for the Linux compatibility baseline.
@@ -61,6 +63,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription<dynamic>? _playlistSubscription;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<String>? _errorSubscription;
+  StreamSubscription<Tracks>? _tracksSubscription;
+  StreamSubscription<Track>? _selectedTracksSubscription;
   Timer? _errorProbe;
   String? _playingUri;
   int? _selectedQueueIndex;
@@ -70,6 +74,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   int _countedGeneration = 0;
   ValueNotifier<String?>? _renderingModeSource;
   BoxFit _videoFit = BoxFit.contain;
+  final ValueNotifier<InspectorMode?> _inspectorMode = ValueNotifier(null);
 
   @override
   void initState() {
@@ -96,6 +101,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (playing) _recordPromptPlayIfNeeded();
     });
     _errorSubscription = _playback.errorStream.listen(_handlePlayerError);
+    _tracksSubscription = _playback.tracksStream.listen((_) {
+      if (mounted) setState(() {});
+    });
+    _selectedTracksSubscription = _playback.selectedTracksStream.listen((_) {
+      if (mounted) setState(() {});
+    });
     ref.read(playbackHistoryRecorderProvider);
     unawaited(_readRenderingMode());
     if (widget.initialMediaUri case final String uri) {
@@ -225,6 +236,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   void _handleEscape() {
     if (_textEntryHasFocus) return;
+    if (_inspectorMode.value != null) {
+      _inspectorMode.value = null;
+      return;
+    }
     final VideoState? videoState = _videoKey.currentState;
     if (videoState?.isFullscreen() == true) {
       unawaited(videoState!.exitFullscreen());
@@ -248,7 +263,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         const SingleActivator(LogicalKeyboardKey.keyM): () =>
             _runShortcut(_playback.toggleMute),
         const SingleActivator(LogicalKeyboardKey.keyF): state.toggleFullscreen,
-        const SingleActivator(LogicalKeyboardKey.escape): state.exitFullscreen,
+        const SingleActivator(LogicalKeyboardKey.escape): _handleEscape,
         const SingleActivator(LogicalKeyboardKey.keyO, control: true):
             _pickAndOpenFile,
       };
@@ -280,9 +295,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     ++_openGeneration;
     _errorProbe?.cancel();
     _shortcutFocus.dispose();
+    _inspectorMode.dispose();
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_errorSubscription?.cancel());
+    unawaited(_tracksSubscription?.cancel());
+    unawaited(_selectedTracksSubscription?.cancel());
     _renderingModeSource?.removeListener(_updateRenderingMode);
     super.dispose();
   }
@@ -318,73 +336,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
-  void _showMediaInfo() => _showDetailsDialog(
-    title: 'Media information',
-    rows: [
-      ('File', _titleFor(widget.initialMediaUri)),
-      ('Location', widget.initialMediaUri ?? 'Unavailable'),
-      ('Duration', _formatDuration(_playback.duration)),
-      ('Video tracks', '${_playback.tracks.video.length}'),
-      ('Audio tracks', '${_playback.tracks.audio.length}'),
-      ('Subtitle tracks', '${_playback.tracks.subtitle.length}'),
-    ],
-  );
+  void _toggleInfo() => _inspectorMode.value = _inspectorMode.value == null
+      ? InspectorMode.media
+      : null;
 
-  void _showDiagnostics() => _showDetailsDialog(
-    title: 'Playback diagnostics',
-    rows: [
-      ('Video renderer', _renderingMode ?? 'Detecting'),
-      ('Playback state', _playback.isPlaying ? 'Playing' : 'Paused'),
-      ('Position', _formatDuration(_playback.position)),
-      ('Duration', _formatDuration(_playback.duration)),
-      ('Playback speed', '${_playback.rate}×'),
-      ('Video tracks', '${_playback.tracks.video.length}'),
-      ('Audio tracks', '${_playback.tracks.audio.length}'),
-      ('Subtitle tracks', '${_playback.tracks.subtitle.length}'),
-    ],
-  );
-
-  void _showDetailsDialog({
-    required String title,
-    required List<(String, String)> rows,
-  }) {
-    showDialog<void>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: Text(title),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final (String label, String value) in rows)
-                  ListTile(
-                    dense: true,
-                    title: Text(label),
-                    subtitle: SelectableText(value),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDuration(Duration duration) {
-    if (duration == Duration.zero) return 'Unknown';
-    final String minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-    final String seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    return duration.inHours > 0
-        ? '${duration.inHours}:$minutes:$seconds'
-        : '$minutes:$seconds';
+  String? _titleTooltip() {
+    final uri = _playingUri;
+    if (uri == null) return null;
+    final parsed = Uri.tryParse(uri);
+    final location = parsed?.scheme == 'file' ? parsed!.toFilePath() : uri;
+    final tracks = RealMediaTracks(_playback.tracks);
+    final video = tracks.activeVideo(_playback.selectedTracks.video.id);
+    final summary = video == null
+        ? null
+        : mediaTechnicalSummary(video.codec, video.w, video.h, fps: video.fps);
+    return summary == null ? location : '$location\n$summary';
   }
 
   Future<void> _openMedia(String uri) async {
@@ -495,6 +461,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               children: [
                 AppTopBar(
                   title: _titleFor(_playingUri),
+                  titleTooltip: _titleTooltip(),
                   themeMode: widget.themeMode,
                   onOpenFile: _pickAndOpenFile,
                   onThemeModeChanged: widget.onThemeModeChanged,
@@ -526,6 +493,18 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   playlistStream: _playback.playlistStream,
                                   onPrevious: _previousVideo,
                                   onNext: _nextVideo,
+                                  inspectorMode: _inspectorMode,
+                                  inspectorBuilder: (mode, uri) =>
+                                      PlayerInspector(
+                                        playback: _playback,
+                                        uri: uri ?? _playingUri,
+                                        renderingMode: _renderingMode,
+                                        mode: mode,
+                                        onModeChanged: (value) =>
+                                            _inspectorMode.value = value,
+                                        onClose: () =>
+                                            _inspectorMode.value = null,
+                                      ),
                                   controls: _buildPlayerControls(
                                     onToggleFullscreen: state.toggleFullscreen,
                                   ),
@@ -578,8 +557,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     fit: _videoFit,
     onSetFit: (BoxFit fit) => setState(() => _videoFit = fit),
     onScreenshot: _saveScreenshot,
-    onShowMediaInfo: _showMediaInfo,
-    onShowDiagnostics: _showDiagnostics,
+    onShowInfo: _toggleInfo,
     tracks: _playback.tracks,
     tracksStream: _playback.tracksStream,
     onSetTrack: _playback.setTrack,

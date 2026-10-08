@@ -49,7 +49,7 @@ void main() {
 
     final cards = tester.widgetList<MediaCard>(find.byType(MediaCard)).toList();
     expect(cards, hasLength(2));
-    expect(cards.first.status, 'Completed');
+    expect(cards.first.title, 'complete.mp4');
     expect(cards.first.progress, 1);
     expect(cards.first.watchedTime, isNull);
     expect(cards.last.watchedTime, '00:07 / 00:22');

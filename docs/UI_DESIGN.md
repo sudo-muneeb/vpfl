@@ -114,13 +114,15 @@ Each card may show:
 Clicking the card opens the player.
 
 Recent and indexed media use a shared video-card component. A 16:9 preview
-area sits above the title and short metadata. The preview uses a cached
+area sits above the filename, including its extension. The preview uses a cached
 thumbnail when available and a themed placeholder otherwise. Recent cards
 show a red progress line when duration is known. Their watched position is
-hidden at rest and appears over the thumbnail on hover or keyboard focus,
-without changing the card's size. The full title is available in a tooltip.
-Completed videos keep a full progress line and a Completed label; they do not
-show a watched-time overlay.
+hidden at rest and appears in a compact overlay on hover or keyboard focus,
+without changing the card's size. The full path is available in a wrapping
+tooltip on hover and keyboard focus. The path and `Ready to play` are never
+resting card text. Stable codec and resolution may appear when already known;
+unknown metadata leaves no placeholder line. Completed videos keep a full
+progress line and do not show a watched-time overlay.
 Home uses responsive card rows; the full library and saved-folder views use a
 lazy grid. Entering the grid does not decode video or generate thumbnails.
 
@@ -202,10 +204,11 @@ Default seek step can begin at 10 seconds and later become configurable.
 The bottom row has three anchored groups. More options, volume, subtitles,
 and speed sit at the left. Ten-second seek and play/pause stay centered in the
 video viewport. Repeat and fullscreen sit at the right edge. The seek bar is
-above them. The volume slider hides at narrower widths while mute remains
-available. Speed opens a rate menu; subtitles always open a menu with Auto,
-Off, embedded tracks when present, and Load subtitle file. The latter uses the
-native picker for SRT, ASS, SSA, and WebVTT files, then selects the loaded
+above them. The desktop volume slider is 125 logical pixels wide and updates
+the 0–100 player volume as it moves. It hides at narrower widths while mute
+remains available. Speed opens a rate menu; subtitles always open a menu with
+Auto, Off, embedded tracks when present, and Load subtitle file. The latter
+uses the native picker for SRT, ASS, SSA, and WebVTT files, then selects the loaded
 track. The overflow retains secondary actions.
 
 Previous and next appear at the far sides, halfway down the video when a
@@ -242,13 +245,26 @@ Playback
 
 Video
   Screenshot
-  Media information
-
-Advanced
-  diagnostics
+  Info (Media / Diagnostics inspector)
 ```
 
 Only show capabilities that are available.
+
+The title bar keeps the current filename. Hover or keyboard focus on it shows
+the full path and a second line of codec, resolution, and frame rate when the
+active track exposes those facts. It does not show guessed codec values.
+
+The single Info action toggles one right-edge inspector
+inside the player, beginning below the title bar and ending above the bottom
+controls. It is available in normal and fullscreen playback, non-modal, and
+does not open another window. The Info action, an X button, or Escape dismisses
+it. The inspector has Media and Diagnostics modes. Media shows file location,
+duration, and actual video, audio, and subtitle streams. The `auto` and `no`
+entries are selection options rather than streams, and image or album-art
+video tracks are excluded. It uses public media_kit track data, decoder output
+parameters, and duration. Diagnostics updates from player streams and keeps
+GPU rendering separate from hardware decoding. The latter is queried from
+libmpv only while Diagnostics is visible and omitted when unavailable.
 
 ## Queue playback
 

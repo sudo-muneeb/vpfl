@@ -10,18 +10,16 @@ import '../core/themes/vpfl_theme_extension.dart';
 class MediaCard extends StatefulWidget {
   const MediaCard({
     required this.title,
-    required this.status,
-    required this.detail,
     required this.onTap,
     this.filePath,
+    this.technicalMetadata,
     this.progress,
     this.watchedTime,
     super.key,
   });
 
   final String title;
-  final String status;
-  final String? detail;
+  final String? technicalMetadata;
   final double? progress;
   final String? watchedTime;
   final VoidCallback onTap;
@@ -36,6 +34,7 @@ class MediaCard extends StatefulWidget {
 class _MediaCardState extends State<MediaCard> {
   bool _hovered = false;
   bool _focused = false;
+  final GlobalKey<TooltipState> _tooltipKey = GlobalKey<TooltipState>();
 
   @override
   Widget build(BuildContext context) {
@@ -52,12 +51,17 @@ class _MediaCardState extends State<MediaCard> {
       button: true,
       label: [
         widget.title,
-        widget.status,
+        if (widget.filePath != null) widget.filePath!,
+        if (widget.technicalMetadata != null) widget.technicalMetadata!,
         if (widget.watchedTime != null) '${widget.watchedTime} watched',
       ].join(', '),
       child: Tooltip(
-        message: widget.title,
-        waitDuration: const Duration(milliseconds: 900),
+        key: _tooltipKey,
+        message: widget.filePath ?? widget.title,
+        constraints: BoxConstraints(
+          maxWidth: (MediaQuery.sizeOf(context).width - 32).clamp(180, 560),
+        ),
+        waitDuration: const Duration(milliseconds: 450),
         child: AnimatedContainer(
           duration: duration,
           decoration: BoxDecoration(
@@ -78,7 +82,18 @@ class _MediaCardState extends State<MediaCard> {
             child: InkWell(
               onTap: widget.onTap,
               onHover: (value) => setState(() => _hovered = value),
-              onFocusChange: (value) => setState(() => _focused = value),
+              onFocusChange: (value) {
+                setState(() => _focused = value);
+                if (value) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      _tooltipKey.currentState?.ensureTooltipVisible();
+                    }
+                  });
+                } else {
+                  Tooltip.dismissAllToolTips();
+                }
+              },
               hoverColor: Colors.transparent,
               focusColor: Colors.transparent,
               child: Column(
@@ -106,35 +121,29 @@ class _MediaCardState extends State<MediaCard> {
                             placeholderColor: scheme.onSurfaceVariant,
                           ),
                           if (widget.watchedTime case final String watched)
-                            Positioned.fill(
+                            Positioned(
+                              left: 10,
+                              bottom: widget.progress == null ? 10 : 12,
                               child: IgnorePointer(
                                 child: AnimatedOpacity(
                                   opacity: active ? 1 : 0,
                                   duration: duration,
-                                  child: ColoredBox(
-                                    color: tokens.cardOverlay,
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'WATCHED',
-                                          style: textTheme.labelSmall?.copyWith(
-                                            color:
-                                                tokens.playerOverlayForeground,
-                                            letterSpacing: 1.1,
-                                          ),
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: tokens.cardOverlay,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 4,
+                                      ),
+                                      child: Text(
+                                        watched,
+                                        style: textTheme.labelSmall?.copyWith(
+                                          color: tokens.playerOverlayForeground,
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          watched,
-                                          style: textTheme.titleMedium
-                                              ?.copyWith(
-                                                color: tokens
-                                                    .playerOverlayForeground,
-                                              ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -185,16 +194,8 @@ class _MediaCardState extends State<MediaCard> {
                           overflow: TextOverflow.ellipsis,
                           style: textTheme.titleSmall,
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                          widget.status,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        if (widget.detail case final String detail) ...[
+                        if (widget.technicalMetadata
+                            case final String detail) ...[
                           const SizedBox(height: 2),
                           Text(
                             detail,
