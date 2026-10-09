@@ -3,7 +3,8 @@
 VPFL's original work is licensed under Apache-2.0. Dependencies retain their
 own terms. This list describes the dependencies checked for the Linux build
 using `pubspec.lock`, package license files, the Flutter SDK license, and the
-installed Linux development packages on 4 October 2026. Consult the license
+installed Linux development packages on 4 October 2026. The package-info and
+URL-launcher additions were checked on 8 October 2026. Consult the license
 files shipped with the exact versions you redistribute.
 
 ## Included in the repository or Linux application bundle
@@ -33,6 +34,14 @@ files shipped with the exact versions you redistribute.
 - **file_selector 1.1.0 and file_selector_linux 0.9.4+1** —
   [upstream](https://github.com/flutter/packages), BSD-3-Clause; copyright ©
   2013 The Flutter Authors. Bundled Dart and native Linux plugin components.
+- **package_info_plus 10.2.2** —
+  [upstream](https://github.com/fluttercommunity/plus_plugins), BSD-3-Clause;
+  copyright © 2017 The Chromium Authors. Reads the bundle's generated
+  `version.json` for VPFL's About section.
+- **url_launcher 6.3.3 and url_launcher_linux 3.2.3** —
+  [upstream](https://github.com/flutter/packages), BSD-3-Clause; copyright ©
+  2013 The Flutter Authors. Opens the project link through the desktop's
+  external URL handler.
 - **drift 2.35.1 and drift_flutter 0.3.1** —
   [upstream](https://github.com/simolus3/drift), MIT; copyright © Simon Binder.
   Bundled Dart dependencies.
