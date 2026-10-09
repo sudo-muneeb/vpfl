@@ -15,9 +15,11 @@ The plugin has no VPFL UI or reminder policy and is not published yet.
 
 VPFL supplies `com.app.vpfl.desktop` and the 13 concrete MIME types listed in
 `lib/data/services/default_app_prompt_service.dart`. These match the package's
-desktop entry. Settings shows how many types currently use VPFL. The button
-asks for confirmation, then reports success or per-type errors. Development
-runs without an installed desktop entry show that the action is unavailable.
+desktop entry. Settings shows a success state without an action when all types
+use VPFL. Otherwise it shows the actual count and offers **Make VPFL default**.
+The button asks for confirmation, then reports success or per-type errors.
+Development runs without an installed desktop entry explain why the action is
+unavailable.
 
 The player invitation appears below the top bar after three media items reach
 the playing state. It has **Make default** and **Maybe later** actions. The

@@ -58,8 +58,9 @@ For a Linux desktop check, hover all four sides and four corners before
 clicking, drag from both side edges, then maximize the window. The resize
 cursors should disappear while maximized and return after restoring it.
 
-Buttons use themed hover, focus, and tooltips. The runner sets a 760 × 480
-minimum window size.
+Buttons use themed hover, focus, and tooltips. Open file, appearance, Home,
+and window controls use matching 6 px rounded hover geometry. The runner sets
+a 760 × 480 minimum window size.
 
 The shared top bar keeps the canonical red and white VPFL logo, current
 filename while playing, understated renderer status, Open file, and
@@ -405,35 +406,36 @@ ui/core/themes/
   system_theme_adapter.dart
 ```
 
-### Default behavior
+### Settings and About
 
-VPFL theme is used by default.
+Settings is the bottom sidebar destination. Its vertically scrollable content
+is limited to 920 logical pixels; preferences stay narrower so labels and
+controls remain near each other. The groups are Appearance, Playback, System
+integration, and About, in that order. Sections use spacing and a small number
+of dividers instead of one card per setting.
 
-Possible settings:
+Appearance has a compact three-option System / Light / Dark selector. System
+follows the desktop brightness. Playback has working history and resume
+switches. Turning history off stops new records without deleting earlier ones.
+The quick appearance button remains in the top bar for changes without leaving
+the current screen; Settings remains the persistent preference destination.
 
-```text
-Appearance
+System integration shows the current default video-player state for the 13
+supported MIME types. Full success is shown as a check status without a
+disabled action. A partial result gives the actual count and keeps **Make VPFL
+default** available. The action asks for confirmation and reports per-format
+failures. It uses user-level GIO associations without sudo. After the third
+successful play, a compact invitation appears below the player top bar with
+**Maybe later** and **Make default**. Maybe later delays the next invitation
+by 21 days; no more than five invitations are shown.
 
-Theme
-  VPFL Light
-  VPFL Dark
-  Follow system brightness
-
-Desktop integration
-  Use system accent color
-```
-
-The implemented Settings screen also shows the default video-player status
-for supported Linux MIME types and a **Make VPFL default** action when its
-desktop entry is installed. The action asks for confirmation and reports
-per-format failures. After the third successful play, a compact invitation
-appears directly below the player top bar with **Maybe later** and
-**Make default**. Maybe later delays the next invitation by 21 days; no more
-than five invitations are shown. The player controls remain over the video.
-
-System integration changes selected theme tokens only.
-
-It does not replace VPFL component design.
+About is the final Settings group. It shows the VPFL logo, purpose, creator,
+and version/build from Flutter's generated package metadata. It links to the
+actual project repository through the desktop URL handler. The Apache license,
+third-party notices, and contributing guide are included as local bundle
+assets and open in a separate scrollable reader. About does not claim VPFL
+owns its dependencies. Current-file Media and Diagnostics remain in the player
+inspector, not Settings. A Git commit is not read at runtime.
 
 ## Typography
 

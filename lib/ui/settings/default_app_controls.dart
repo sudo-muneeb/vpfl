@@ -103,32 +103,71 @@ class DefaultAppSettingsControl extends StatelessWidget {
       final String status;
       if (service.loading) {
         status = 'Checking desktop defaults…';
+      } else if (service.error != null) {
+        status = 'Could not check the desktop video defaults.';
       } else if (!service.available) {
         status = 'Available after VPFL is installed as a desktop application.';
       } else if (service.isDefaultForAll) {
-        status = 'VPFL is the default for all supported video formats.';
+        status = 'VPFL is the default for supported video formats.';
+      } else if (service.defaultCount == 0) {
+        status = 'VPFL is not the default for any supported video formats.';
       } else {
         status =
             '${service.defaultCount} of '
-            '${vpflVideoMimeTypes.length} supported formats use VPFL.';
+            '${vpflVideoMimeTypes.length} supported video formats use VPFL.';
       }
-      return Column(
+      final scheme = Theme.of(context).colorScheme;
+      final action = service.error != null
+          ? TextButton(onPressed: service.refresh, child: const Text('Retry'))
+          : service.available && !service.isDefaultForAll && !service.loading
+          ? OutlinedButton(
+              key: const Key('make-default-button'),
+              onPressed: () => confirmAndMakeDefault(context, service),
+              child: const Text('Make VPFL default'),
+            )
+          : null;
+      final details = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Default video player',
-            style: Theme.of(context).textTheme.titleLarge,
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-          const SizedBox(height: 6),
-          Text(status),
-          const SizedBox(height: 10),
-          OutlinedButton(
-            onPressed: !service.available || service.isDefaultForAll
-                ? null
-                : () => confirmAndMakeDefault(context, service),
-            child: const Text('Make VPFL default'),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (service.isDefaultForAll) ...[
+                Icon(Icons.check_circle, size: 17, color: scheme.primary),
+                const SizedBox(width: 6),
+              ],
+              Flexible(
+                child: Text(
+                  status,
+                  key: const Key('default-player-status'),
+                  style: Theme.of(context).textTheme.bodyMedium
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ),
+            ],
           ),
         ],
+      );
+      return LayoutBuilder(
+        builder: (context, constraints) => constraints.maxWidth < 580
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  details,
+                  if (action != null) ...[const SizedBox(height: 12), action],
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(child: details),
+                  if (action != null) ...[const SizedBox(width: 16), action],
+                ],
+              ),
       );
     },
   );

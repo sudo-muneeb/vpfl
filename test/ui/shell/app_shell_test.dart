@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:vpfl/data/model/app_database.dart';
 import 'package:vpfl/data/persistence_providers.dart';
+import 'package:vpfl/data/repositories/playback_history_repository.dart';
 import 'package:vpfl/ui/app.dart';
 
 void main() {
@@ -42,6 +43,13 @@ void main() {
       ThemeMode.dark,
     );
 
+    await tester.tap(find.text('Light'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.light,
+    );
+
     await tester.tap(find.text('System'));
     await tester.pumpAndSettle();
     expect(
@@ -50,6 +58,95 @@ void main() {
     );
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('theme and playback choices persist across app restart', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    Widget app() => ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(database),
+        recentPlaybackProvider.overrideWith((ref) => Stream.value(const [])),
+      ],
+      child: const VpflApp(initialMediaUri: null, startupError: null),
+    );
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dark'));
+    await tester.tap(find.byKey(const Key('history-enabled-setting')));
+    await tester.tap(find.byKey(const Key('resume-enabled-setting')));
+    await tester.pumpAndSettle();
+    final settings = SettingsRepository(database);
+    expect(await settings.getValue('themeMode'), 'dark');
+    expect(
+      await settings.getBool('historyEnabled', defaultValue: true),
+      isFalse,
+    );
+    expect(
+      await settings.getBool('resumeEnabled', defaultValue: true),
+      isFalse,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.dark,
+    );
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.byKey(const Key('history-enabled-setting')),
+          )
+          .value,
+      isFalse,
+    );
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.byKey(const Key('resume-enabled-setting')),
+          )
+          .value,
+      isFalse,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('system theme follows light and dark desktop brightness', (
+    tester,
+  ) async {
+    addTearDown(
+      tester.binding.platformDispatcher.clearPlatformBrightnessTestValue,
+    );
+    tester.binding.platformDispatcher.platformBrightnessTestValue =
+        Brightness.light;
+    await tester.pumpWidget(_testApp());
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    expect(
+      Theme.of(tester.element(find.text('Settings'))).brightness,
+      Brightness.light,
+    );
+
+    tester.binding.platformDispatcher.platformBrightnessTestValue =
+        Brightness.dark;
+    await tester.pumpAndSettle();
+    expect(
+      Theme.of(tester.element(find.text('Settings'))).brightness,
+      Brightness.dark,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
   });
 
   testWidgets('top bar shows the logo, file action, and appearance menu', (

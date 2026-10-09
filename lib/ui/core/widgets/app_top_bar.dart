@@ -45,6 +45,7 @@ class AppTopBar extends StatelessWidget {
                 IconButton(
                   tooltip: 'Home',
                   onPressed: back,
+                  style: _utilityButtonStyle(scheme),
                   icon: const Icon(Icons.home_outlined),
                 ),
                 const SizedBox(width: 4),
@@ -99,6 +100,7 @@ class AppTopBar extends StatelessWidget {
                   key: const Key('open-file-button'),
                   tooltip: 'Open file',
                   onPressed: onOpenFile,
+                  style: _utilityButtonStyle(scheme),
                   icon: const Icon(Icons.folder_open_outlined),
                 )
               else
@@ -108,6 +110,10 @@ class AppTopBar extends StatelessWidget {
                   style: TextButton.styleFrom(
                     foregroundColor: scheme.onSurface,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: const Size(0, 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
                   ),
                   icon: const Icon(Icons.folder_open_outlined, size: 20),
                   label: const Text('Open file'),
@@ -119,6 +125,7 @@ class AppTopBar extends StatelessWidget {
                 initialValue: themeMode,
                 onSelected: onThemeModeChanged,
                 iconSize: 20,
+                style: _utilityButtonStyle(scheme),
                 icon: const Icon(Icons.palette_outlined),
                 itemBuilder: (BuildContext context) => const [
                   PopupMenuItem(
@@ -143,6 +150,14 @@ class AppTopBar extends StatelessWidget {
       },
     );
   }
+
+  ButtonStyle _utilityButtonStyle(ColorScheme scheme) => IconButton.styleFrom(
+    fixedSize: const Size(40, 40),
+    padding: EdgeInsets.zero,
+    hoverColor: scheme.surfaceContainerHigh,
+    focusColor: scheme.secondaryContainer,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+  );
 }
 
 class _TitleTooltip extends StatefulWidget {
