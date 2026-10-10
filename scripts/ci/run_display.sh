@@ -17,11 +17,16 @@ export XDG_CONFIG_HOME="$runtime/config"
 export XDG_DATA_HOME="$runtime/data"
 export XDG_CACHE_HOME="$runtime/cache"
 mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
+logdir=${VPFL_CI_LOG_DIR:-build/ci-logs}
+mkdir -p "$logdir"
 compositor=''
 cleanup() {
   if [[ -n "$compositor" ]]; then
     kill "$compositor" 2>/dev/null || :
     wait "$compositor" 2>/dev/null || :
+  fi
+  if [[ -f "$runtime/weston.log" ]]; then
+    cp "$runtime/weston.log" "$logdir/${mode}-weston.log"
   fi
   if [[ "$owns_runtime" == true ]]; then rm -rf "$runtime"; fi
 }
@@ -40,12 +45,20 @@ case "$mode" in
     export GDK_BACKEND=wayland
     export VPFL_CI_DISPLAY_BACKEND=GdkWaylandDisplay
     weston_args=(--backend=headless-backend.so --socket="$WAYLAND_DISPLAY" --idle-time=0)
-    if [[ "$mode" == xwayland ]]; then weston_args+=(--xwayland); fi
+    if [[ "$mode" == xwayland ]]; then
+      # Fresh containers do not always have the X11 socket directory.
+      install -d -m 1777 /tmp/.X11-unix
+      weston_args+=(--xwayland)
+    fi
     weston "${weston_args[@]}" >"$runtime/weston.log" 2>&1 &
     compositor=$!
     for _ in {1..100}; do
       [[ -S "$runtime/$WAYLAND_DISPLAY" ]] && break
-      kill -0 "$compositor"
+      if ! kill -0 "$compositor" 2>/dev/null; then
+        cat "$runtime/weston.log"
+        echo 'Weston exited before the Wayland socket was ready' >&2
+        exit 1
+      fi
       sleep 0.1
     done
     [[ -S "$runtime/$WAYLAND_DISPLAY" ]] || { cat "$runtime/weston.log"; exit 1; }
@@ -67,15 +80,12 @@ case "$mode" in
   *) echo "unknown display mode: $mode" >&2; exit 2 ;;
 esac
 
-logdir=${VPFL_CI_LOG_DIR:-build/ci-logs}
-mkdir -p "$logdir"
 log="$logdir/${mode}-$(date +%s).log"
 set +e
 "${exec_cmd[@]}" 2>&1 | tee "$log"
 result=${PIPESTATUS[0]}
 set -e
 if [[ -f "$runtime/weston.log" ]]; then
-  cp "$runtime/weston.log" "$logdir/${mode}-weston.log"
   cat "$runtime/weston.log"
 fi
 [[ "$result" == 0 ]] || exit "$result"

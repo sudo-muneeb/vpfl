@@ -2,10 +2,11 @@
 
 The new pull-request workflow is described in the [CI guide](../ci/README.md).
 It declares target-native Ubuntu, Fedora, and Arch compilation plus separate
-package-manager install lanes. The first two hosted runs stopped before
-target-native builds and playback; see the [validation report](../ci/validation-report.md).
-Historical checks below describe earlier manual artifacts and must not be
-read as results for the new workflow or commit.
+package-manager install lanes. The third hosted run passed all three native
+builds, playback matrices, and clean package installs; see the
+[validation report](../ci/validation-report.md). Historical checks below
+describe earlier manual artifacts and must not be read as results for the
+new workflow or commit.
 
 Native packaging targets x86_64 Ubuntu 24.04 / Linux Mint 22.x with DEB and
 Fedora 44 with RPM. The build host for the current artifacts is Linux Mint

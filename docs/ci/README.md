@@ -105,8 +105,13 @@ Local reproduction then confirmed Fedora's default decoder cannot decode the
 10-bit H.264 fixture, so its lanes now install full FFmpeg from RPM Fusion Free.
 The revised verifier passed all 31 fixtures from the second hosted artifact
 inside a Fedora 44 container with that package set.
-The package jobs were skipped because their native builds failed. The SDK
-trust, FFprobe output, and Fedora decoder fixes need a new hosted run.
+The package jobs were skipped because their native builds failed. The
+[third hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38073659777)
+exercised those fixes: fixtures, quality, all three native builds, Wayland,
+X11 software fallback, and all three clean package installs passed. XWayland
+failed before Flutter started because Weston could not bind its X socket in a
+fresh container without `/tmp/.X11-unix`. The local display-wrapper fix for
+that startup failure needs a hosted rerun.
 
 ## Known limits
 
@@ -118,9 +123,10 @@ trust, FFprobe output, and Fedora decoder fixes need a new hosted run.
 - The suite covers pause, seek, resume, and natural completion for each video.
   The GPU initialization fault is injected in one X11 lane; other native
   renderer faults are not yet covered.
-- Weston, Fedora, and Arch job success requires a completed hosted run after
-  the current fixes. The first two PR runs did not reach their build or
-  playback assertions. A parsed workflow file is not execution evidence.
+- XWayland success requires a completed hosted run after the local socket
+  directory fix. The third run reached build and playback assertions for
+  Ubuntu, Fedora, Arch, native Wayland, and X11 software fallback; it did not
+  reach VPFL playback under XWayland.
 - A headless Mesa renderer is not a physical GPU or hardware decode result.
   The optional self-hosted GPU workflow and GNOME/KWin nested validation are
   unexecuted; there is no required physical-GPU PR lane yet.
