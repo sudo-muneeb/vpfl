@@ -9,6 +9,8 @@ app log and X11 compositor capture when those files are available.
 
 | Symptom | Inspect | Local reproduction |
 | --- | --- | --- |
+| Flutter action reports `jq not found` in a distro container | Dependency installation before `subosito/flutter-action`; all native and display lanes need `jq` | Run `scripts/ci/install_dependencies.sh <distro>` in a disposable target container, then `jq --version` |
+| Package artifact missing after native build failure | First failing `ci / native-build` job; the package job depends on its artifact | Fix the native failure, then rerun the PR workflow; the required gate also rejects skipped jobs |
 | Missing encoder, codec, or pixel format | `ci / fixtures` generator and verifier output, FFmpeg version in `index.json` | `python3 scripts/ci/generate_fixtures.py --out build/ci-video-fixtures` |
 | Video patch or track mismatch | First failing fixture ID in `ci / native-build` or `ci / display`; its FFprobe metadata and VPFL log | `./scripts/ci/run_display.sh x11 flutter test integration_test/media_matrix_test.dart -d linux --dart-define=VPFL_CI_FIXTURES="$PWD/build/ci-video-fixtures"` |
 | Wrong display backend | Native method-channel assertion, `DISPLAY`, `WAYLAND_DISPLAY`, Weston log | Run `scripts/ci/run_display.sh` with `x11`, `wayland`, or `xwayland` |

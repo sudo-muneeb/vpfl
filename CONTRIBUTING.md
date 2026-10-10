@@ -27,5 +27,5 @@ claimed video format. VPFL V1 does not accept standalone audio files. Record
 the commands you ran and any unavailable environment in the PR template.
 
 The `ci / required-gate` check is intended for branch protection on
-`bootstrap-project` and `main`. A newly written workflow is not a passed
-hosted check; review its first actual run before merge.
+`bootstrap-project` and `main`. Review the actual hosted results and resolve
+every required failure before merge.

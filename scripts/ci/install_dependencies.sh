@@ -7,7 +7,7 @@ case "${1:?usage: install_dependencies.sh ubuntu|fedora|arch}" in
     printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' \
       > /etc/apt/apt.conf.d/99-vpfl-ci
     apt-get update
-    apt-get install -y --no-install-recommends git curl unzip xz-utils zip python3 \
+    apt-get install -y --no-install-recommends git curl jq unzip xz-utils zip python3 \
       clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev \
       libepoxy-dev libsqlite3-dev libegl1-mesa-dev libgles2-mesa-dev \
       dpkg-dev desktop-file-utils appstream imagemagick ffmpeg xvfb xauth \
@@ -16,7 +16,7 @@ case "${1:?usage: install_dependencies.sh ubuntu|fedora|arch}" in
     ;;
   fedora)
     dnf install -y --setopt=install_weak_deps=False \
-      git curl tar gzip unzip xz zip python3 which findutils \
+      git curl jq tar gzip unzip xz zip python3 which findutils \
       clang cmake ninja-build pkgconf-pkg-config gtk3-devel xz-devel \
       mpv-devel libepoxy-devel sqlite-devel mesa-libEGL-devel \
       libglvnd-devel rpm-build desktop-file-utils appstream ImageMagick \
@@ -32,7 +32,7 @@ case "${1:?usage: install_dependencies.sh ubuntu|fedora|arch}" in
       printf 'Server = %s/$repo/os/$arch\n' "$VPFL_CI_ARCH_MIRROR" \
         > /etc/pacman.d/mirrorlist
     fi
-    pacman -Syu --noconfirm --needed git curl tar gzip unzip xz zip python \
+    pacman -Syu --noconfirm --needed git curl jq tar gzip unzip xz zip python \
       base-devel clang cmake ninja pkgconf gtk3 mpv libepoxy sqlite \
       libglvnd desktop-file-utils appstream imagemagick ffmpeg \
       xorg-server-xvfb xorg-xauth xorg-xdpyinfo xdotool wmctrl openbox \

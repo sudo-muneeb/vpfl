@@ -93,7 +93,6 @@ jobs:
         if: matrix.distro == 'ubuntu'
         run: bash scripts/ci/run_regressions.sh build/ci-fixtures
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: package-${{ matrix.distro }}
           path: dist/
@@ -110,7 +109,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     needs: [fixtures, native]
-    if: always() && needs.fixtures.result == 'success'
     strategy:
       fail-fast: false
       matrix:

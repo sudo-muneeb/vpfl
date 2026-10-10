@@ -92,7 +92,9 @@ launch/close, and removal smoke. A prior Xvfb
 run with the handoff's 38 cases preceded the V1 video-only correction; it is
 superseded and is not evidence for the final manifest. See the
 [validation report](validation-report.md) for exact platform results and
-limits. No hosted check has run merely because its YAML is present.
+limits. The first hosted run on PR #3 passed fixtures and quality, then the
+container lanes stopped because `jq` was missing before Flutter setup. The
+dependency fix is local and still needs a new hosted run.
 
 ## Known limits
 
@@ -104,9 +106,9 @@ limits. No hosted check has run merely because its YAML is present.
 - The suite covers pause, seek, resume, and natural completion for each video.
   The GPU initialization fault is injected in one X11 lane; other native
   renderer faults are not yet covered.
-- Weston, Fedora, and Arch job success requires completed local or hosted
-  runs. All jobs still require hosted confirmation on a pull request.
-  A parsed workflow file is not execution evidence.
+- Weston, Fedora, and Arch job success requires a completed hosted run after
+  the dependency fix. The first PR run did not reach their build or playback
+  assertions. A parsed workflow file is not execution evidence.
 - A headless Mesa renderer is not a physical GPU or hardware decode result.
   The optional self-hosted GPU workflow and GNOME/KWin nested validation are
   unexecuted; there is no required physical-GPU PR lane yet.
