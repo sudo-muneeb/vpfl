@@ -164,6 +164,12 @@ static void window_method_call(FlMethodChannel* channel,
   g_autoptr(FlMethodResponse) response = nullptr;
   if (g_strcmp0(method, "minimize") == 0) {
     gtk_window_iconify(window);
+  } else if (g_strcmp0(method, "getDisplayBackend") == 0) {
+    GdkDisplay* display = gdk_display_get_default();
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(
+        fl_value_new_string(display == nullptr
+                                ? "unavailable"
+                                : G_OBJECT_TYPE_NAME(display))));
   } else if (g_strcmp0(method, "toggleMaximize") == 0) {
     if (gtk_window_is_maximized(window)) {
       gtk_window_unmaximize(window);
@@ -208,6 +214,11 @@ static void window_method_call(FlMethodChannel* channel,
 
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
+  GdkDisplay* selected_display = gdk_display_get_default();
+  g_print("VPFL_DISPLAY_BACKEND=%s\n",
+            selected_display == nullptr
+                ? "unavailable"
+                : G_OBJECT_TYPE_NAME(selected_display));
   MyApplication* self = MY_APPLICATION(application);
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));

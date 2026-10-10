@@ -242,6 +242,11 @@ These are targets, not achieved claims.
 
 Benchmark against the same media in a mature native player when useful.
 
+The current [pull-request CI](ci/README.md) uses short functional fixtures
+and does not measure these performance targets. Startup, RSS, CPU,
+large-library, and resource-growth results require release/profile
+measurements on a named machine. A green media lane is not a performance pass.
+
 ## Build mode
 
 Do not judge production performance from debug mode.

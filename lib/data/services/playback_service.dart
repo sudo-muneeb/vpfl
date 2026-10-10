@@ -60,6 +60,9 @@ class PlaybackService {
   /// Whether the current item is playing.
   bool get isPlaying => _player.state.playing;
 
+  /// Whether the current media reached its natural end.
+  bool get isCompleted => _player.state.completed;
+
   /// The current playback position.
   Duration get position => _player.state.position;
 

@@ -1,0 +1,210 @@
+name: VPFL CI
+
+on:
+  pull_request:
+    branches: [bootstrap-project, main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  fixtures:
+    name: ci / fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get -o Acquire::Retries=5 update && sudo apt-get -o Acquire::Retries=5 install -y ffmpeg
+      - run: python3 scripts/ci/generate_fixtures.py --out build/ci-fixtures
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures
+      - run: bash scripts/ci/generate_regression_video.sh build/ci-fixtures/regression.mp4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: media-fixtures
+          path: build/ci-fixtures/
+          if-no-files-found: error
+
+  quality:
+    name: ci / quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: dart format --output=none --set-exit-if-changed lib test integration_test
+      - run: flutter analyze
+      - run: flutter test --reporter expanded
+
+  native:
+    name: ci / native-build (${{ matrix.distro }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    needs: fixtures
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {distro: ubuntu, image: 'ubuntu:24.04', kind: deb}
+          - {distro: fedora, image: 'fedora:44', kind: rpm}
+          - {distro: arch, image: 'archlinux:base-devel', kind: arch}
+    container: ${{ matrix.image }}
+    env:
+      VPFL_CI_ARCH_MIRROR: https://geo.mirror.pkgbuild.com
+    steps:
+      - name: Prepare checkout tools
+        run: |
+          case '${{ matrix.distro }}' in
+            ubuntu) apt-get -o Acquire::Retries=5 update && apt-get -o Acquire::Retries=5 install -y git curl tar gzip unzip xz-utils ;;
+            fedora) dnf install -y git curl tar gzip unzip xz ;;
+            arch) printf 'Server = %s/$repo/os/$arch\n' "$VPFL_CI_ARCH_MIRROR" > /etc/pacman.d/mirrorlist
+                  pacman -Sy --noconfirm --needed git curl tar gzip unzip xz ;;
+          esac
+      - uses: actions/checkout@v4
+      - run: bash scripts/ci/install_dependencies.sh '${{ matrix.distro }}'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: media-fixtures
+          path: build/ci-fixtures
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures
+      - run: flutter pub get --enforce-lockfile
+      - name: Build native package
+        run: |
+          if [ '${{ matrix.kind }}' = arch ]; then
+            bash scripts/ci/build_arch_package.sh
+          else
+            bash packaging/scripts/package-linux.sh '${{ matrix.kind }}'
+          fi
+      - name: Play video matrix under X11
+        run: bash scripts/ci/run_display.sh x11 flutter test integration_test/media_matrix_test.dart -d linux --dart-define=VPFL_CI_FIXTURES="$PWD/build/ci-fixtures" --reporter expanded
+      - name: Existing Linux application regression tests
+        if: matrix.distro == 'ubuntu'
+        run: bash scripts/ci/run_regressions.sh build/ci-fixtures
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: package-${{ matrix.distro }}
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-logs-${{ matrix.distro }}
+          path: build/ci-logs/
+          if-no-files-found: warn
+
+  package:
+    name: ci / package-install (${{ matrix.distro }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    needs: [fixtures, native]
+    if: always() && needs.fixtures.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {distro: ubuntu, image: 'ubuntu:24.04', pattern: '*.deb'}
+          - {distro: fedora, image: 'fedora:44', pattern: '*.rpm'}
+          - {distro: arch, image: 'archlinux:base-devel', pattern: '*.pkg.tar.zst'}
+    container: ${{ matrix.image }}
+    env:
+      VPFL_CI_ARCH_MIRROR: https://geo.mirror.pkgbuild.com
+    steps:
+      - name: Prepare checkout tools
+        run: |
+          case '${{ matrix.distro }}' in
+            ubuntu) apt-get -o Acquire::Retries=5 update && apt-get -o Acquire::Retries=5 install -y git curl tar gzip unzip ;;
+            fedora) dnf install -y git curl tar gzip unzip ;;
+            arch) printf 'Server = %s/$repo/os/$arch\n' "$VPFL_CI_ARCH_MIRROR" > /etc/pacman.d/mirrorlist
+                  pacman -Sy --noconfirm --needed git curl tar gzip unzip ;;
+          esac
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-${{ matrix.distro }}
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: media-fixtures
+          path: build/ci-fixtures
+      - name: Install, launch, and remove target package
+        run: |
+          package=$(find dist -type f -name '${{ matrix.pattern }}' -print -quit)
+          test -n "$package"
+          bash scripts/ci/run_installed_package.sh '${{ matrix.distro }}' "$package" build/ci-fixtures/regression.mp4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: package-smoke-logs-${{ matrix.distro }}
+          path: build/ci-logs/
+          if-no-files-found: warn
+
+  display:
+    name: ci / display (${{ matrix.mode }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    needs: fixtures
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [wayland, xwayland, x11-fallback]
+    container: ubuntu:24.04
+    steps:
+      - run: apt-get -o Acquire::Retries=5 update && apt-get -o Acquire::Retries=5 install -y git curl tar gzip unzip xz-utils
+      - uses: actions/checkout@v4
+      - run: bash scripts/ci/install_dependencies.sh ubuntu
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: media-fixtures
+          path: build/ci-fixtures
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures
+      - run: flutter pub get --enforce-lockfile
+      - name: Play video matrix and assert GTK backend
+        run: |
+          if [ '${{ matrix.mode }}' = x11-fallback ]; then
+            VPFL_TEST_FAIL_GPU_INIT=1 bash scripts/ci/run_display.sh x11 flutter test integration_test/media_matrix_test.dart -d linux --dart-define=VPFL_CI_FIXTURES="$PWD/build/ci-fixtures" --reporter expanded
+          else
+            bash scripts/ci/run_display.sh '${{ matrix.mode }}' flutter test integration_test/media_matrix_test.dart -d linux --dart-define=VPFL_CI_FIXTURES="$PWD/build/ci-fixtures" --reporter expanded
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: display-logs-${{ matrix.mode }}
+          path: build/ci-logs/
+          if-no-files-found: warn
+
+  required_gate:
+    name: ci / required-gate
+    runs-on: ubuntu-24.04
+    if: always()
+    needs: [fixtures, quality, native, package, display]
+    steps:
+      - name: Reject failed, canceled, or skipped required jobs
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          needs = json.loads(os.environ['NEEDS_JSON'])
+          for job, detail in needs.items():
+              print(f"{job}: {detail['result']}")
+          if not needs or any(detail['result'] != 'success' for detail in needs.values()):
+              sys.exit('Required VPFL CI job was not successful')
+          PY
