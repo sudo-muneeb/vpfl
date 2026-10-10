@@ -53,6 +53,10 @@ requires `GdkWaylandDisplay`; XWayland explicitly selects X11 and requires
 `GdkX11Display`. The integration test queries GTK through the native window
 channel; a backend mismatch fails the lane. The workflows use
 read-only repository permissions and no repository secrets.
+Fedora's native and clean-install lanes enable RPM Fusion Free and install its
+full `ffmpeg` package. Fedora's default `ffmpeg-free` decoder cannot handle
+the 10-bit H.264 fixture and stops matrix validation before VPFL's playback
+test. The fixture verifier still checks pixel format and full decode.
 
 ## Run locally
 
@@ -92,9 +96,17 @@ launch/close, and removal smoke. A prior Xvfb
 run with the handoff's 38 cases preceded the V1 video-only correction; it is
 superseded and is not evidence for the final manifest. See the
 [validation report](validation-report.md) for exact platform results and
-limits. The first hosted run on PR #3 passed fixtures and quality, then the
-container lanes stopped because `jq` was missing before Flutter setup. The
-dependency fix is local and still needs a new hosted run.
+limits. On PR #3, the first hosted run passed fixtures and quality, then the
+container lanes stopped because `jq` was missing. The second run passed
+fixtures and quality again and got through dependency setup. Five native and
+display lanes then stopped at Git's ownership check on the mounted Flutter SDK;
+Fedora stopped earlier when FFprobe's diagnostic output was mixed with JSON.
+Local reproduction then confirmed Fedora's default decoder cannot decode the
+10-bit H.264 fixture, so its lanes now install full FFmpeg from RPM Fusion Free.
+The revised verifier passed all 31 fixtures from the second hosted artifact
+inside a Fedora 44 container with that package set.
+The package jobs were skipped because their native builds failed. The SDK
+trust, FFprobe output, and Fedora decoder fixes need a new hosted run.
 
 ## Known limits
 
@@ -107,8 +119,8 @@ dependency fix is local and still needs a new hosted run.
   The GPU initialization fault is injected in one X11 lane; other native
   renderer faults are not yet covered.
 - Weston, Fedora, and Arch job success requires a completed hosted run after
-  the dependency fix. The first PR run did not reach their build or playback
-  assertions. A parsed workflow file is not execution evidence.
+  the current fixes. The first two PR runs did not reach their build or
+  playback assertions. A parsed workflow file is not execution evidence.
 - A headless Mesa renderer is not a physical GPU or hardware decode result.
   The optional self-hosted GPU workflow and GNOME/KWin nested validation are
   unexecuted; there is no required physical-GPU PR lane yet.

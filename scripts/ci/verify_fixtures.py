@@ -8,7 +8,12 @@ import subprocess
 
 
 def run(*args):
-    return subprocess.check_output(args, text=True, stderr=subprocess.STDOUT)
+    result = subprocess.run(args, text=True, capture_output=True)
+    if result.returncode:
+        raise RuntimeError(
+            f'{args[0]} failed for {args[-1]} (exit {result.returncode}):\n'
+            f'{result.stderr[-3000:]}')
+    return result.stdout
 
 
 def digest(path):

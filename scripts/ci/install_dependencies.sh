@@ -15,12 +15,13 @@ case "${1:?usage: install_dependencies.sh ubuntu|fedora|arch}" in
       libgl1-mesa-dri
     ;;
   fedora)
+    bash scripts/ci/enable_fedora_media.sh
     dnf install -y --setopt=install_weak_deps=False \
       git curl jq tar gzip unzip xz zip python3 which findutils \
       clang cmake ninja-build pkgconf-pkg-config gtk3-devel xz-devel \
       mpv-devel libepoxy-devel sqlite-devel mesa-libEGL-devel \
       libglvnd-devel rpm-build desktop-file-utils appstream ImageMagick \
-      ffmpeg-free xorg-x11-server-Xvfb xorg-x11-xauth xdotool wmctrl \
+      ffmpeg xorg-x11-server-Xvfb xorg-x11-xauth xdotool wmctrl \
       openbox mesa-dri-drivers
     ;;
   arch)

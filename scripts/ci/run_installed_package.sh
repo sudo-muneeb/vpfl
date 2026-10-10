@@ -19,9 +19,10 @@ case "$distro" in
     remove=(apt-get remove -y vpfl)
     ;;
   fedora)
+    bash scripts/ci/enable_fedora_media.sh
     dnf install -y --setopt=install_weak_deps=False \
       xorg-x11-server-Xvfb xorg-x11-xauth xdotool wmctrl \
-      openbox desktop-file-utils appstream mesa-dri-drivers ffmpeg-free
+      openbox desktop-file-utils appstream mesa-dri-drivers ffmpeg
     dnf install -y --setopt=install_weak_deps=False "$package"
     remove=(dnf remove -y vpfl)
     ;;

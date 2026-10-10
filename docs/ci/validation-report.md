@@ -3,9 +3,10 @@
 **Date:** 10 October 2026. **Branch:** `ci/production-testing`. This report records
 observed results for the checkout; it does not turn unrun GitHub jobs into
 passes. The V1 format decision in this work is video-only. The handoff's eight
-standalone audio fixtures were removed from the declared matrix. A first
-hosted run on PR #3 occurred after the initial local validation and failed in
-container setup; the corrective dependency change has not yet run on GitHub.
+standalone audio fixtures were removed from the declared matrix. Two hosted
+runs on PR #3 have occurred. Both failed before native compilation and
+playback. The first dependency fix was exercised in the second run; the
+second set of fixes has not yet run on GitHub.
 
 ## A. Original state
 
@@ -53,13 +54,13 @@ container setup; the corrective dependency change has not yet run on GitHub.
 
 | Target | Implemented lane | Local result | Hosted result | Limit |
 | --- | --- | --- | --- | --- |
-| Linux Mint 22.3 / Ubuntu-family X11 | Native test and local DEB build | 31-case normal and software-fallback playback passed; DEB built and validated | Ubuntu native job failed before Flutter setup: `jq` missing | Xvfb/Mesa llvmpipe, not Ubuntu-native build or physical GPU |
-| Ubuntu 24.04 clean install | `apt` install, launch, remove | Passed install, desktop metadata, required libraries, six compositor color bars, X11 launch/close, removal, and user-data preservation | Package job failed because the native artifact was missing | Package was built on Mint; the headless log also contains codec and missing audio-device warnings despite visible video |
-| Fedora 44 | Fedora-native build/media and `dnf` install jobs | Native toolchain dependencies installed; mounted host Flutter SDK stalled at `pub get` and the local validation container was stopped after 12 hours | Native job failed before Flutter setup: `jq` missing; package artifact absent | No Fedora-native VPFL build or playback result |
-| Arch | Arch-native build/media and `pacman -U` jobs | Native toolchain dependencies installed from the official geo mirror; mounted host Flutter SDK stalled at `pub get` and the local validation container was stopped after 12 hours | Native job failed before Flutter setup: `jq` missing; package artifact absent | No Arch-native VPFL build or install result |
-| X11/Xvfb | Full matrix and existing regressions | Matrix passed; GTK reported `GdkX11Display` through native channel | Native and fallback jobs failed before Flutter setup: `jq` missing | GL renderer is Mesa llvmpipe |
-| Native Wayland/Weston | Full matrix | Not run locally; Weston unavailable on host | Display job failed before Flutter setup: `jq` missing | No presentation result |
-| Weston XWayland | Full matrix | Not run locally; Weston unavailable on host | Display job failed before Flutter setup: `jq` missing | No presentation result |
+| Linux Mint 22.3 / Ubuntu-family X11 | Native test and local DEB build | 31-case normal and software-fallback playback passed; DEB built and validated | Ubuntu native job passed fixture verification, then Git rejected the mounted Flutter SDK during `pub get` | Xvfb/Mesa llvmpipe, not Ubuntu-native build or physical GPU |
+| Ubuntu 24.04 clean install | `apt` install, launch, remove | Passed install, desktop metadata, required libraries, six compositor color bars, X11 launch/close, removal, and user-data preservation | Package job skipped after native failure | Package was built on Mint; the headless log also contains codec and missing audio-device warnings despite visible video |
+| Fedora 44 | Fedora-native build/media and `dnf` install jobs | Native toolchain dependencies installed; mounted host Flutter SDK stalled at `pub get` and the local validation container was stopped after 12 hours. A separate container with RPM Fusion full FFmpeg verified the hosted 31-fixture artifact. | Native job stopped on fixture-verifier JSON parse; package job skipped | No Fedora-native VPFL build or playback result |
+| Arch | Arch-native build/media and `pacman -U` jobs | Native toolchain dependencies installed from the official geo mirror; mounted host Flutter SDK stalled at `pub get` and the local validation container was stopped after 12 hours | Native job passed fixture verification, then Git rejected the mounted Flutter SDK during `pub get`; package job skipped | No Arch-native VPFL build or install result |
+| X11/Xvfb | Full matrix and existing regressions | Matrix passed; GTK reported `GdkX11Display` through native channel | Ubuntu/Arch native and fallback jobs stopped at SDK ownership; Fedora at fixture verification | GL renderer is Mesa llvmpipe |
+| Native Wayland/Weston | Full matrix | Not run locally; Weston unavailable on host | Display job passed fixture verification, then stopped at SDK ownership | No presentation result |
+| Weston XWayland | Full matrix | Not run locally; Weston unavailable on host | Display job passed fixture verification, then stopped at SDK ownership | No presentation result |
 | GNOME/KWin nested | No job | Not implemented | Not run | Requires separate reliable compositor setup |
 | Physical GPU | Optional self-hosted manual workflow | Not executed | Not run | No provisioned runner or hardware GPU/decoder claim |
 
@@ -126,22 +127,32 @@ assertions, package upgrades, and automated performance thresholds.
 | `bash -n scripts/ci/*.sh`, Python compile, workflow YAML parse | Passed. |
 | `go run github.com/rhysd/actionlint/cmd/actionlint@latest .github/workflows/*.yml` | Passed with actionlint v1.7.12; no workflow findings. |
 | Disposable Ubuntu 24.04, Fedora 44, and Arch containers: install `jq`, then `jq --version` | All passed (`jq` 1.7, 1.8.1, and 1.8.2 respectively). This verifies package availability, not a rerun of Flutter setup. |
+| Fedora 44 container: RPM Fusion Free full `ffmpeg`, then `python3 scripts/ci/verify_fixtures.py --dir` against the downloaded second-run artifact | 31/31 passed, including 10-bit H.264 and HEVC; `mpv-devel` also installed successfully with full FFmpeg. The same fixture under Fedora `ffmpeg-free` emitted `DecodeFrame failed` and reported `yuv420p` instead of `yuv420p10le`. This is dependency and fixture-verifier evidence, not VPFL playback. |
 
 The fixture index is in `build/ci-video-fixtures/index.json`; display logs
 are in `build/ci-logs/`. Generated media and packages are ignored by Git.
-The first hosted run is [PR #3, run 38057627045](https://github.com/sudo-muneeb/vpfl/actions/runs/38057627045).
-Fixtures and quality passed. All three native builds and all three display
+The [first hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38057627045)
+passed fixtures and quality. All three native builds and all three display
 jobs failed in `subosito/flutter-action` with `jq not found`; their build and
 media assertions did not run. The package jobs then failed to download
 nonexistent artifacts, and `ci / required-gate` failed as designed.
-`scripts/ci/install_dependencies.sh` now installs `jq` on each distribution;
-the package jobs now wait for native success, and a failed native build no
-longer attempts to upload a nonexistent package. These changes await a new
-hosted run.
+Adding `jq` on each distribution and gating package jobs on native success
+was exercised in the [second hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38058196617).
+Fixtures and quality passed again. Ubuntu and Arch native jobs and all three
+display jobs verified all 31 fixtures, then `flutter pub get` stopped with
+Git's `detected dubious ownership` error for the mounted Flutter SDK. Fedora
+stopped in the verifier at `h264_10bit_mkv` with `JSONDecodeError`; the prior
+verifier merged FFprobe stderr into its JSON stdout. Package jobs were skipped
+because their native dependencies failed, and the required gate failed.
+The current checkout adds exact-path Git trust entries and separates FFprobe
+stdout from stderr. A local Fedora 44 `ffmpeg-free` reproduction confirmed
+`DecodeFrame failed` on that 10-bit H.264 fixture and showed the wrong pixel
+format. The native and clean-install Fedora lanes now enable RPM Fusion Free
+and install full FFmpeg. These changes await a hosted run.
 
 ## G–J. Hosted status, gaps, docs, and merge gate
 
-The first hosted run **failed during setup**. No branch rules
+The first two hosted runs **failed before native compilation**. No branch rules
 were changed. The exact status check to require on both `bootstrap-project`
 and `main` is `ci / required-gate`. Require pull-request review and disallow
 direct/force pushes. The gate's upstream jobs have no path filters, so a
@@ -163,11 +174,11 @@ the dedicated `docs/ci/` guide, troubleshooting, checklist, and this report.
 
 | Area | Implemented | Local result | GitHub result | Limitation |
 | --- | --- | --- | --- | --- |
-| Fixture generation and verification | Yes | 31/31 pass; corruption rejected | Passed first hosted run | FFmpeg version/image digest not pinned |
-| Unit/widget and database | Yes | Full 65-test suite passed, including migration and video-only policy contract | Quality job passed first hosted run | No true released database image snapshot |
-| VPFL decoded video matrix on X11 | Yes | 31/31 pass in normal and software-fallback lanes | Blocked by missing `jq`; not executed | No per-fixture compositor pixel capture; one installed-package video was captured |
-| Native DEB | Yes | Mint-family release package validator pass | Blocked by missing `jq`; not built | Ubuntu-native CI build unexecuted |
-| Native RPM/Arch | Yes, workflow/scripts | Target dependency sets installed; mounted-SDK `pub get` did not finish, so no native package result | Blocked by missing `jq`; not built | Corrective dependency change unverified on GitHub |
-| Clean package install/removal | Yes, workflow/scripts | Ubuntu clean install, video color-bar capture, launch/close, and removal passed | Failed from absent native artifacts | Fedora/Arch install unrun; only one release-package video captured |
-| Native Wayland/XWayland | Yes, workflow/scripts | Not executed | Blocked by missing `jq`; not executed | Weston unavailable locally |
+| Fixture generation and verification | Yes | 31/31 pass; corruption rejected | Fixture job passed both runs; Fedora native verifier failed on FFprobe output in second run | FFmpeg version/image digest not pinned; current verifier fix unverified on Fedora CI |
+| Unit/widget and database | Yes | Full 65-test suite passed, including migration and video-only policy contract | Quality job passed both runs | No true released database image snapshot |
+| VPFL decoded video matrix on X11 | Yes | 31/31 pass in normal and software-fallback lanes | Blocked by SDK ownership or Fedora verifier; not executed | No per-fixture compositor pixel capture; one installed-package video was captured |
+| Native DEB | Yes | Mint-family release package validator pass | Blocked by SDK ownership; not built | Ubuntu-native CI build unexecuted |
+| Native RPM/Arch | Yes, workflow/scripts | Target dependency sets installed; mounted-SDK `pub get` did not finish, so no native package result | Fedora verifier and Arch SDK ownership blocked builds | Current fixes, including Fedora full FFmpeg, unverified on GitHub |
+| Clean package install/removal | Yes, workflow/scripts | Ubuntu clean install, video color-bar capture, launch/close, and removal passed | Skipped after native failures in second run | Fedora/Arch install unrun; only one release-package video captured |
+| Native Wayland/XWayland | Yes, workflow/scripts | Not executed | Blocked by SDK ownership; not executed | Weston unavailable locally |
 | Real hardware GPU | Optional manual workflow | Not executed | Not run | Requires provisioned self-hosted runner; not a required PR gate |

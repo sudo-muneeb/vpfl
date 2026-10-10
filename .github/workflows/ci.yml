@@ -74,6 +74,11 @@ jobs:
           flutter-version: '3.47.5'
           channel: stable
           cache: true
+      - name: Trust the exact mounted Flutter SDK and checkout
+        run: |
+          git config --global --add safe.directory "$FLUTTER_ROOT"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git -C "$FLUTTER_ROOT" rev-parse --show-toplevel
       - uses: actions/download-artifact@v4
         with:
           name: media-fixtures
@@ -168,6 +173,11 @@ jobs:
           flutter-version: '3.47.5'
           channel: stable
           cache: true
+      - name: Trust the exact mounted Flutter SDK and checkout
+        run: |
+          git config --global --add safe.directory "$FLUTTER_ROOT"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git -C "$FLUTTER_ROOT" rev-parse --show-toplevel
       - uses: actions/download-artifact@v4
         with:
           name: media-fixtures

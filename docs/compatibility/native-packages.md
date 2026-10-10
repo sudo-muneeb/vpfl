@@ -2,9 +2,10 @@
 
 The new pull-request workflow is described in the [CI guide](../ci/README.md).
 It declares target-native Ubuntu, Fedora, and Arch compilation plus separate
-package-manager install lanes. These jobs remain **unverified on GitHub**
-until an actual hosted run. Historical checks below describe earlier manual
-artifacts and must not be read as results for the new workflow or commit.
+package-manager install lanes. The first two hosted runs stopped before
+target-native builds and playback; see the [validation report](../ci/validation-report.md).
+Historical checks below describe earlier manual artifacts and must not be
+read as results for the new workflow or commit.
 
 Native packaging targets x86_64 Ubuntu 24.04 / Linux Mint 22.x with DEB and
 Fedora 44 with RPM. The build host for the current artifacts is Linux Mint
@@ -59,6 +60,11 @@ Flutter itself and its data are bundled. `libdartjni.so` is present because of
 an Android transitive dependency, but VPFL's Linux code does not load it.
 It is excluded from runtime dependency scanning so Java is not required for
 Linux playback. Recheck this if platform dependencies change.
+The available video codecs also depend on the system FFmpeg library used by
+libmpv. Fedora's default `ffmpeg-free` cannot decode the CI matrix's 10-bit
+H.264 sample. The Fedora CI native and package lanes enable RPM Fusion Free
+and install full `ffmpeg` for that coverage. A stock Fedora package install
+may therefore play fewer formats until the user installs a fuller codec set.
 
 Original VPFL work is Apache-2.0. Both packages include `LICENSE`, `NOTICE`,
 `AUTHORS`, `THIRD_PARTY_NOTICES.md`, and the vendored `media_kit_video` MIT
