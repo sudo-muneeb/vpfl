@@ -238,3 +238,7 @@ restart persistence
 Flatpak update
 database migration
 ```
+
+The [current CI workflow](ci/README.md) builds native DEB, RPM, and Arch
+packages only. Flatpak build, sandbox permissions, update, and migration
+checks remain release work; native package jobs provide no Flatpak result.

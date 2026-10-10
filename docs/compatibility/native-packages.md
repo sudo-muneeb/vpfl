@@ -1,5 +1,13 @@
 # Native Linux packages
 
+The new pull-request workflow is described in the [CI guide](../ci/README.md).
+It declares target-native Ubuntu, Fedora, and Arch compilation plus separate
+package-manager install lanes. The third hosted run passed all three native
+builds, playback matrices, and clean package installs; see the
+[validation report](../ci/validation-report.md). Historical checks below
+describe earlier manual artifacts and must not be read as results for the
+new workflow or commit.
+
 Native packaging targets x86_64 Ubuntu 24.04 / Linux Mint 22.x with DEB and
 Fedora 44 with RPM. The build host for the current artifacts is Linux Mint
 22.3 (Ubuntu 24.04 base), glibc 2.39, GTK 3.24.41. These packages are not
@@ -53,6 +61,11 @@ Flutter itself and its data are bundled. `libdartjni.so` is present because of
 an Android transitive dependency, but VPFL's Linux code does not load it.
 It is excluded from runtime dependency scanning so Java is not required for
 Linux playback. Recheck this if platform dependencies change.
+The available video codecs also depend on the system FFmpeg library used by
+libmpv. Fedora's default `ffmpeg-free` cannot decode the CI matrix's 10-bit
+H.264 sample. The Fedora CI native and package lanes enable RPM Fusion Free
+and install full `ffmpeg` for that coverage. A stock Fedora package install
+may therefore play fewer formats until the user installs a fuller codec set.
 
 Original VPFL work is Apache-2.0. Both packages include `LICENSE`, `NOTICE`,
 `AUTHORS`, `THIRD_PARTY_NOTICES.md`, and the vendored `media_kit_video` MIT
@@ -81,8 +94,9 @@ Check `command -v vpfl`, launch `vpfl` and `vpfl /path/to/sample.mp4`,
 then check its application menu icon and Open With entry. Uninstall using
 `apt remove vpfl` or `dnf remove vpfl` and verify the system files are gone.
 Do not remove the user's XDG data. A headless container can check installation
-and registered files, but it cannot establish that a desktop window and video
-render correctly on the target graphics stack.
+and registered files. The current CI package smoke also captures six color
+bars from the installed app's X11 window. This establishes visible software
+rendering in Xvfb, not behavior on the target graphics stack or a real GPU.
 
 For a repeatable container install/launch/removal check, run
 `./packaging/scripts/clean-install-check.sh deb dist/vpfl_1.0.0-1_amd64.deb`
@@ -98,8 +112,10 @@ dependencies, registered `com.app.vpfl.desktop` for `video/mp4`, reached a
 system files. The Fedora check initially rejected `command -v vpfl` because
 its `/usr/sbin/vpfl` path resolves to the installed `/usr/bin/vpfl`; the check
 now verifies that the command is available and `/usr/bin/vpfl` is executable.
-This was a check-script issue, not a package-install failure. Xvfb does not
-verify visible pixels, file-manager presentation, or performance on a real GPU.
+This was a check-script issue, not a package-install failure. That earlier
+texture-only check did not verify visible pixels, file-manager presentation,
+or performance on a real GPU. The current CI smoke adds one X11 compositor
+color-bar assertion while those other limitations remain.
 
 ## Arch Linux (vpfl-bin)
 
@@ -152,4 +168,3 @@ package leaves the user's `~/.config/mimeapps.list` unchanged.
   never played that far, or whose cache entry is stale, show the placeholder.
 * Only the Arch build host and a clean Arch install are validated. Other
   distributions and GPUs are not claimed.
-

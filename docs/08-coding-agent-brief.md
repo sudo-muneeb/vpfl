@@ -176,6 +176,12 @@ Do not rely on host development packages.
 
 Follow `06-testing.md`.
 
+The executable pull-request checks and their observed status are documented
+in [the CI guide](ci/README.md). Keep `ci/media-matrix.json`, the video file
+policy, and advertised MIME formats aligned. VPFL V1 does not add standalone
+audio file support. Do not describe an unrun GitHub, package, compositor, or
+hardware lane as passed.
+
 Important rules:
 
 * one behavior per test

@@ -1,0 +1,37 @@
+name: VPFL nightly
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  required_ci:
+    uses: ./.github/workflows/ci.yml
+
+  lifecycle_stress:
+    name: nightly / lifecycle-stress
+    needs: required_ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo bash scripts/ci/install_dependencies.sh ubuntu
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: bash scripts/ci/generate_regression_video.sh build/ci-fixtures/regression.mp4
+      - name: Thirty Home and playback cycles
+        run: bash scripts/ci/run_display.sh x11 flutter test integration_test/linux_lifecycle_test.dart -d linux --dart-define=VPFL_TEST_VIDEO="$PWD/build/ci-fixtures/regression.mp4" --dart-define=VPFL_TEST_CYCLES=30 --reporter expanded
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-lifecycle-logs
+          path: build/ci-logs/
+          if-no-files-found: warn
