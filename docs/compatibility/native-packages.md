@@ -3,7 +3,12 @@
 The new pull-request workflow is described in the [CI guide](../ci/README.md).
 It declares target-native Ubuntu, Fedora, and Arch compilation plus separate
 package-manager install lanes. The third hosted run passed all three native
-builds, playback matrices, and clean package installs; see the
+builds, playback matrices, and clean package installs. The fourth built the
+packages but timed out in Fedora and Arch playback, so the install matrix was
+skipped. The local checkout now avoids a duplicate initial test open and
+selects a null audio sink for headless video validation; two Fedora 44 and two
+Arch X11 matrix runs passed locally. The updated checkout has not run on
+GitHub; see the
 [validation report](../ci/validation-report.md). Historical checks below
 describe earlier manual artifacts and must not be read as results for the
 new workflow or commit.

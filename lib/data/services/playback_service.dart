@@ -124,6 +124,15 @@ class PlaybackService {
   /// Decoder/open errors reported asynchronously by media_kit.
   Stream<String> get errorStream => _player.stream.error;
 
+  /// Uses libmpv's null sink for headless video tests with no sound device.
+  /// Audio tracks remain discoverable for codec checks in [tracks].
+  Future<void> useNullAudioOutput() async {
+    final platform = _player.platform;
+    if (platform is NativePlayer) {
+      await platform.setProperty('ao', 'null');
+    }
+  }
+
   /// Emits available track changes for the active media.
   Stream<Tracks> get tracksStream => _player.stream.tracks;
   Stream<VideoParams> get videoParamsStream => _player.stream.videoParams;

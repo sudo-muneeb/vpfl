@@ -18,19 +18,52 @@ import 'package:vpfl/ui/app.dart';
 
 const _fixturesPath = String.fromEnvironment('VPFL_CI_FIXTURES');
 
+void _stage(String stage) {
+  final line = '${DateTime.now().toUtc().toIso8601String()} $stage';
+  stderr.writeln('VPFL_CI_STAGE $line');
+  final log = File('build/ci-logs/media-matrix-stages.log');
+  log.parent.createSync(recursive: true);
+  log.writeAsStringSync('$line\n', mode: FileMode.append, flush: true);
+}
+
 Future<void> _until(
   WidgetTester tester,
   bool Function() ready,
-  String label,
-) async {
+  String label, {
+  String Function()? details,
+}) async {
+  _stage('$label wait begin');
   for (var attempt = 0; attempt < 80 && !ready(); attempt++) {
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester
+        .pump(const Duration(milliseconds: 100))
+        .timeout(const Duration(seconds: 12));
+  }
+  final didBecomeReady = ready();
+  if (!didBecomeReady) {
+    _stage('$label wait failed${details == null ? '' : ': ${details()}'}');
   }
   expect(
-    ready(),
+    didBecomeReady,
     isTrue,
     reason: '$label did not become ready within 8 seconds',
   );
+  _stage('$label ready');
+}
+
+Future<T> _native<T>(
+  String label,
+  Future<T> Function() action, {
+  Duration timeout = const Duration(seconds: 12),
+}) async {
+  _stage('$label begin');
+  try {
+    final result = await action().timeout(timeout);
+    _stage('$label complete');
+    return result;
+  } on Object catch (error) {
+    _stage('$label failed: $error');
+    rethrow;
+  }
 }
 
 Future<void> _checkPatches(Uint8List bytes, String id) async {
@@ -118,23 +151,31 @@ void main() {
       overrides: [appDatabaseProvider.overrideWithValue(database)],
     );
     final playback = container.read(playbackServiceProvider);
+    final nativeErrors = playback.errorStream.listen(
+      (message) => _stage('native playback error: $message'),
+    );
     final first = byId['h264_mp4']!;
     try {
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: VpflApp(
-            initialMediaUri: Uri.file('${directory.path}/${first['file']}')
-                .toString(),
-            startupError: null,
-          ),
-        ),
-      );
+      await _native('headless audio output', playback.useNullAudioOutput);
+      _stage('initial app open begin');
+      await tester
+          .pumpWidget(
+            UncontrolledProviderScope(
+              container: container,
+              child: VpflApp(
+                initialMediaUri: Uri.file('${directory.path}/${first['file']}')
+                    .toString(),
+                startupError: null,
+              ),
+            ),
+          )
+          .timeout(const Duration(seconds: 12));
       final expectedBackend = Platform.environment['VPFL_CI_DISPLAY_BACKEND'];
       if (expectedBackend != null) {
         const channel = MethodChannel('com.app.vpfl/window');
-        final actualBackend = await channel.invokeMethod<String>(
-          'getDisplayBackend',
+        final actualBackend = await _native(
+          'display backend',
+          () => channel.invokeMethod<String>('getDisplayBackend'),
         );
         expect(
           actualBackend,
@@ -143,7 +184,10 @@ void main() {
         );
       }
       await _until(tester, () => playback.hasVideoOutput, 'initial video');
-      final output = await playback.videoController.platform.future;
+      final output = await _native(
+        'native video controller',
+        () => playback.videoController.platform.future,
+      );
       await _until(
         tester,
         () =>
@@ -159,19 +203,34 @@ void main() {
         );
       }
       stdout.writeln('VPFL_RENDERING_MODE=${output.renderingMode.value}');
+      _stage('initial video ready');
       for (final entry
           in (manifest['fixtures'] as List).cast<Map<String, dynamic>>()) {
         final id = entry['id'] as String;
         final file = File('${directory.path}/${byId[id]!['file']}');
-        await playback
-            .open(file.uri.toString())
-            .timeout(const Duration(seconds: 12));
+        _stage('$id open begin');
+        // VpflApp already opened the first fixture through PlayerScreen.
+        // Opening it again here races the startup open on native mpv.
+        if (id != 'h264_mp4') {
+          await _native(
+            '$id native open',
+            () => playback.open(file.uri.toString()),
+          );
+        }
+        _stage('$id open complete');
         await _until(
           tester,
           () =>
               RealMediaTracks(playback.tracks).video.isNotEmpty &&
               playback.hasVideoOutput,
           '$id tracks',
+          details: () =>
+              'video=${RealMediaTracks(playback.tracks).video.length}, '
+              'audio=${RealMediaTracks(playback.tracks).audio.length}, '
+              'output=${playback.hasVideoOutput}, '
+              'playing=${playback.isPlaying}, '
+              'completed=${playback.isCompleted}, '
+              'position=${playback.position}, duration=${playback.duration}',
         );
         final tracks = RealMediaTracks(playback.tracks);
         expect(
@@ -185,12 +244,17 @@ void main() {
           reason: id,
         );
         await _until(tester, () => playback.isPlaying, '$id playback start');
-        await playback.playOrPause();
+        await _native('$id pause', playback.playOrPause);
         await _until(tester, () => !playback.isPlaying, '$id pause');
-        await playback.seek(const Duration(milliseconds: 700));
+        await _native(
+          '$id seek',
+          () => playback.seek(const Duration(milliseconds: 700)),
+        );
         await tester.pump(const Duration(milliseconds: 250));
-        final screenshot = await playback.screenshot().timeout(
-          const Duration(seconds: 8),
+        final screenshot = await _native(
+          '$id screenshot',
+          playback.screenshot,
+          timeout: const Duration(seconds: 8),
         );
         expect(screenshot, isNotNull, reason: '$id produced no decoded frame');
         await _checkPatches(screenshot!, id);
@@ -201,7 +265,10 @@ void main() {
             'gpu',
             reason: 'hardware lane requires the native GPU rendering path',
           );
-          final decoder = await playback.hardwareDecoder();
+          final decoder = await _native(
+            '$id hardware decoder',
+            playback.hardwareDecoder,
+          );
           stdout.writeln('VPFL_HARDWARE_DECODER=$decoder');
           expect(
             decoder,
@@ -214,8 +281,9 @@ void main() {
           inInclusiveRange(1900, 3100),
           reason: id,
         );
-        await playback.playOrPause();
+        await _native('$id resume', playback.playOrPause);
         await _until(tester, () => playback.isPlaying, '$id resume');
+        _stage('$id natural completion begin');
         for (
           var attempt = 0;
           attempt < 60 && !playback.isCompleted;
@@ -234,8 +302,10 @@ void main() {
               'position=${playback.position}, duration=${playback.duration}, '
               'playing=${playback.isPlaying}',
         );
+        _stage('$id natural completion ready');
         await _until(tester, () => !playback.isPlaying, '$id completion stop');
-        await playback.stop();
+        await _native('$id stop', playback.stop);
+        _stage('$id passed');
         stdout.writeln('PASS video $id');
       }
       final source = File('${directory.path}/${byId['h264_mkv']!['file']}');
@@ -243,42 +313,73 @@ void main() {
           in (manifest['subtitle_fixtures'] as List)
               .cast<Map<String, dynamic>>()) {
         final id = entry['id'] as String;
-        await playback.open(source.uri.toString());
+        await _native(
+          '$id source open',
+          () => playback.open(source.uri.toString()),
+        );
         final initial = RealMediaTracks(playback.tracks).subtitle.length;
-        await playback.loadSubtitleFile(
-          '${directory.path}/${byId[id]!['file']}',
+        await _native(
+          '$id subtitle load',
+          () => playback.loadSubtitleFile(
+            '${directory.path}/${byId[id]!['file']}',
+          ),
         );
         await _until(
           tester,
           () => RealMediaTracks(playback.tracks).subtitle.length > initial,
           '$id subtitle',
         );
-        await playback.stop();
+        await _native('$id stop', playback.stop);
         stdout.writeln('PASS external subtitle track $id');
       }
       final embedded = File(
         '${directory.path}/${byId['embed_srt_mkv']!['file']}',
       );
-      await playback.open(embedded.uri.toString());
+      await _native(
+        'embedded source open',
+        () => playback.open(embedded.uri.toString()),
+      );
       await _until(
         tester,
         () => RealMediaTracks(playback.tracks).subtitle.isNotEmpty,
         'embedded subtitle',
       );
       expect(RealMediaTracks(playback.tracks).subtitle, hasLength(1));
-      await playback.seek(const Duration(milliseconds: 700));
+      await _native(
+        'embedded seek',
+        () => playback.seek(const Duration(milliseconds: 700)),
+      );
       await tester.pump(const Duration(milliseconds: 200));
-      final screenshot = await playback.screenshot();
+      final screenshot = await _native(
+        'embedded screenshot',
+        playback.screenshot,
+      );
       expect(screenshot, isNotNull, reason: 'embedded subtitle video frame');
       await _checkPatches(screenshot!, 'embed_srt_mkv');
-      await playback.stop();
+      await _native('embedded stop', playback.stop);
       stdout.writeln('PASS embedded subtitle track embed_srt_mkv');
     } finally {
-      await tester.pumpWidget(const SizedBox.shrink());
-      await container.read(playbackHistoryRecorderProvider).dispose();
-      await playback.dispose();
-      await database.close();
+      _stage('cleanup begin');
+      await nativeErrors.cancel();
+      _stage('widget cleanup begin');
+      await tester
+          .pumpWidget(const SizedBox.shrink())
+          .timeout(const Duration(seconds: 12));
+      _stage('widget cleanup complete');
+      _stage('history cleanup begin');
+      await container
+          .read(playbackHistoryRecorderProvider)
+          .dispose()
+          .timeout(const Duration(seconds: 12));
+      _stage('history cleanup complete');
+      _stage('player cleanup begin');
+      await playback.dispose().timeout(const Duration(seconds: 12));
+      _stage('player cleanup complete');
+      _stage('database cleanup begin');
+      await database.close().timeout(const Duration(seconds: 12));
+      _stage('database cleanup complete');
       container.dispose();
+      _stage('cleanup complete');
     }
   }, timeout: const Timeout(Duration(minutes: 12)));
 }

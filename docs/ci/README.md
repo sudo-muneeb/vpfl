@@ -111,7 +111,27 @@ exercised those fixes: fixtures, quality, all three native builds, Wayland,
 X11 software fallback, and all three clean package installs passed. XWayland
 failed before Flutter started because Weston could not bind its X socket in a
 fresh container without `/tmp/.X11-unix`. The local display-wrapper fix for
-that startup failure needs a hosted rerun.
+that startup failure passed in the
+[fourth hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38075252369).
+Fixtures, quality, Ubuntu native playback, and all three display modes passed.
+Fedora and Arch verified fixtures and built packages, but both media-matrix
+tests timed out after 12 minutes shortly after the initial video output
+appeared. Their logs do not identify which playback await stalled. The
+package-install matrix was skipped because the native matrix failed.
+The test also opened the initial H.264 file twice: once through the app's
+startup route and again through `PlaybackService.open`. That overlapping
+request has been removed locally. Native calls and cleanup now have explicit
+deadlines, and `build/ci-logs/media-matrix-stages.log` records the last
+completed step for each fixture. A local X11 matrix passed after this change;
+Fedora and Arch have not yet rerun it on GitHub.
+In a Fedora 44 container, runs without a sound device also logged an audio
+initialization error on every video and stalled intermittently later in the
+matrix. The headless integration test now selects libmpv's null audio sink;
+it still checks each video's audio stream codec. Two Fedora X11 runs then
+completed all 31 cases. This local result does not change the fourth hosted
+run's failed status.
+Two Arch X11 runs also completed all 31 cases using an Arch-built debug app
+and the same null sink. Package installation remains a separate hosted gate.
 
 ## Known limits
 
@@ -123,10 +143,9 @@ that startup failure needs a hosted rerun.
 - The suite covers pause, seek, resume, and natural completion for each video.
   The GPU initialization fault is injected in one X11 lane; other native
   renderer faults are not yet covered.
-- XWayland success requires a completed hosted run after the local socket
-  directory fix. The third run reached build and playback assertions for
-  Ubuntu, Fedora, Arch, native Wayland, and X11 software fallback; it did not
-  reach VPFL playback under XWayland.
+- The fourth hosted run passed XWayland. Fedora and Arch playback passed in
+  the third run but timed out in the fourth. The startup-open correction and
+  stage diagnostics are local until another hosted run exercises them.
 - A headless Mesa renderer is not a physical GPU or hardware decode result.
   The optional self-hosted GPU workflow and GNOME/KWin nested validation are
   unexecuted; there is no required physical-GPU PR lane yet.
