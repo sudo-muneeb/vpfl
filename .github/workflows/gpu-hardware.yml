@@ -1,0 +1,61 @@
+name: VPFL physical GPU validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gpu_media:
+    name: gpu / physical-hardware
+    runs-on: [self-hosted, linux, x64, vpfl-gpu]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require a physical GPU display and toolchain
+        run: |
+          set -o pipefail
+          command -v flutter
+          command -v ffmpeg
+          command -v ffprobe
+          command -v glxinfo
+          command -v eglinfo
+          test -n "${DISPLAY:-}"
+          compgen -G '/dev/dri/renderD*' >/dev/null
+          ls -l /dev/dri
+          glxinfo -B | tee gpu-glxinfo.txt
+          eglinfo -B | tee gpu-eglinfo.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('gpu-glxinfo.txt').read_text().lower()
+          renderer = next((line for line in text.splitlines()
+                           if 'opengl renderer string:' in line), '')
+          if not renderer or any(name in renderer for name in
+                                 ('llvmpipe', 'softpipe', 'swrast', 'virgl')):
+              raise SystemExit(f'Physical GPU renderer required: {renderer}')
+          print(renderer)
+          PY
+      - run: flutter pub get --enforce-lockfile
+      - run: python3 scripts/ci/generate_fixtures.py --out build/ci-fixtures
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures
+      - name: Require GPU output and observed H.264 hardware decoding
+        env:
+          GDK_BACKEND: x11
+          VPFL_CI_DISPLAY_BACKEND: GdkX11Display
+          VPFL_CI_REQUIRE_HARDWARE: '1'
+        run: |
+          set -o pipefail
+          flutter test integration_test/media_matrix_test.dart -d linux \
+            --dart-define=VPFL_CI_FIXTURES="$PWD/build/ci-fixtures" \
+            --reporter expanded 2>&1 | tee gpu-media.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gpu-hardware-diagnostics
+          path: |
+            gpu-glxinfo.txt
+            gpu-eglinfo.txt
+            gpu-media.log
+            build/ci-logs/
+          if-no-files-found: warn

@@ -111,11 +111,18 @@ for the checks and known limits.
 ## Development checks
 
 ```bash
-dart format lib test integration_test
+dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test
 flutter build linux --release
 ```
+
+The pull-request workflow on `bootstrap-project` and `main` generates a
+video-only fixture matrix, runs VPFL playback tests, builds and installs
+native DEB/RPM/Arch packages, and checks X11/Wayland/XWayland lanes. The
+workflow is newly implemented; see the [CI guide](docs/ci/README.md) for
+exact commands, observed results, and unverified coverage. Standalone audio
+files are outside VPFL V1's supported formats.
 
 See [the Phase 0 Linux compatibility report](docs/compatibility/phase-0.md)
 for verified results and remaining compatibility work. To refresh the patched

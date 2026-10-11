@@ -60,6 +60,9 @@ class PlaybackService {
   /// Whether the current item is playing.
   bool get isPlaying => _player.state.playing;
 
+  /// Whether the current media reached its natural end.
+  bool get isCompleted => _player.state.completed;
+
   /// The current playback position.
   Duration get position => _player.state.position;
 
@@ -120,6 +123,15 @@ class PlaybackService {
 
   /// Decoder/open errors reported asynchronously by media_kit.
   Stream<String> get errorStream => _player.stream.error;
+
+  /// Uses libmpv's null sink for headless video tests with no sound device.
+  /// Audio tracks remain discoverable for codec checks in [tracks].
+  Future<void> useNullAudioOutput() async {
+    final platform = _player.platform;
+    if (platform is NativePlayer) {
+      await platform.setProperty('ao', 'null');
+    }
+  }
 
   /// Emits available track changes for the active media.
   Stream<Tracks> get tracksStream => _player.stream.tracks;

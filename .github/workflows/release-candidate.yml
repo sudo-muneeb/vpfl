@@ -1,0 +1,11 @@
+name: VPFL release candidate checks
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  required_ci:
+    uses: ./.github/workflows/ci.yml

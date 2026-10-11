@@ -1,0 +1,419 @@
+{
+  "schema": 1,
+  "duration_seconds": 2.5,
+  "width": 320,
+  "height": 180,
+  "fps": 24,
+  "fixtures": [
+    {
+      "id": "h264_mp4",
+      "extension": "mp4",
+      "format": "mp4",
+      "video_encoder": "libx264",
+      "codec": "h264",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "aac",
+      "audio_codec": "aac",
+      "video_args": [
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "24"
+      ]
+    },
+    {
+      "id": "h264_mkv",
+      "extension": "mkv",
+      "format": "matroska",
+      "video_encoder": "libx264",
+      "codec": "h264",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "aac",
+      "audio_codec": "aac",
+      "video_args": [
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "24"
+      ]
+    },
+    {
+      "id": "h264_mov",
+      "extension": "mov",
+      "format": "mov",
+      "video_encoder": "libx264",
+      "codec": "h264",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "aac",
+      "audio_codec": "aac",
+      "video_args": [
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "24"
+      ]
+    },
+    {
+      "id": "h264_10bit_mkv",
+      "extension": "mkv",
+      "format": "matroska",
+      "video_encoder": "libx264",
+      "codec": "h264",
+      "pix_fmt": "yuv420p10le",
+      "audio_encoder": "aac",
+      "audio_codec": "aac",
+      "video_args": [
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "26"
+      ]
+    },
+    {
+      "id": "hevc_8bit_mp4",
+      "extension": "mp4",
+      "format": "mp4",
+      "video_encoder": "libx265",
+      "codec": "hevc",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "aac",
+      "audio_codec": "aac",
+      "video_args": [
+        "-preset",
+        "ultrafast",
+        "-x265-params",
+        "pools=1:frame-threads=1:log-level=error"
+      ]
+    },
+    {
+      "id": "hevc_10bit_mkv",
+      "extension": "mkv",
+      "format": "matroska",
+      "video_encoder": "libx265",
+      "codec": "hevc",
+      "pix_fmt": "yuv420p10le",
+      "audio_encoder": "aac",
+      "audio_codec": "aac",
+      "video_args": [
+        "-preset",
+        "ultrafast",
+        "-x265-params",
+        "pools=1:frame-threads=1:log-level=error"
+      ]
+    },
+    {
+      "id": "vp8_webm",
+      "extension": "webm",
+      "format": "webm",
+      "video_encoder": "libvpx",
+      "codec": "vp8",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "libopus",
+      "audio_codec": "opus",
+      "video_args": [
+        "-deadline",
+        "realtime",
+        "-cpu-used",
+        "8"
+      ]
+    },
+    {
+      "id": "vp9_webm",
+      "extension": "webm",
+      "format": "webm",
+      "video_encoder": "libvpx-vp9",
+      "codec": "vp9",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "libopus",
+      "audio_codec": "opus",
+      "video_args": [
+        "-deadline",
+        "realtime",
+        "-cpu-used",
+        "8",
+        "-row-mt",
+        "1"
+      ]
+    },
+    {
+      "id": "av1_webm",
+      "extension": "webm",
+      "format": "webm",
+      "video_encoder": "libaom-av1",
+      "codec": "av1",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "libopus",
+      "audio_codec": "opus",
+      "video_args": [
+        "-cpu-used",
+        "8",
+        "-row-mt",
+        "1"
+      ]
+    },
+    {
+      "id": "mpeg2_mpg",
+      "extension": "mpg",
+      "format": "mpeg",
+      "video_encoder": "mpeg2video",
+      "codec": "mpeg2video",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "mp2",
+      "audio_codec": "mp2",
+      "video_args": [
+        "-q:v",
+        "5"
+      ]
+    },
+    {
+      "id": "mpeg2_mpeg",
+      "extension": "mpeg",
+      "format": "mpeg",
+      "video_encoder": "mpeg2video",
+      "codec": "mpeg2video",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "mp2",
+      "audio_codec": "mp2",
+      "video_args": [
+        "-q:v",
+        "5"
+      ]
+    },
+    {
+      "id": "mpeg2_ts",
+      "extension": "ts",
+      "format": "mpegts",
+      "video_encoder": "mpeg2video",
+      "codec": "mpeg2video",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "mp2",
+      "audio_codec": "mp2",
+      "video_args": [
+        "-q:v",
+        "5"
+      ]
+    },
+    {
+      "id": "mpeg4_avi",
+      "extension": "avi",
+      "format": "avi",
+      "video_encoder": "mpeg4",
+      "codec": "mpeg4",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "libmp3lame",
+      "audio_codec": "mp3",
+      "video_args": [
+        "-q:v",
+        "5"
+      ]
+    },
+    {
+      "id": "theora_ogv",
+      "extension": "ogv",
+      "format": "ogg",
+      "video_encoder": "libtheora",
+      "codec": "theora",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "libvorbis",
+      "audio_codec": "vorbis",
+      "video_args": [
+        "-q:v",
+        "6"
+      ]
+    },
+    {
+      "id": "mjpeg_avi",
+      "extension": "avi",
+      "format": "avi",
+      "video_encoder": "mjpeg",
+      "codec": "mjpeg",
+      "pix_fmt": "yuvj420p",
+      "audio_encoder": "pcm_s16le",
+      "audio_codec": "pcm_s16le",
+      "video_args": [
+        "-q:v",
+        "5"
+      ]
+    },
+    {
+      "id": "prores_mov",
+      "extension": "mov",
+      "format": "mov",
+      "video_encoder": "prores_ks",
+      "codec": "prores",
+      "pix_fmt": "yuv422p10le",
+      "audio_encoder": "pcm_s16le",
+      "audio_codec": "pcm_s16le",
+      "video_args": [
+        "-profile:v",
+        "1"
+      ]
+    },
+    {
+      "id": "mpeg2_m2ts",
+      "extension": "m2ts",
+      "format": "mpegts",
+      "video_encoder": "mpeg2video",
+      "codec": "mpeg2video",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "mp2",
+      "audio_codec": "mp2",
+      "video_args": [
+        "-q:v",
+        "5"
+      ]
+    },
+    {
+      "id": "h264_mts",
+      "extension": "mts",
+      "format": "mpegts",
+      "video_encoder": "libx264",
+      "codec": "h264",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "aac",
+      "audio_codec": "aac",
+      "video_args": [
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "24"
+      ]
+    },
+    {
+      "id": "mpeg2_vob",
+      "extension": "vob",
+      "format": "vob",
+      "video_encoder": "mpeg2video",
+      "codec": "mpeg2video",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "ac3",
+      "audio_codec": "ac3",
+      "video_args": [
+        "-q:v",
+        "5"
+      ]
+    },
+    {
+      "id": "mpeg2_mxf",
+      "extension": "mxf",
+      "format": "mxf",
+      "video_encoder": "mpeg2video",
+      "codec": "mpeg2video",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "pcm_s16le",
+      "audio_codec": "pcm_s16le",
+      "video_args": [
+        "-q:v",
+        "5"
+      ]
+    },
+    {
+      "id": "flv_flv",
+      "extension": "flv",
+      "format": "flv",
+      "video_encoder": "flv",
+      "codec": "flv1",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "libmp3lame",
+      "audio_codec": "mp3",
+      "video_args": []
+    },
+    {
+      "id": "wmv_asf",
+      "extension": "wmv",
+      "format": "asf",
+      "video_encoder": "wmv2",
+      "codec": "wmv2",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "wmav2",
+      "audio_codec": "wmav2",
+      "video_args": []
+    },
+    {
+      "id": "mpeg4_3gp",
+      "extension": "3gp",
+      "format": "3gp",
+      "video_encoder": "mpeg4",
+      "codec": "mpeg4",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "aac",
+      "audio_codec": "aac",
+      "video_args": [
+        "-q:v",
+        "5"
+      ]
+    },
+    {
+      "id": "mpeg4_3g2",
+      "extension": "3g2",
+      "format": "3g2",
+      "video_encoder": "mpeg4",
+      "codec": "mpeg4",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "aac",
+      "audio_codec": "aac",
+      "video_args": [
+        "-q:v",
+        "5"
+      ]
+    },
+    {
+      "id": "h264_m4v",
+      "extension": "m4v",
+      "format": "mp4",
+      "video_encoder": "libx264",
+      "codec": "h264",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "aac",
+      "audio_codec": "aac",
+      "video_args": [
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "24"
+      ]
+    },
+    {
+      "id": "wmv_asf_ext",
+      "extension": "asf",
+      "format": "asf",
+      "video_encoder": "wmv2",
+      "codec": "wmv2",
+      "pix_fmt": "yuv420p",
+      "audio_encoder": "wmav2",
+      "audio_codec": "wmav2",
+      "video_args": []
+    }
+  ],
+  "subtitle_fixtures": [
+    {
+      "id": "sub_srt",
+      "extension": "srt",
+      "subtitle_codec": "subrip"
+    },
+    {
+      "id": "sub_vtt",
+      "extension": "vtt",
+      "subtitle_codec": "webvtt"
+    },
+    {
+      "id": "sub_ass",
+      "extension": "ass",
+      "subtitle_codec": "ass"
+    },
+    {
+      "id": "sub_ssa",
+      "extension": "ssa",
+      "subtitle_codec": "ass"
+    }
+  ],
+  "embedded_subtitle_fixtures": [
+    {
+      "id": "embed_srt_mkv",
+      "extension": "mkv",
+      "source": "h264_mkv",
+      "subtitle": "sub_srt",
+      "subtitle_codec": "subrip"
+    }
+  ]
+}

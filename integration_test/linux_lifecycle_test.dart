@@ -22,7 +22,7 @@ void main() {
   const sourceC = String.fromEnvironment('VPFL_TEST_VIDEO_C');
   const cycles = int.fromEnvironment('VPFL_TEST_CYCLES', defaultValue: 20);
 
-  testWidgets('Home stops playback over 20 return cycles', (tester) async {
+  testWidgets('Home stops playback over $cycles return cycles', (tester) async {
     final container = ProviderContainer();
     final uri = Uri.file(File(source).absolute.path).toString();
     await tester.pumpWidget(
@@ -79,6 +79,11 @@ void main() {
       expect(identical(controller, playback.videoController), isTrue);
     }
     if (sourceB.isNotEmpty && sourceC.isNotEmpty) {
+      String localPath(String value) {
+        final parsed = Uri.tryParse(value);
+        return parsed?.scheme == 'file' ? parsed!.toFilePath() : value;
+      }
+
       await tester.pump(const Duration(seconds: 1));
       final b = Uri.file(File(sourceB).absolute.path).toString();
       final c = Uri.file(File(sourceC).absolute.path).toString();
@@ -104,13 +109,30 @@ void main() {
       await expectSource(b, () => playback.open(b));
       await expectSource(c, () => playback.open(c));
       await expectSource(uri, () => playback.open(uri));
-      await expectSource(uri, () async {
-        await Future.wait([
-          playback.open(b),
-          playback.open(c),
-          playback.open(uri),
-        ]);
+      final selectedDuringBurst = <String>[];
+      final subscription = playback.playlistStream.listen((queue) {
+        if (queue.medias.isNotEmpty && queue.index >= 0) {
+          selectedDuringBurst.add(localPath(queue.medias[queue.index].uri));
+        }
       });
+      await Future.wait([
+        playback.open(b),
+        playback.open(c),
+        playback.open(uri),
+      ]);
+      await tester.pump(const Duration(milliseconds: 300));
+      await subscription.cancel();
+      expect(selectedDuringBurst, isNot(contains(localPath(b))));
+      expect(selectedDuringBurst, isNot(contains(localPath(c))));
+      expect(localPath(playback.playlist.medias.single.uri), localPath(uri));
+      for (var i = 0; i < 80 && !playback.hasVideoOutput; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(
+        playback.hasVideoOutput,
+        isTrue,
+        reason: 'final video must decode after rapid source switching',
+      );
       expect(identical(controller, playback.videoController), isTrue);
     }
     final shutdown = ApplicationShutdown(

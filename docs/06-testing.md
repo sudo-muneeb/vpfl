@@ -251,13 +251,22 @@ integration_test/
 ## Normal CI
 
 ```bash
+flutter pub get --enforce-lockfile
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
-flutter test
-flutter build linux --release
+flutter test --reporter expanded
+python3 scripts/ci/generate_fixtures.py --out build/ci-video-fixtures
+python3 scripts/ci/verify_fixtures.py --dir build/ci-video-fixtures
+./scripts/ci/run_display.sh x11 flutter test integration_test/media_matrix_test.dart \
+  -d linux --dart-define=VPFL_CI_FIXTURES="$PWD/build/ci-video-fixtures"
 ```
 
-Run native integration tests in an environment capable of displaying the Linux application.
+The native integration command needs Xvfb and Linux playback libraries. The
+manifest has 26 video cases, four external subtitle files, and one embedded
+subtitle video. The video cases include audio streams; standalone audio files
+are outside the V1 policy. The [CI guide](ci/README.md) lists the required
+distribution and display jobs, current test assertions, and actual validation
+status. A decoded mpv screenshot is not proof of final Flutter composition.
 
 ## Completion checklist
 
