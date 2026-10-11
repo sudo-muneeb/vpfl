@@ -122,16 +122,24 @@ The test also opened the initial H.264 file twice: once through the app's
 startup route and again through `PlaybackService.open`. That overlapping
 request has been removed locally. Native calls and cleanup now have explicit
 deadlines, and `build/ci-logs/media-matrix-stages.log` records the last
-completed step for each fixture. A local X11 matrix passed after this change;
-Fedora and Arch have not yet rerun it on GitHub.
+completed step for each fixture. A local X11 matrix passed after this change.
 In a Fedora 44 container, runs without a sound device also logged an audio
 initialization error on every video and stalled intermittently later in the
 matrix. The headless integration test now selects libmpv's null audio sink;
 it still checks each video's audio stream codec. Two Fedora X11 runs then
-completed all 31 cases. This local result does not change the fourth hosted
-run's failed status.
+completed all 31 cases.
 Two Arch X11 runs also completed all 31 cases using an Arch-built debug app
-and the same null sink. Package installation remains a separate hosted gate.
+and the same null sink. The
+[fifth hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38117032738)
+passed all 12 jobs, including Fedora and Arch native playback, all three
+package installs, and `ci / required-gate`. Each of the six media-matrix lanes
+completed 26 videos, four external subtitles, one embedded subtitle, and
+cleanup. The Ubuntu and display lanes logged `Could not open codec` on some
+opens. This is an expected decoder-selection attempt in these headless lanes:
+mpv tries a hardware decoder path, then falls back to software decoding when
+that path cannot open. It does not mean the video's encoding changed or that
+playback failed. The decoded-frame and completion checks passed. See mpv's
+[hardware-decoding fallback documentation](https://mpv.io/manual/stable/#options-hwdec).
 
 ## Known limits
 
@@ -143,9 +151,9 @@ and the same null sink. Package installation remains a separate hosted gate.
 - The suite covers pause, seek, resume, and natural completion for each video.
   The GPU initialization fault is injected in one X11 lane; other native
   renderer faults are not yet covered.
-- The fourth hosted run passed XWayland. Fedora and Arch playback passed in
-  the third run but timed out in the fourth. The startup-open correction and
-  stage diagnostics are local until another hosted run exercises them.
+- The fifth hosted run passed Fedora and Arch playback with the startup-open
+  correction, null audio sink, and stage diagnostics. It is one hosted pass
+  after the fourth run's intermittent stalls.
 - A headless Mesa renderer is not a physical GPU or hardware decode result.
   The optional self-hosted GPU workflow and GNOME/KWin nested validation are
   unexecuted; there is no required physical-GPU PR lane yet.

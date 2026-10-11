@@ -3,10 +3,10 @@
 **Updated:** 11 October 2026. **Branch:** `ci/production-testing`. This report records
 observed results for the checkout; it does not turn unrun GitHub jobs into
 passes. The V1 format decision in this work is video-only. The handoff's eight
-standalone audio fixtures were removed from the declared matrix. Four hosted
-runs on PR #3 have occurred. The third passed all native builds and package
-installs but failed XWayland startup. The fourth passed XWayland but timed out
-in the Fedora and Arch playback tests, so the required gate remains red.
+standalone audio fixtures were removed from the declared matrix. Five hosted
+runs on PR #3 have occurred. The fourth passed XWayland but timed out in the
+Fedora and Arch playback tests. The fifth passed all 12 jobs, including the
+required gate.
 
 ## A. Original state
 
@@ -63,8 +63,8 @@ in the Fedora and Arch playback tests, so the required gate remains red.
 | --- | --- | --- | --- | --- |
 | Linux Mint 22.3 / Ubuntu-family X11 | Native test and local DEB build | 31-case normal and software-fallback playback passed; DEB built and validated | Ubuntu native build, 31-case playback, and six regression suites passed | Xvfb/Mesa llvmpipe, not physical GPU |
 | Ubuntu 24.04 clean install | `apt` install, launch, remove | Passed install, desktop metadata, required libraries, six compositor color bars, X11 launch/close, removal, and user-data preservation | Native-built DEB installed, displayed six color bars, and was removed successfully | Headless software rendering, not a physical GPU |
-| Fedora 44 | Fedora-native build/media and `dnf` install jobs | Full matrix passed twice under Fedora Xvfb after selecting the null audio sink; earlier attempts without it stalled intermittently at video tracks or subtitle loading. | Third run passed build, playback, and clean install; fourth run built the RPM but the first playback test timed out after 12 minutes | Updated test still needs a hosted rerun |
-| Arch | Arch-native build/media and `pacman -U` jobs | Full matrix passed twice under Arch Xvfb with the null audio sink (1:30 and 1:28). | Third run passed build, playback, and clean install; fourth run built the package but the first playback test timed out after 12 minutes | Updated test still needs a hosted rerun |
+| Fedora 44 | Fedora-native build/media and `dnf` install jobs | Full matrix passed twice under Fedora Xvfb after selecting the null audio sink; earlier attempts without it stalled intermittently at video tracks or subtitle loading. | Fifth run passed native RPM build, 31-case playback, clean install, and removal | Headless Xvfb, not a physical GPU or sound device |
+| Arch | Arch-native build/media and `pacman -U` jobs | Full matrix passed twice under Arch Xvfb with the null audio sink (1:30 and 1:28). | Fifth run passed native package build, 31-case playback, clean install, and removal | Headless Xvfb, not a physical GPU or sound device |
 | X11/Xvfb | Full matrix and existing regressions | Matrix passed; GTK reported `GdkX11Display` through native channel | Ubuntu native and software-fallback lanes passed | GL renderer is Mesa llvmpipe |
 | Native Wayland/Weston | Full matrix | Not run locally; Weston unavailable on host | 31-case playback test passed; GTK reported Wayland backend | Headless Weston, not GNOME/KWin or physical GPU |
 | Weston XWayland | Full matrix | Fresh Ubuntu container reproduced the crash, then passed Weston/XWayland startup and `xdpyinfo` with the local fix; VPFL matrix not run there | Fourth run passed the XWayland 31-case playback test | Headless Weston, not a physical desktop or GPU |
@@ -195,23 +195,42 @@ passed. Routing this headless test's audio to libmpv's null sink removed those
 errors, and two full Fedora runs passed. This is local evidence for the audio
 device issue; it does not retrospectively identify the precise await in the
 fourth hosted run. Audio-only files remain outside V1 scope.
+The [fifth hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38117032738)
+at commit `7cfc5ef` passed all 12 jobs. Fixtures, 65 quality tests, native
+Ubuntu/Fedora/Arch builds and playback, Wayland/XWayland/X11 software fallback,
+all three package installs, and `ci / required-gate` completed. Uploaded stage
+logs show each of the six playback lanes completed 26 videos, four external
+subtitle tracks, one embedded subtitle track, and cleanup. Fedora and Arch
+stage logs had no native playback errors. Ubuntu and the three display lanes
+each logged 15 `Could not open codec` messages. In these headless lanes, this
+records a decoder-selection attempt: mpv tries a hardware decoder path and
+falls back to software decoding when it cannot open. It is not a video playback
+failure; decoded-frame screenshots, video completion, and the aggregate test
+passed. See mpv's [hardware-decoding fallback documentation](https://mpv.io/manual/stable/#options-hwdec).
+
+The headless installed-package logs also report missing audio devices; the
+package smoke checks compositor
+pixels for video and completed on all three distributions. These results do not
+demonstrate physical GPU or audio playback.
 
 ## G–J. Hosted status, gaps, docs, and merge gate
 
-The fourth hosted run **passed six work jobs and failed Fedora and Arch
-playback**. No branch rules were changed. The exact status check to require on
-both `bootstrap-project` and `main` is `ci / required-gate`. Require
-pull-request review and disallow direct/force pushes. The gate's upstream
-jobs have no path filters, so a
-Linux, packaging, or vendored-patch-only PR still schedules them.
+The fifth hosted run **passed all 12 jobs and the required gate**. No branch
+rules were changed. The active `main` ruleset requires a pull request and
+linear history, but currently requires zero approving reviews and no status
+check. The exact check to require on both `bootstrap-project` and `main` is
+`ci / required-gate`; configure at least one approving review if desired.
+The gate's upstream
+jobs have no path filters, so a Linux, packaging, or vendored-patch-only PR
+still schedules them.
 
-The main limitations are the missing hosted rerun of the Fedora and Arch
-playback fixes, absence of physical GPU testing, missing full-matrix compositor and
-subtitle-cue oracles, and unmeasured hosted stability/runtime. The workflow's
+The main limitations are one hosted pass after the intermittent Fedora and
+Arch stalls, absence of physical GPU testing, missing full-matrix compositor
+and subtitle-cue oracles, and unmeasured long-term hosted stability. The workflow's
 external actions and container images use release tags rather than immutable
 SHAs/digests.
-Production-grade acceptance still requires successful hosted runs, deliberate
-fail-closed checks beyond fixture corruption, and the manual items in the
+Production-grade acceptance still requires deliberate fail-closed checks
+beyond fixture corruption and the manual items in the
 [release checklist](release-checklist.md).
 
 Documentation changed: `README.md`, `CONTRIBUTING.md`, `docs/01-product-scope-fixed.md`, `docs/02-architecture.md`,
@@ -221,11 +240,11 @@ the dedicated `docs/ci/` guide, troubleshooting, checklist, and this report.
 
 | Area | Implemented | Local result | GitHub result | Limitation |
 | --- | --- | --- | --- | --- |
-| Fixture generation and verification | Yes | 31/31 pass; corruption rejected | Fixture job and verification in all six native/display lanes passed in fourth run | FFmpeg version/image digest not pinned |
-| Unit/widget and database | Yes | Full 65-test suite passed, including migration and video-only policy contract | Quality job passed in fourth run | No true released database image snapshot |
-| VPFL decoded video matrix on X11 | Yes | 31/31 pass on Mint; updated test also passed twice each in Fedora and Arch containers | Fourth run: Ubuntu and X11 fallback passed; Fedora and Arch timed out before reporting a video case | Updated test awaits hosted rerun |
+| Fixture generation and verification | Yes | 31/31 pass; corruption rejected | Fixture job and verification in all six native/display lanes passed in fifth run | FFmpeg version/image digest not pinned |
+| Unit/widget and database | Yes | Full 65-test suite passed, including migration and video-only policy contract | Quality job passed 65 tests in fifth run | No true released database image snapshot |
+| VPFL decoded video matrix on X11 | Yes | 31/31 pass on Mint; updated test also passed twice each in Fedora and Arch containers | Fifth run: Ubuntu, Fedora, Arch, and X11 fallback passed all 31 cases | No per-fixture compositor pixel capture; Ubuntu decoder fallback messages are expected in headless runs |
 | Native DEB | Yes | Mint-family release package validator pass | Ubuntu-native build passed | No physical GPU check |
-| Native RPM/Arch | Yes, workflow/scripts | Target-native debug playback passed locally; packages were not rebuilt in these container checks | Fedora-native RPM and Arch package builds passed in fourth run; playback tests timed out | Full codec set required for Fedora's matrix |
-| Clean package install/removal | Yes, workflow/scripts | Ubuntu clean install, video color-bar capture, launch/close, and removal passed | Third run passed all three; fourth run skipped package matrix after native failure | Only one release-package video captured per distribution |
-| Native Wayland/XWayland | Yes, workflow/scripts | XWayland display startup passed in a fresh Ubuntu container; VPFL matrix not run locally | Both passed fourth-run video matrix | Headless Weston, not a physical desktop or GPU |
+| Native RPM/Arch | Yes, workflow/scripts | Target-native debug playback passed locally; packages were not rebuilt in these container checks | Fifth run built both packages and passed both playback tests | Full codec set required for Fedora's matrix |
+| Clean package install/removal | Yes, workflow/scripts | Ubuntu clean install, video color-bar capture, launch/close, and removal passed | Fifth run passed all three install, launch, capture, and removal lanes | Only one release-package video captured per distribution |
+| Native Wayland/XWayland | Yes, workflow/scripts | XWayland display startup passed in a fresh Ubuntu container; VPFL matrix not run locally | Both passed fifth-run video matrix | Headless Weston, not a physical desktop or GPU |
 | Real hardware GPU | Optional manual workflow | Not executed | Not run | Requires provisioned self-hosted runner; not a required PR gate |
