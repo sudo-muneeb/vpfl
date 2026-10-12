@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -80,6 +80,18 @@ void main() {
     await mouse.addPointer(location: videoRect.center);
     await mouse.moveTo(videoRect.bottomCenter - const Offset(0, 40));
     await tester.pump();
+    expect(find.byTooltip('Enter Fullscreen'), findsOneWidget);
+    expect(find.byIcon(Icons.open_in_full_rounded), findsOneWidget);
+    await tester.tap(find.byTooltip('Enter Fullscreen'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.state<VideoState>(find.byType(Video)).isFullscreen(), isTrue);
+    expect(find.byTooltip('Exit Fullscreen'), findsOneWidget);
+    await tester.tap(find.byTooltip('Exit Fullscreen'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      tester.state<VideoState>(find.byType(Video)).isFullscreen(),
+      isFalse,
+    );
     await tester.tap(find.byTooltip('Mute'));
     await tester.pump();
     final pausedAfterControlClick = playback.playingStream
@@ -91,6 +103,8 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.state<VideoState>(find.byType(Video)).isFullscreen(), isTrue);
+    expect(find.byTooltip('Exit Fullscreen'), findsOneWidget);
+    expect(find.byIcon(Icons.close_fullscreen_rounded), findsOneWidget);
     final resumedInFullscreen = playback.playingStream
         .firstWhere((playing) => playing)
         .timeout(eventTimeout);
@@ -102,6 +116,7 @@ void main() {
       tester.state<VideoState>(find.byType(Video)).isFullscreen(),
       isFalse,
     );
+    expect(find.byTooltip('Enter Fullscreen'), findsOneWidget);
     final Duration firstPosition = await playback.positionStream
         .firstWhere((Duration position) => position > Duration.zero)
         .timeout(eventTimeout);

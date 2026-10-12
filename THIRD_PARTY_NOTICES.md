@@ -9,6 +9,16 @@ files shipped with the exact versions you redistribute.
 
 ## Included in the repository or Linux application bundle
 
+- **Chromium window-control vector icons** —
+  [minimize](https://chromium.googlesource.com/chromium/src/+/7e21fa1d122ce05b3d121d8a520f8b5e9bc66dae/ui/gfx/vector_icons/window_control_minimize.icon),
+  [maximize](https://chromium.googlesource.com/chromium/src/+/7e21fa1d122ce05b3d121d8a520f8b5e9bc66dae/ui/gfx/vector_icons/window_control_maximize.icon),
+  [restore](https://chromium.googlesource.com/chromium/src/+/7e21fa1d122ce05b3d121d8a520f8b5e9bc66dae/ui/gfx/vector_icons/window_control_restore.icon), and
+  [close](https://chromium.googlesource.com/chromium/src/+/7e21fa1d122ce05b3d121d8a520f8b5e9bc66dae/ui/gfx/vector_icons/window_control_close.icon)
+  at revision `7e21fa1d122ce05b3d121d8a520f8b5e9bc66dae` — BSD-3-Clause;
+  copyright © 2016 The Chromium Authors. Their 24-unit filled outlines are
+  adapted to Flutter `Path` drawing in `lib/ui/core/widgets/window_controls.dart`.
+  The original copyright and full license are preserved in
+  `third_party/chromium_window_icons/LICENSE` and shipped with Linux packages.
 - **media_kit_video 2.0.1** — [upstream](https://github.com/media-kit/media-kit),
   MIT; copyright © 2021 and onward Hitesh Kumar Saini. Its source is vendored
   in `third_party/media_kit_video/`, with its original `LICENSE` and source

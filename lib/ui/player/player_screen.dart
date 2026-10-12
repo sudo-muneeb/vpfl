@@ -507,6 +507,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                       ),
                                   controls: _buildPlayerControls(
                                     onToggleFullscreen: state.toggleFullscreen,
+                                    fullscreen: state.isFullscreen(),
                                   ),
                                   onExit: state.exitFullscreen,
                                   bindings: _fullscreenShortcuts(state),
@@ -531,6 +532,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   PlayerControls _buildPlayerControls({
     required Future<void> Function() onToggleFullscreen,
+    required bool fullscreen,
   }) => PlayerControls(
     duration: _playback.duration,
     durationStream: _playback.durationStream,
@@ -566,6 +568,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     onPrevious: _previousVideo,
     onNext: _nextVideo,
     onToggleFullscreen: onToggleFullscreen,
+    fullscreen: fullscreen,
   );
 
   String _titleFor(String? uri) {

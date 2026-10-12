@@ -30,7 +30,7 @@ Current desktop structure:
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│ VPFL   current title   renderer   Open file   utilities  ─ □ × │
+│ [logo] VPFL   current title   renderer   Open file  ─ □ × │
 ├──────────────┬───────────────────────────────────────────────┤
 │ Home         │                                               │
 │ All Videos   │ Recent videos                                 │
@@ -50,23 +50,27 @@ double-clicking it toggles maximize. GTK owns the window's resize hit areas:
 7 px along each edge and 12 px at each corner. Its native cursors appear on
 hover, and a primary-button press starts the window manager's resize drag.
 The hit areas are hidden while maximized or fullscreen.
-The previous Flutter `Listener` only requested a resize after pointer down, so
-the cursor did not change on hover. Keep hover, press, and edge selection in
-the GTK runner to avoid two competing resize paths.
 
 For a Linux desktop check, hover all four sides and four corners before
 clicking, drag from both side edges, then maximize the window. The resize
 cursors should disappear while maximized and return after restoring it.
 
-Buttons use themed hover, focus, and tooltips. Open file, appearance, Home,
-and window controls use matching 6 px rounded hover geometry. The runner sets
+Buttons use themed hover and focus. Open file, appearance, and Home use tooltips
+and 6 px rounded hover geometry. The three window controls have circular hover
+and focus boundaries, accessible names, and no hover tooltips. The runner sets
 a 760 × 480 minimum window size.
 
-The shared top bar keeps the canonical red and white VPFL logo, current
-filename while playing, understated renderer status, Open file, and
-appearance. Settings is reached from the sidebar. The
-player uses a Home navigation button. At compact widths, Open file becomes
-icon-only with a tooltip.
+The three 32 px window-control targets draw Chromium's 24-unit minimize,
+maximize, restore, and close silhouettes as scalable Flutter paths at 14 px.
+Minimize, maximize, and restore use slightly heavier strokes. GTK sends
+maximized-state events to Flutter, so dragging the window into or out of a
+maximized state changes the glyph without depending on a resize callback.
+
+The 40 px shared top bar shows the VPFL logo, theme-colored VPFL text at wider
+widths, the current filename while playing, understated renderer status, Open
+file, and appearance. Settings is reached from the sidebar. The player uses a
+Home navigation button. At compact widths, Open file becomes icon-only with a
+tooltip.
 
 ## Sidebar
 
@@ -210,7 +214,9 @@ the 0–100 player volume as it moves. It hides at narrower widths while mute
 remains available. Speed opens a rate menu; subtitles always open a menu with
 Auto, Off, embedded tracks when present, and Load subtitle file. The latter
 uses the native picker for SRT, ASS, SSA, and WebVTT files, then selects the loaded
-track. The overflow retains secondary actions.
+track. The fullscreen button shows an outward icon with “Enter Fullscreen” in
+windowed mode and an inward icon with “Exit Fullscreen” in fullscreen. It uses
+the current video fullscreen state.
 
 Previous and next appear at the far sides, halfway down the video when a
 multi-item queue exists. Opening a local file builds a queue from video files
@@ -241,7 +247,6 @@ Video tracks
   available tracks when more than one exists
 
 Playback
-  Repeat mode
   Fit / aspect behavior
 
 Video

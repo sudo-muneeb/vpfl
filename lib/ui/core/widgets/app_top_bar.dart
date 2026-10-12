@@ -33,9 +33,10 @@ class AppTopBar extends StatelessWidget {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 900;
         return Container(
-          height: 60,
-          decoration: BoxDecoration(
-            color: tokens.topBarBackground,
+          key: const Key('app-top-bar-surface'),
+          height: 40,
+          color: tokens.topBarBackground,
+          foregroundDecoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -53,7 +54,7 @@ class AppTopBar extends StatelessWidget {
               Expanded(
                 child: WindowDragHandle(
                   child: SizedBox(
-                    height: 60,
+                    height: 40,
                     child: Row(
                       children: [
                         Image.asset(

@@ -74,6 +74,13 @@ static gboolean window_state_cb(GtkWidget*,
       gtk_widget_hide(handle);
     }
   }
+  if (self->window_channel != nullptr &&
+      (event->changed_mask & GDK_WINDOW_STATE_MAXIMIZED)) {
+    g_autoptr(FlValue) maximized = fl_value_new_bool(
+        (event->new_window_state & GDK_WINDOW_STATE_MAXIMIZED) != 0);
+    fl_method_channel_invoke_method(self->window_channel, "maximizedChanged",
+                                    maximized, nullptr, nullptr, nullptr);
+  }
   return FALSE;
 }
 

@@ -20,6 +20,15 @@ flutter run -d linux --dart-entrypoint-args=/path/to/video.mkv
 
 The built executable follows the same contract: `vpfl` or `vpfl <file>`.
 Relative paths, spaces, Unicode filenames, and a quoted `~/...` path are supported.
+For a normal desktop window with a separate, persistent test profile, run
+`./scripts/debug-isolated.sh [video-file]`. Flutter's hot reload keys work in
+that terminal. The profile is stored in `.vpfl-debug-profile/`; use
+`--reset-profile` to start over or `--trace` to print lifecycle events. The
+script redirects VPFL's database, settings, cache, and GSettings writes, while
+using your current display and desktop session. It is not a filesystem sandbox;
+Flutter still writes build files in this checkout and may use its normal SDK
+and package caches.
+
 The player title bar reports whether the Linux video output selected GPU or
 software rendering. This is the rendering path, not the video decoder mode.
 Use the CC control over the video to select a subtitle track or load an

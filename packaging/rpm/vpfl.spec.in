@@ -8,7 +8,7 @@ Name: vpfl
 Version: @VERSION@
 Release: 1%{?dist}
 Summary: Local video player for Linux
-License: Apache-2.0
+License: Apache-2.0 AND MIT AND BSD-3-Clause
 URL: https://github.com/sudo-muneeb/vpfl
 Source0: vpfl-stage.tar.gz
 BuildArch: x86_64

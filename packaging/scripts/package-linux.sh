@@ -31,6 +31,8 @@ install -m 644 LICENSE NOTICE AUTHORS THIRD_PARTY_NOTICES.md \
   "$stage/usr/share/doc/vpfl/"
 install -m 644 third_party/media_kit_video/LICENSE \
   "$stage/usr/share/doc/vpfl/LICENSE.media_kit_video"
+install -m 644 third_party/chromium_window_icons/LICENSE \
+  "$stage/usr/share/doc/vpfl/LICENSE.chromium_window_icons"
 install -m 755 packaging/linux/vpfl-launcher "$stage/usr/bin/vpfl"
 install -m 644 packaging/linux/com.app.vpfl.desktop "$stage/usr/share/applications/"
 if command -v magick >/dev/null; then

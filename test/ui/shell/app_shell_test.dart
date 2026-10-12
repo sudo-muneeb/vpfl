@@ -149,13 +149,22 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('top bar shows the logo, file action, and appearance menu', (
+  testWidgets('top bar shows the logo, title, and appearance menu', (
     WidgetTester tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(_testApp());
 
     expect(find.byKey(const Key('open-file-button')), findsOneWidget);
+    expect(find.text('VPFL'), findsOneWidget);
     expect(find.byType(Image), findsOneWidget);
+    expect(tester.widget<Image>(find.byType(Image)).semanticLabel, 'VPFL logo');
+    final brand = tester.widget<Text>(find.text('VPFL'));
+    expect(
+      brand.style,
+      Theme.of(tester.element(find.text('VPFL'))).textTheme.titleMedium,
+    );
     await tester.tap(find.byKey(const Key('quick-appearance-menu')));
     await tester.pumpAndSettle();
     expect(find.text('Dark appearance'), findsOneWidget);
