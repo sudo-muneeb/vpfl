@@ -2,8 +2,7 @@
 
 This guide describes the checks in `.github/workflows/ci.yml` and their
 observed status. The workflow runs for pull requests targeting
-`bootstrap-project` or `main`; it also supports manual dispatch. The checkout
-had no GitHub Actions workflows before this change.
+`bootstrap-project` or `main`; it also supports manual dispatch.
 
 ## V1 media contract
 
@@ -83,62 +82,26 @@ the named target container. Avoid using a real VPFL user profile.
 
 ## Validation record
 
-As of 10 October 2026, the revised generator produced **31/31** fixtures on
-Linux Mint 22.3 with FFmpeg 6.1.1, and the separate verifier passed **31/31**.
-The native X11 integration run opened all 31 cases through VPFL, checked video
-decoding and subtitle track discovery, and passed again with GPU initialization
-failure injected. The full unit/widget suite passed **65 tests**; Dart format
-and analysis passed. Six existing native Linux regression suites also passed.
-The local Mint release DEB built and passed its package validator. It also
-passed a clean Ubuntu 24.04 install, X11 compositor color-bar capture,
-launch/close, and removal smoke. A prior Xvfb
-run with the handoff's 38 cases preceded the final fixture matrix; it is
-superseded and is not evidence for the final manifest. See the
-[validation report](validation-report.md) for exact platform results and
-limits. On PR #3, the first hosted run passed fixtures and quality, then the
-container lanes stopped because `jq` was missing. The second run passed
-fixtures and quality again and got through dependency setup. Five native and
-display lanes then stopped at Git's ownership check on the mounted Flutter SDK;
-Fedora stopped earlier when FFprobe's diagnostic output was mixed with JSON.
-Local reproduction then confirmed Fedora's default decoder cannot decode the
-10-bit H.264 fixture, so its lanes now install full FFmpeg from RPM Fusion Free.
-The revised verifier passed all 31 fixtures from the second hosted artifact
-inside a Fedora 44 container with that package set.
-The package jobs were skipped because their native builds failed. The
-[third hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38073659777)
-exercised those fixes: fixtures, quality, all three native builds, Wayland,
-X11 software fallback, and all three clean package installs passed. XWayland
-failed before Flutter started because Weston could not bind its X socket in a
-fresh container without `/tmp/.X11-unix`. The local display-wrapper fix for
-that startup failure passed in the
-[fourth hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38075252369).
-Fixtures, quality, Ubuntu native playback, and all three display modes passed.
-Fedora and Arch verified fixtures and built packages, but both media-matrix
-tests timed out after 12 minutes shortly after the initial video output
-appeared. Their logs do not identify which playback await stalled. The
-package-install matrix was skipped because the native matrix failed.
-The test also opened the initial H.264 file twice: once through the app's
-startup route and again through `PlaybackService.open`. That overlapping
-request has been removed locally. Native calls and cleanup now have explicit
-deadlines, and `build/ci-logs/media-matrix-stages.log` records the last
-completed step for each fixture. A local X11 matrix passed after this change.
-In a Fedora 44 container, runs without a sound device also logged an audio
-initialization error on every video and stalled intermittently later in the
-matrix. The headless integration test now selects libmpv's null audio sink;
-it still checks each video's audio stream codec. Two Fedora X11 runs then
-completed all 31 cases.
-Two Arch X11 runs also completed all 31 cases using an Arch-built debug app
-and the same null sink. The
-[fifth hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38117032738)
-passed all 12 jobs, including Fedora and Arch native playback, all three
-package installs, and `ci / required-gate`. Each of the six media-matrix lanes
-completed 26 videos, four external subtitles, one embedded subtitle, and
-cleanup. The Ubuntu and display lanes logged `Could not open codec` on some
-opens. This is an expected decoder-selection attempt in these headless lanes:
-mpv tries a hardware decoder path, then falls back to software decoding when
-that path cannot open. It does not mean the video's encoding changed or that
-playback failed. The decoded-frame and completion checks passed. See mpv's
+The [fifth hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38117032738)
+on PR #3 passed all 12 jobs, including the required gate. It covered the 31
+video/subtitle cases in the native and display lanes and installed, launched,
+and removed DEB, RPM, and Arch packages. This is the latest hosted run recorded
+in the [detailed validation report](validation-report.md), which preserves the
+failures and fixes from earlier runs.
+
+The earlier `jq`, Git ownership, FFprobe parsing, Fedora codec setup, and
+XWayland socket failures were corrected and exercised by later hosted runs.
+Fedora and Arch playback stalls were addressed with a single startup open,
+bounded operations, stage logs, and a null audio sink for headless tests. Two
+local full-matrix runs on each distribution and the fifth hosted run passed;
+the hosted result is one pass after the intermittent stalls. Decoder-selection
+messages such as `Could not open codec` appeared in headless Ubuntu/display
+logs, but the decoded-frame and completion checks passed. See the
 [hardware-decoding fallback documentation](https://mpv.io/manual/stable/#options-hwdec).
+
+On 12 October 2026, the local unit/widget suite passed 71 tests and
+`flutter analyze` reported no issues. Native lanes were not rerun for this
+local documentation audit.
 
 ## Known limits
 
@@ -150,9 +113,6 @@ playback failed. The decoded-frame and completion checks passed. See mpv's
 - The suite covers pause, seek, resume, and natural completion for each video.
   The GPU initialization fault is injected in one X11 lane; other native
   renderer faults are not yet covered.
-- The fifth hosted run passed Fedora and Arch playback with the startup-open
-  correction, null audio sink, and stage diagnostics. It is one hosted pass
-  after the fourth run's intermittent stalls.
 - A headless Mesa renderer is not a physical GPU or hardware decode result.
   The optional self-hosted GPU workflow and GNOME/KWin nested validation are
   unexecuted; there is no required physical-GPU PR lane yet.

@@ -1,5 +1,10 @@
 # CI implementation and validation report
 
+This is a historical record of PR #3 and the checks performed through
+11 October 2026. For the current workflow and remaining coverage, see the
+[CI guide](README.md). Earlier failures below are retained as evidence of how
+the pipeline was corrected; they are not current open incidents.
+
 **Updated:** 11 October 2026. **Branch:** `ci/production-testing`. This report records
 observed results for the checkout; it does not turn unrun GitHub jobs into
 passes. The declared matrix covers the advertised video formats. Five hosted

@@ -1,5 +1,11 @@
 # Phase 0 Linux compatibility report
 
+This records the early X11/AMD checkpoint. Later work replaced the isolated
+EGL context with a Flutter-shared context and added decoded-frame, X11
+compositor, headless Wayland, and lifecycle checks. See the
+[renderer checkup](linux-renderer-checkup.md) and [CI guide](../ci/README.md)
+for those results; the unverified items below describe this checkpoint.
+
 ## Environment
 
 - OS: Linux Mint 22.3, X11
@@ -41,9 +47,10 @@ release smoke runs report the hardware GL rendering context for all four local
 videos. This confirms the video frame rendering path initializes; visible
 first-frame presentation and hardware decoding remain separate checks.
 
-The X11 renderer is verified. Hardware decoding and visible first-frame
-presentation are not yet verified. The next compatibility step is to collect a
-first-frame signal and decoder state, then test Wayland and dispose/reopen.
+At this checkpoint, X11 renderer initialization was verified. Hardware
+decoding and visible first-frame presentation were not yet verified. Later
+checks added frame and lifecycle coverage; hardware decoder selection and
+physical desktop validation remain separate release checks.
 
 ## Reproduction
 

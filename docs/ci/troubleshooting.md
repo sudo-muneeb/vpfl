@@ -1,5 +1,10 @@
 # CI troubleshooting
 
+The table lists failure signatures to use if they recur. The setup, parser,
+display, and headless playback fixes described here are already in the
+repository and passed the fifth hosted run recorded in the
+[validation report](validation-report.md).
+
 Start with the first failed job in the pull request's **Checks** tab. The
 `ci / required-gate` result summarizes failure, but the source job contains
 the useful log. `ci / fixtures` uploads the exact generated fixture set and

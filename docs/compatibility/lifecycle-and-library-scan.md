@@ -1,8 +1,9 @@
 # Playback lifecycle and library scan checkup
 
-Status: implementation and local Linux checks on 5 October 2026. These changes
-are in the working tree; the original intermittent surviving-process incident
-was not reproduced with a correctly addressed window close request.
+Status: implementation and local Linux checks on 5 October 2026. This is a
+dated investigation; the changes described below are in the repository. The
+original intermittent surviving-process incident was not reproduced with a
+correctly addressed window close request.
 
 ## Findings
 

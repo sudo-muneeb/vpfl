@@ -129,7 +129,7 @@ flutter build linux --release
 The pull-request workflow on `bootstrap-project` and `main` generates a
 video fixture matrix, runs VPFL playback tests, builds and installs
 native DEB/RPM/Arch packages, and checks X11/Wayland/XWayland lanes. The
-workflow is newly implemented; see the [CI guide](docs/ci/README.md) for
+workflow is described in the [CI guide](docs/ci/README.md), including
 exact commands, observed results, and unverified coverage.
 
 See [the Phase 0 Linux compatibility report](docs/compatibility/phase-0.md)
