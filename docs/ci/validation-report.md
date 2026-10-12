@@ -2,8 +2,7 @@
 
 **Updated:** 11 October 2026. **Branch:** `ci/production-testing`. This report records
 observed results for the checkout; it does not turn unrun GitHub jobs into
-passes. The V1 format decision in this work is video-only. The handoff's eight
-standalone audio fixtures were removed from the declared matrix. Five hosted
+passes. The declared matrix covers the advertised video formats. Five hosted
 runs on PR #3 have occurred. The fourth passed XWayland but timed out in the
 Fedora and Arch playback tests. The fifth passed all 12 jobs, including the
 required gate.
@@ -30,8 +29,7 @@ required gate.
   nightly adds a 30-cycle lifecycle test. Neither publishes artifacts.
 - `ci/media-matrix.json` declares **26 video/container cases**, four external
   subtitle cases, and one embedded-subtitle video. A separate 30-second video
-  supports older playback/lifecycle regressions. No standalone audio format is
-  added to V1's open or scan policy.
+  supports older playback/lifecycle regressions.
 - The generator, verifier, XDG/display wrapper, package smoke, Arch package
   helper, and regression runner are in `scripts/ci/`.
 - The native integration test opens every video through `PlaybackService`,
@@ -50,7 +48,7 @@ required gate.
   self-hosted runner. It checks the GL renderer, records EGL diagnostics, and
   requires observed GPU output and H.264 hardware decoding. It has not run.
 - A format-policy contract test checks that every advertised explicit-open
-  video extension has a fixture and rejects standalone audio. An isolated
+  video extension has a fixture. An isolated
   SQLite test reconstructs the original schema 1 table set from commit
   `e390c16`, upgrades to schema 2, checks history/settings preservation and
   `PRAGMA integrity_check`, then reopens the file.
@@ -194,7 +192,7 @@ waiting for WMV video tracks and another while loading a subtitle; a third
 passed. Routing this headless test's audio to libmpv's null sink removed those
 errors, and two full Fedora runs passed. This is local evidence for the audio
 device issue; it does not retrospectively identify the precise await in the
-fourth hosted run. Audio-only files remain outside V1 scope.
+fourth hosted run.
 The [fifth hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38117032738)
 at commit `7cfc5ef` passed all 12 jobs. Fixtures, 65 quality tests, native
 Ubuntu/Fedora/Arch builds and playback, Wayland/XWayland/X11 software fallback,
@@ -241,7 +239,7 @@ the dedicated `docs/ci/` guide, troubleshooting, checklist, and this report.
 | Area | Implemented | Local result | GitHub result | Limitation |
 | --- | --- | --- | --- | --- |
 | Fixture generation and verification | Yes | 31/31 pass; corruption rejected | Fixture job and verification in all six native/display lanes passed in fifth run | FFmpeg version/image digest not pinned |
-| Unit/widget and database | Yes | Full 65-test suite passed, including migration and video-only policy contract | Quality job passed 65 tests in fifth run | No true released database image snapshot |
+| Unit/widget and database | Yes | Full 65-test suite passed, including migration and media policy contract | Quality job passed 65 tests in fifth run | No true released database image snapshot |
 | VPFL decoded video matrix on X11 | Yes | 31/31 pass on Mint; updated test also passed twice each in Fedora and Arch containers | Fifth run: Ubuntu, Fedora, Arch, and X11 fallback passed all 31 cases | No per-fixture compositor pixel capture; Ubuntu decoder fallback messages are expected in headless runs |
 | Native DEB | Yes | Mint-family release package validator pass | Ubuntu-native build passed | No physical GPU check |
 | Native RPM/Arch | Yes, workflow/scripts | Target-native debug playback passed locally; packages were not rebuilt in these container checks | Fifth run built both packages and passed both playback tests | Full codec set required for Fedora's matrix |

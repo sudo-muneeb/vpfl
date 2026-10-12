@@ -20,7 +20,7 @@ This is a researched implementation plan. No application has been built or bench
 
 5. Create a small working Flatpak early. Persistent folder access, native libraries, GPU access, and launcher behavior are architectural requirements.
 
-6. Keep the first release focused on local video, recent items, saved folders, subtitles, playlists, accessibility, and dependable installation. Standalone audio files are outside the V1 open and library-scan policy. Direct network playback and advanced controls can arrive in the next milestones without changing the architecture.
+6. Keep the first release focused on local video, recent items, saved folders, subtitles, playlists, accessibility, and dependable installation. Direct network playback and advanced controls can arrive in the next milestones without changing the architecture.
 
 ## 2 Ideal player checklist and implementation mapping
 
@@ -36,7 +36,7 @@ The delivery column uses V1 for the first stable release, V1.1 for the next comp
 
 | 01 | Common video containers and codecs | Engine and conditional | V1 | Open files through Media. Publish a tested format matrix rather than promising every format. | Play MP4, MKV, WebM, MOV, and AVI fixtures across H.264, HEVC, VP9, and AV1 where present in the backend. |
 
-| 02 | Standalone audio playback | Engine | Later | No standalone audio open, library scan, or music-player view in V1. Reconsider only with a separate product decision. | V1 rejects MP3, FLAC, WAV, M4A, AC3, and Opus as standalone inputs; video files may contain audio tracks. |
+| 02 | Audio tracks in video | Engine | V1 | Discover encoded audio streams in video files. | Play video fixtures with audio tracks and verify stream discovery. |
 
 | 03 | Play, pause, stop, and completion | Engine | V1 | Wrap open, play, pause, playOrPause, stop, and completion events in PlaybackService. | Rapid toggles, stop then reopen, and end of media produce consistent state. |
 

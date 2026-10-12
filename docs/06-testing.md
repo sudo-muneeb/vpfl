@@ -275,10 +275,10 @@ python3 scripts/ci/verify_fixtures.py --dir build/ci-video-fixtures
 
 The native integration command needs Xvfb and Linux playback libraries. The
 manifest has 26 video cases, four external subtitle files, and one embedded
-subtitle video. The video cases include audio streams; standalone audio files
-are outside the V1 policy. The [CI guide](ci/README.md) lists the required
-distribution and display jobs, current test assertions, and actual validation
-status. A decoded mpv screenshot is not proof of final Flutter composition.
+subtitle video. The video cases include audio streams. The
+[CI guide](ci/README.md) lists the required distribution and display jobs,
+current test assertions, and actual validation status. A decoded mpv
+screenshot is not proof of final Flutter composition.
 
 ## Completion checklist
 

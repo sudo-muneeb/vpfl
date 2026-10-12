@@ -7,8 +7,7 @@ had no GitHub Actions workflows before this change.
 
 ## V1 media contract
 
-VPFL V1 opens video files. Standalone audio files are outside its supported
-format policy and are not CI fixtures. `ci/media-matrix.json` lists 26 video
+VPFL V1 opens video files. `ci/media-matrix.json` lists 26 video
 files across the advertised extensions, four external subtitle files used
 with a video, and one video with an embedded subtitle. The video cases also
 exercise their encoded audio streams. `.ts` is explicit-open only because the
@@ -93,7 +92,7 @@ and analysis passed. Six existing native Linux regression suites also passed.
 The local Mint release DEB built and passed its package validator. It also
 passed a clean Ubuntu 24.04 install, X11 compositor color-bar capture,
 launch/close, and removal smoke. A prior Xvfb
-run with the handoff's 38 cases preceded the V1 video-only correction; it is
+run with the handoff's 38 cases preceded the final fixture matrix; it is
 superseded and is not evidence for the final manifest. See the
 [validation report](validation-report.md) for exact platform results and
 limits. On PR #3, the first hosted run passed fixtures and quality, then the
@@ -173,8 +172,8 @@ desktop, upgrade, and Flatpak checks in the release checklist.
 
 ## Merge protection
 
-After a successful hosted run on a pull request, configure branch rules for
-both `bootstrap-project` and `main` to require **`ci / required-gate`** from
-GitHub Actions, require pull-request review, and prevent direct and force
-pushes. Do not make a path-based exception for `linux/`, `packaging/`, or
-`third_party/`. This repository change does not modify branch rules.
+The active **Protect main** ruleset requires a pull request, resolved review
+threads, and linear history. It blocks deletion and force-pushes to `main` and
+allows squash or rebase merges. It currently requires zero approving reviews
+and does not require a status check. Contributors should still fix failing CI
+jobs before merging. See the [contributor guide](../../CONTRIBUTING.md).
