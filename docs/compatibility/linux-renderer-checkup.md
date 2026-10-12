@@ -1,8 +1,8 @@
 # Linux video renderer checkup
 
 Status: implementation and local X11 checks completed on 3 October 2026.
-The renderer changes described here are in the working tree; this report does
-not claim a commit or a release artifact.
+This is a dated investigation. Its renderer changes are in the repository;
+the checks below describe the local artifacts tested then, not a release.
 
 ## Scope and test machine
 
@@ -153,7 +153,8 @@ means the video **rendering** path uses GL. Disposal followed by reopen was
 not separately exercised. The full repository test suite was not rerun in
 this checkup.
 
-Wayland, Intel, NVIDIA, and Flatpak runtime behavior remain unverified. The
+Headless Wayland playback was later exercised in CI; GNOME/KWin desktop
+sessions, Intel, NVIDIA, and Flatpak runtime behavior remain unverified. The
 capability checks and software fallback are intended to improve portability,
 but coverage on one X11/Mesa host cannot establish support for all Linux
 distributions or drivers. Those environments need their own playback,

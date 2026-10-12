@@ -1,25 +1,19 @@
 # Native Linux packages
 
-The new pull-request workflow is described in the [CI guide](../ci/README.md).
-It declares target-native Ubuntu, Fedora, and Arch compilation plus separate
-package-manager install lanes. The third hosted run passed all three native
-builds, playback matrices, and clean package installs. The fourth built the
-packages but timed out in Fedora and Arch playback, so the install matrix was
-skipped. The test now avoids a duplicate initial open and selects a null audio
-sink for headless video validation; two Fedora 44 and two Arch X11 matrix runs
-passed locally. The fifth hosted run passed native playback and clean package
-installation on all three distributions; see the
-[validation report](../ci/validation-report.md). Historical checks below
-describe earlier manual artifacts and must not be read as results for the
-new workflow or commit.
+The [CI guide](../ci/README.md) describes target-native Ubuntu, Fedora, and
+Arch builds plus separate package installation checks. The fifth hosted run
+passed native playback and clean package installation on all three
+distributions. Earlier failures and their fixes are recorded in the
+[dated validation report](../ci/validation-report.md). Manual results below
+describe the artifacts tested at the time, not every later build.
 
 Native packaging targets x86_64 Ubuntu 24.04 / Linux Mint 22.x with DEB and
-Fedora 44 with RPM. The build host for the current artifacts is Linux Mint
-22.3 (Ubuntu 24.04 base), glibc 2.39, GTK 3.24.41. These packages are not
-claimed compatible with every Debian, RHEL, or openSUSE release. The RPM uses
-the Flutter bundle built on the Ubuntu-family host; a clean Fedora container
-install and headless playback check passed, but a real Fedora desktop and GPU
-still need inspection.
+Fedora 44 with RPM. The local packaging script builds a Flutter bundle on its
+host; CI builds the DEB and RPM in their target distribution containers.
+Earlier manual artifacts were built on Linux Mint 22.3 (Ubuntu 24.04 base),
+glibc 2.39, GTK 3.24.41. These packages are not claimed compatible with every
+Debian, RHEL, or openSUSE release. A real Fedora desktop and GPU still need
+inspection.
 
 Build from the repository root:
 
@@ -144,9 +138,9 @@ EGL and GLES libraries Flutter loads with `dlopen`), `desktop-file-utils`,
 it is for DEB and RPM. The install hook refreshes the desktop and icon caches
 on install, upgrade, and removal.
 
-Until the first upstream release exists, `sha256sums` is `SKIP` and the
-source URL points at `v1.0.0`; publishing requires replacing both with the
-release asset and its checksum. The maintainer line is a placeholder.
+The current PKGBUILD uses `sha256sums=('SKIP')` and a source URL for `v1.0.0`.
+Before publishing, replace the checksum with the release asset's actual hash
+and verify that URL. The PKGBUILD names Sheikh Muneeb Ahmed as maintainer.
 
 ### Arch checks
 
@@ -171,5 +165,5 @@ package leaves the user's `~/.config/mimeapps.list` unchanged.
 * Thumbnails come from the Freedesktop cache when it is valid, then from a
   VPFL frame captured after 10 seconds of natural playback. Videos that have
   never played that far, or whose cache entry is stale, show the placeholder.
-* Only the Arch build host and a clean Arch install are validated. Other
-  distributions and GPUs are not claimed.
+* CI validates an Arch-native build, playback matrix, and clean package
+  install. A real Arch desktop and physical GPU remain unverified.

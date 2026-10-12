@@ -1,11 +1,18 @@
 # VPFL Goals
 
+This file includes milestone notes written during development. For the current
+automated checks and their limits, see the [CI guide](docs/ci/README.md). On
+12 October 2026, the local unit/widget suite passed 71 tests and
+`flutter analyze` reported no issues. Flatpak runtime, physical GPU decoding,
+and release-upgrade checks remain separate validation work.
+
 ## Project assessment
 
-VPFL is intended to be a local Linux desktop video player, distributed first
-as a Flatpak. V1 centers on one foreground `media_kit` session, recent media
-and resume history, user saved folders, subtitles, accessibility, and a
-responsive player/library UI. Conversion, transcoding, and broad host access
+VPFL is a local Linux desktop video player. Native DEB, RPM, and Arch packages
+are implemented; Flatpak remains a planned release target. V1 centers on one
+foreground `media_kit` session, recent media and resume history, user saved
+folders, subtitles, accessibility, and a responsive player/library UI.
+Conversion, transcoding, and broad host access
 are out of scope. Direct network playback and advanced native controls are
 later milestones.
 
@@ -25,10 +32,12 @@ runtime evidence.
 ### Goal 0 — Playback compatibility and repository baseline — Core complete
 
 The Linux release build and single-file playback path are established.
-Hardware GL video rendering is verified on X11, and the integration run
-confirmed playback, seek, and pause. Flatpak build/run is deferred to Goal 7
-because `flatpak-builder` is unavailable in this environment. First-frame
-capture, hardware decoder state, Wayland, and dispose/reopen remain unverified.
+Hardware GL video rendering was verified on X11, and the integration run
+confirmed playback, seek, and pause. At this checkpoint, Flatpak build/run,
+visible-frame capture, hardware decoder state, Wayland, and dispose/reopen had
+not been checked. Later CI added decoded-frame and X11 compositor checks,
+headless Wayland coverage, and lifecycle tests; see the
+[CI guide](docs/ci/README.md) for what those checks establish.
 The optional CUDA probe warning is expected on this AMD machine and is not a
 playback blocker.
 
@@ -131,10 +140,11 @@ cards open playback. The library uses a lazy grid. The VPFL mark now appears in
 the sidebar, GTK window, and Flatpak app icon; the packaged PNG is correctly
 512 × 512.
 
-`flutter analyze` and a Linux release build pass. Focused Goal 4 tests and
-Flatpak portal persistence behavior still need runtime validation.
+`flutter analyze` and a Linux release build passed at this milestone. Scanner,
+repository, and library widget tests now run in the local test suite. Flatpak
+portal persistence still needs runtime validation.
 
-## Current goal
+## Previous milestone
 
 ### Goal 5 — Player UI — Core complete
 
@@ -158,14 +168,19 @@ bar appears only when the pointer reaches the top 16 px. Keyboard shortcuts
 cover play/pause, ten-second seeking, volume, mute, fullscreen, Escape, and Open
 File, and are ignored while an editor has focus.
 
-`flutter analyze`, the Linux release build, and all 11 focused player-control
-and overlay widget tests pass. The full suite still has failures in three shell
-widget tests and one persistence test, outside Goal 5. Interactive fullscreen
-and native media validation remain for the Linux integration matrix in Goal 8.
+At this milestone, `flutter analyze`, the Linux release build, and all 11
+focused player-control and overlay widget tests passed. The shell and
+persistence failures recorded then no longer reproduce in the current local
+unit/widget suite. CI now includes native media and window-state checks;
+interactive desktop validation remains part of release testing.
 
-## Next goals
+## Remaining release work
 
 ### Goal 6 — Linux integration
+
+The CLI file-open route, desktop entry, Open With integration, default-app
+controls, native packages, and window controls are implemented. Real desktop
+checks across the target distributions and sessions remain release work.
 
 **Objective:** Add launcher identity, file association, file picker/drop, and
 window integration for Linux.
@@ -175,7 +190,8 @@ window integration for Linux.
 action; executable, desktop file, icon, and app ID agree.
 **Tests required:** Linux runner/file-open integration on X11 and Wayland when
 available.
-**Risks/unknowns:** Existing GTK runner is the generated Flutter template.
+**Risks/unknowns:** Desktop sessions and target distributions vary in file
+association and window behavior.
 
 ### Goal 7 — Flatpak
 
@@ -200,9 +216,10 @@ modules as findings require.
 performance and hardware claims include measurements.
 **Tests required:** Full focused suite, Linux integration matrix, accessibility
 review, and release/profile measurements.
-**Risks/unknowns:** Wayland, NVIDIA, codecs, and target Flatpak runtime coverage.
+**Risks/unknowns:** Real desktop Wayland, NVIDIA, codecs, and target Flatpak
+runtime coverage.
 
-## Completed
+## Early milestone evidence
 
 - Read the available VPFL product, architecture, structure, performance,
   Linux/Flatpak, testing, coding-agent, and UI design documentation.
@@ -213,9 +230,9 @@ review, and release/profile measurements.
 - Added a minimal player, the single-session `PlaybackService`, CLI path
   routing, VPFL light/dark theme baseline, and six focused routing/control
   tests. `media_kit` packages are pinned to 1.2.6 / 2.0.1 / 1.0.7.
-- `flutter analyze`, all six `flutter test` cases, and
-  `flutter build linux --release` pass. The Linux playback integration run
-  advances, seeks, and pauses the 1440p sample.
+- At this early checkpoint, `flutter analyze`, all six then-existing test
+  cases, and `flutter build linux --release` passed. The Linux playback
+  integration run advanced, sought, and paused the 1440p sample.
 - Added the Phase 0 compatibility report and an early Flatpak manifest/build
   script using Freedesktop 26.08. The Flatpak build itself is unverified.
 - Fixed Linux hardware-render context creation by carrying a narrow patch to
@@ -225,28 +242,19 @@ review, and release/profile measurements.
   (4K landscape, 4K portrait, and two 1440p samples) initialized the hardware
   GL context.
 
-## Known issues
+## Remaining validation
 
-- The repository started as a Flutter counter template. Playback now has a
-  baseline service and UI; repositories, database, home library, and saved
-  folders are still unimplemented.
-- `docs/07-roadmap.md`, `docs/09-sources.md`, and
-  `TESTING_GUIDELINES.md` referenced by the brief are absent. Phase 0 is taken
-  from the explicit first-task section in `docs/08-coding-agent-brief.md`.
-- `.agents/PERFORMANCE.md` mentions conversion progress, which conflicts with
-  the current product scope and coding brief. Conversion remains excluded.
-- The upstream hardware-render failure came from reading Flutter's
-  thread-local EGL context in a GTK callback after Flutter moved it to the
-  raster thread. The current patch creates a context shared with Flutter from
-  the raster callback and uses software fallback for GPU failures. X11/AMD
-  native integration passed; Wayland and visible frame capture still need
-  verification.
-- mpv may log `Cannot load libcuda.so.1` while probing its optional NVIDIA
-  backend. This is expected on the AMD test machine and does not affect
-  rendering. VAAPI or other hardware decoding selection remains unknown.
-- `flatpak` 1.14.6 exists, but `flatpak-builder` is not installed. No media
-  fixture is tracked in the repository; the user's `videos/` directory is
-  deliberately ignored by Git. Installing the missing package was declined.
+- Build and run the Flatpak, including portal-granted folder persistence and
+  upgrade behavior.
+- Exercise real GPU rendering and hardware decoding on each claimed vendor.
+  The current PR matrix uses headless software renderers; the optional
+  physical-GPU workflow has not run on a provisioned runner.
+- Test native Wayland and XWayland in GNOME and KDE sessions, subtitle
+  presentation, release upgrades, and performance on target hardware.
+- The original intermittent `flutter run` disconnect was not reproduced
+  reliably before the renderer change. The [renderer checkup](docs/compatibility/linux-renderer-checkup.md)
+  records the correction and its evidence without claiming a proven root
+  cause for that incident.
 
 ## Decisions discovered during implementation
 
@@ -256,8 +264,8 @@ review, and release/profile measurements.
 - The Linux manifest uses existing `com.app.vpfl` runner identity as a
   placeholder. Choose the project-owned reverse-domain ID before public
   packaging.
-- The Flatpak manifest targets Freedesktop 26.08, the current stable runtime
-  when this baseline was prepared.
+- The Flatpak manifest targets Freedesktop 26.08; this was the selected runtime
+  when the baseline was prepared.
 - The upstream hardware-render failure was caused by reading Flutter's
   thread-local EGL context in a GTK callback after Flutter moved that context
   to its raster thread. The current patch initializes an EGL context shared

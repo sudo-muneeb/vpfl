@@ -1,22 +1,29 @@
 # Product scope and feature matrix
 
-# VPFL development plan
-
-a Flutter video player for desktop Linux, developed locally and distributed through Flatpak and eventually Flathub.
+A Flutter video player for desktop Linux, with native packages implemented and
+Flatpak and Flathub distribution planned.
 
 VPFL should open quickly, play reliably, remember recent videos and playback positions, and let the user save folders for later browsing. Use media_kit as the playback engine, Flutter for the interface, SQLite for local records, and Linux desktop bridges for installation and system integration. The feature matrix below is the product checklist and the implementation backlog. Every row includes a delivery decision and a verification requirement.
 
-This is a researched implementation plan. No application has been built or benchmarked, and no hardware capability has been verified on the user's machine. Performance figures are proposed targets. A support claim becomes valid only after testing the actual release bundle.
+This began as a researched implementation plan. The application, native
+packages, and automated Linux checks have since been built. Feature rows below
+are targets, not a record of completed verification. Performance figures remain
+proposed targets; hardware and release claims require tests on the actual
+release bundle and target machine. See the [CI guide](ci/README.md) for
+executed checks and their limits.
 
 ## 1 Key decisions
 
-1. Develop in VS Code with the official Dart and Flutter extensions. Android Studio remains usable for Dart and Flutter; Linux desktop builds use the Linux toolchain. [S01, S02]
+1. Develop in VS Code with the official Dart and Flutter extensions. Android Studio remains usable for Dart and Flutter; Linux desktop builds use the Linux toolchain.
 
-2. Start with the published media_kit packages, then pin the exact resolved dependencies and Flutter revision after the compatibility experiment. The checked versions are media_kit 1.2.6, media_kit_video 2.0.1, and media_kit_libs_video 1.0.7. Use the video native dependency package for both video and audio. [S03, S04]
+2. Start with the published media_kit packages, then pin the exact resolved dependencies and Flutter revision after the compatibility experiment. The checked versions are media_kit 1.2.6, media_kit_video 2.0.1, and media_kit_libs_video 1.0.7. Use the video native dependency package for both video and audio.
 
-3. Prove Linux rendering and decoding before developing the full interface. The 2.0.1 changelog lists a Flutter 3.38 Linux rendering fix, but later open issue 1404 reports a software fallback on Linux with 2.0.1 and Flutter 3.38.4 or newer. This is conflicting compatibility evidence, not proof that every current combination fails. Test the selected SDK and package combination on the target machine. [S05, S06]
+3. Verify Linux rendering and decoding with the selected Flutter SDK and
+   packaged media dependencies on each target system. The
+   [renderer checkup](compatibility/linux-renderer-checkup.md) records the
+   local correction and its X11 limits.
 
-4. Support the main public media_kit playback features. Put additional mpv controls behind a small Linux adapter and expose them only when the packaged backend supports them. [S07, S08]
+4. Support the main public media_kit playback features. Put additional mpv controls behind a small Linux adapter and expose them only when the packaged backend supports them.
 
 5. Create a small working Flatpak early. Persistent folder access, native libraries, GPU access, and launcher behavior are architectural requirements.
 
@@ -80,7 +87,7 @@ The delivery column uses V1 for the first stable release, V1.1 for the next comp
 
 | 23 | Drag and drop | Desktop and app | V1 | Accept files, folders, and subtitle files through desktop_drop; validate portal paths and define append versus replace behavior. | Drop from Nemo and sandboxed file managers under X11 and Wayland. |
 
-Public playback, track, queue, and source APIs are documented in the Player, Media, SubtitleTrack, and AudioTrack references. Video documents display fit, controls, fullscreen callbacks, and lifecycle options. Screenshot subtitle inclusion is explicitly tied to native libass rendering. [S07, S09, S10, S11, S12, S13]
+Public playback, track, queue, and source APIs are documented in the Player, Media, SubtitleTrack, and AudioTrack references. Video documents display fit, controls, fullscreen callbacks, and lifecycle options. Screenshot subtitle inclusion is explicitly tied to native libass rendering.
 
 ### Home screen and saved library
 
@@ -108,7 +115,7 @@ Public playback, track, queue, and source APIs are documented in the Player, Med
 
 | 33 | Saved playlists | App and engine | V1.1 | Persist ordered media references; add cautious M3U import and export with access validation. | Restart preserves order; missing items can be skipped or relinked. |
 
-Saved folders and history are VPFL features. media_kit supplies the playback state used to build them. SQLite operations should run away from the UI isolate. [S14, S15]
+Saved folders and history are VPFL features. media_kit supplies the playback state used to build them. SQLite operations should run away from the UI isolate.
 
 ### Thumbnail policy
 
@@ -167,7 +174,7 @@ Flatpak access to the host thumbnail cache is a separate sandbox consideration. 
 
 | 48 | Discoverable release and updates | Desktop | V1 gate | Supply AppStream metadata, screenshots, license, release notes, and an update process. | Lint metadata, install, update, launch, and verify history survives the update. |
 
-Hardware rendering and decoding are separate controls. media_kit documents the render flag and Linux hwdec auto default. MPRIS, application exports, and persistent document access are separate Linux integrations. [S16, S17, S18, S19, S20, S21]
+Hardware rendering and decoding are separate controls. media_kit documents the render flag and Linux hwdec auto default. MPRIS, application exports, and persistent document access are separate Linux integrations.
 
 ### Advanced and conditional features
 
@@ -193,7 +200,7 @@ Hardware rendering and decoding are separate controls. media_kit documents the r
 
 | 57 | Bounded media ranges | Engine | V1.1 | Support optional Media.start and Media.end for segment playback. Keep resume policy separate from a persistent clip range. | End of range, repeat behavior, and a later full playback work as intended. |
 
-These advanced native controls need capability checks and tests against the exact packaged mpv version. They must not be inferred from mpv's standalone player interface alone. [S08, S09, S22, S23, S24]
+These advanced native controls need capability checks and tests against the exact packaged mpv version. They must not be inferred from mpv's standalone player interface alone.
 
 ## 3 What media_kit supplies
 
@@ -223,14 +230,14 @@ Use the public interface wherever possible. The planned wrapper covers the main 
 
 | Native extension | NativePlayer command, getProperty, setProperty, observeProperty, and unobserveProperty behind a capability aware adapter. |
 
-The PlayerStream API uses a list of strings for subtitle events. Prefer the published API reference over older README examples when a signature differs. [S07, S08, S09, S14]
+The PlayerStream API uses a list of strings for subtitle events. Prefer the published API reference over older README examples when a signature differs.
 
 Do not build duplicate histories in both mpv and VPFL. VPFL owns recents, resume policy, folder records, favorites, and playlists, while media_kit owns active playback state.
 
 ### Subtitle rendering decision
 
-For Linux, start with PlayerConfiguration(libass: true). This preserves native subtitle layout rather than relying only on Flutter's text overlay. Test styled ASS, font attachments, and any bitmap formats to be included in the support list. [S25]
+For Linux, start with PlayerConfiguration(libass: true). This preserves native subtitle layout rather than relying only on Flutter's text overlay. Test styled ASS, font attachments, and any bitmap formats to be included in the support list.
 
-When using the Flutter overlay, SubtitleViewConfiguration controls text appearance and padding. When using native rendering, implement corresponding subtitle settings through the native adapter and verify each against the packaged engine. Changing a Flutter text style alone does not establish that a native ASS subtitle changed. Allow an explicit rendering preference later if users need it. [S12, S25]
+When using the Flutter overlay, SubtitleViewConfiguration controls text appearance and padding. When using native rendering, implement corresponding subtitle settings through the native adapter and verify each against the packaged engine. Changing a Flutter text style alone does not establish that a native ASS subtitle changed. Allow an explicit rendering preference later if users need it.
 
-Use a native subtitle inclusion switch for screenshots. Flutter overlay text is separate from the engine frame; do not assume that an engine screenshot captures it. [S13]
+Use a native subtitle inclusion switch for screenshots. Flutter overlay text is separate from the engine frame; do not assume that an engine screenshot captures it.
