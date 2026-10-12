@@ -1,4 +1,4 @@
-# Maintainer: <your name> <your email>
+# Maintainer: Sheikh Muneeb Ahmed <muneebahmed2250@gmail.com>
 #
 # Prebuilt VPFL for x86_64 Arch Linux. The release archive is produced by
 # packaging/scripts/package-arch.sh and contains only the usr/ tree.

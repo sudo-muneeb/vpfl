@@ -18,7 +18,7 @@ void main() {
     expect(MediaFormatPolicy.mayScan('types.d.mts'), isFalse);
   });
 
-  test('standalone audio is outside the V1 media policy', () {
+  test('common unadvertised extensions are not accepted', () {
     for (final extension in [
       'mp3',
       'flac',

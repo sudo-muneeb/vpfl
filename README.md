@@ -127,11 +127,10 @@ flutter build linux --release
 ```
 
 The pull-request workflow on `bootstrap-project` and `main` generates a
-video-only fixture matrix, runs VPFL playback tests, builds and installs
+video fixture matrix, runs VPFL playback tests, builds and installs
 native DEB/RPM/Arch packages, and checks X11/Wayland/XWayland lanes. The
 workflow is newly implemented; see the [CI guide](docs/ci/README.md) for
-exact commands, observed results, and unverified coverage. Standalone audio
-files are outside VPFL V1's supported formats.
+exact commands, observed results, and unverified coverage.
 
 See [the Phase 0 Linux compatibility report](docs/compatibility/phase-0.md)
 for verified results and remaining compatibility work. To refresh the patched
@@ -139,6 +138,12 @@ video dependency after an upstream release, run
 `./tool/update_media_kit_video.sh <version>`. The implementation tracker and
 remaining product goals are in
 [GOALS.md](GOALS.md).
+
+## Contributing
+
+Bug reports, documentation, tests, and code contributions are welcome. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks, pull requests, and
+licensing.
 
 ## License
 

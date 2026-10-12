@@ -431,7 +431,6 @@ The same command should be usable by:
 ## Media compatibility checks
 
 `PlaybackService` is the application-owned path for native playback tests.
-The [CI guide](ci/README.md) records the video-only manifest and current
+The [CI guide](ci/README.md) records the video fixture manifest and current
 decoded-frame assertions. An mpv screenshot checks decoded pixels; a separate
 compositor capture is still needed to prove final Flutter presentation.
-The manifest does not declare standalone audio file support for V1.
