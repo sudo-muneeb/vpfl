@@ -46,6 +46,7 @@ class PlayerControls extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
     required this.onToggleFullscreen,
+    required this.fullscreen,
     super.key,
   });
 
@@ -83,6 +84,7 @@ class PlayerControls extends StatelessWidget {
   final Future<void> Function() onPrevious;
   final Future<void> Function() onNext;
   final Future<void> Function() onToggleFullscreen;
+  final bool fullscreen;
 
   static const Duration _seekStep = Duration(seconds: 10);
   static const List<double> _rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -120,9 +122,6 @@ class PlayerControls extends StatelessWidget {
                             tracks: tracks,
                             tracksStream: tracksStream,
                             onSetTrack: onSetTrack,
-                            playlistMode: playlistMode,
-                            playlistModeStream: playlistModeStream,
-                            onSetPlaylistMode: onSetPlaylistMode,
                             fit: fit,
                             onSetFit: onSetFit,
                             onScreenshot: onScreenshot,
@@ -209,10 +208,16 @@ class PlayerControls extends StatelessWidget {
                             onSet: onSetPlaylistMode,
                           ),
                           IconButton(
-                            tooltip: 'Toggle fullscreen',
+                            tooltip: fullscreen
+                                ? 'Exit Fullscreen'
+                                : 'Enter Fullscreen',
                             onPressed: onToggleFullscreen,
                             iconSize: 22,
-                            icon: const Icon(Icons.open_in_full_rounded),
+                            icon: Icon(
+                              fullscreen
+                                  ? Icons.close_fullscreen_rounded
+                                  : Icons.open_in_full_rounded,
+                            ),
                           ),
                         ],
                       ),
@@ -539,9 +544,6 @@ class _OverflowMenu extends StatelessWidget {
     required this.tracks,
     required this.tracksStream,
     required this.onSetTrack,
-    required this.playlistMode,
-    required this.playlistModeStream,
-    required this.onSetPlaylistMode,
     required this.fit,
     required this.onSetFit,
     required this.onScreenshot,
@@ -551,9 +553,6 @@ class _OverflowMenu extends StatelessWidget {
   final Tracks tracks;
   final Stream<Tracks> tracksStream;
   final Future<void> Function(Object) onSetTrack;
-  final PlaylistMode playlistMode;
-  final Stream<PlaylistMode> playlistModeStream;
-  final Future<void> Function(PlaylistMode) onSetPlaylistMode;
   final BoxFit fit;
   final ValueChanged<BoxFit> onSetFit;
   final Future<void> Function() onScreenshot;
@@ -563,109 +562,83 @@ class _OverflowMenu extends StatelessWidget {
   Widget build(BuildContext context) => StreamBuilder<Tracks>(
     stream: tracksStream,
     initialData: tracks,
-    builder: (BuildContext context, AsyncSnapshot<Tracks> trackState) =>
-        StreamBuilder<PlaylistMode>(
-          stream: playlistModeStream,
-          initialData: playlistMode,
-          builder: (BuildContext context, AsyncSnapshot<PlaylistMode> modeState) {
-            final Tracks available = trackState.data ?? tracks;
-            final PlaylistMode currentMode = modeState.data ?? playlistMode;
-            return PopupMenuButton<_PlayerAction>(
-              tooltip: 'More playback options',
-              onSelected: (_PlayerAction action) async {
-                switch (action.kind) {
-                  case _PlayerActionKind.audioTracks:
-                    final AudioTrack? track =
-                        await _chooseSelection<AudioTrack>(
-                          context,
-                          'Audio tracks',
-                          [
-                            for (final track in available.audio)
-                              (_trackLabel(track), track),
-                          ],
-                        );
-                    if (track != null) await onSetTrack(track);
-                  case _PlayerActionKind.videoTracks:
-                    final VideoTrack? track =
-                        await _chooseSelection<VideoTrack>(
-                          context,
-                          'Video tracks',
-                          [
-                            for (final track in available.video)
-                              (_trackLabel(track), track),
-                          ],
-                        );
-                    if (track != null) await onSetTrack(track);
-                  case _PlayerActionKind.playlistMode:
-                    final PlaylistMode?
-                    mode = await _chooseSelection<PlaylistMode>(
-                      context,
-                      'Repeat mode',
-                      [
-                        for (final mode in PlaylistMode.values)
-                          (
-                            '${mode == currentMode ? '✓ ' : ''}${_modeLabel(mode)}',
-                            mode,
-                          ),
-                      ],
-                    );
-                    if (mode != null) await onSetPlaylistMode(mode);
-                  case _PlayerActionKind.fit:
-                    final BoxFit? selectedFit = await _chooseSelection<BoxFit>(
-                      context,
-                      'Video fit',
-                      [
-                        for (final option in const [
-                          BoxFit.contain,
-                          BoxFit.cover,
-                          BoxFit.fill,
-                        ])
-                          (
-                            '${fit == option ? '✓ ' : ''}${_fitLabel(option)}',
-                            option,
-                          ),
-                      ],
-                    );
-                    if (selectedFit != null) onSetFit(selectedFit);
-                  case _PlayerActionKind.screenshot:
-                    await onScreenshot();
-                  case _PlayerActionKind.info:
-                    onShowInfo();
-                }
-              },
-              itemBuilder: (BuildContext context) => [
-                if (RealMediaTracks(available).audio.isNotEmpty)
-                  const PopupMenuItem<_PlayerAction>(
-                    value: _PlayerAction(_PlayerActionKind.audioTracks),
-                    child: Text('Audio tracks…'),
-                  ),
-                if (RealMediaTracks(available).video.length > 1)
-                  const PopupMenuItem<_PlayerAction>(
-                    value: _PlayerAction(_PlayerActionKind.videoTracks),
-                    child: Text('Video tracks…'),
-                  ),
-                const PopupMenuItem<_PlayerAction>(
-                  value: _PlayerAction(_PlayerActionKind.playlistMode),
-                  child: Text('Repeat mode…'),
-                ),
-                const PopupMenuItem<_PlayerAction>(
-                  value: _PlayerAction(_PlayerActionKind.fit),
-                  child: Text('Video fit…'),
-                ),
-                const PopupMenuDivider(),
-                const PopupMenuItem<_PlayerAction>(
-                  value: _PlayerAction(_PlayerActionKind.screenshot),
-                  child: Text('Save screenshot…'),
-                ),
-                const PopupMenuItem<_PlayerAction>(
-                  value: _PlayerAction(_PlayerActionKind.info),
-                  child: Text('Info'),
-                ),
-              ],
-              icon: const Icon(Icons.more_vert),
-            );
-          },
-        ),
+    builder: (BuildContext context, AsyncSnapshot<Tracks> trackState) {
+      final Tracks available = trackState.data ?? tracks;
+      return PopupMenuButton<_PlayerAction>(
+        tooltip: 'More playback options',
+        onSelected: (_PlayerAction action) async {
+          switch (action.kind) {
+            case _PlayerActionKind.audioTracks:
+              final AudioTrack? track = await _chooseSelection<AudioTrack>(
+                context,
+                'Audio tracks',
+                [
+                  for (final track in available.audio)
+                    (_trackLabel(track), track),
+                ],
+              );
+              if (track != null) await onSetTrack(track);
+            case _PlayerActionKind.videoTracks:
+              final VideoTrack? track = await _chooseSelection<VideoTrack>(
+                context,
+                'Video tracks',
+                [
+                  for (final track in available.video)
+                    (_trackLabel(track), track),
+                ],
+              );
+              if (track != null) await onSetTrack(track);
+            case _PlayerActionKind.fit:
+              final BoxFit? selectedFit = await _chooseSelection<BoxFit>(
+                context,
+                'Video fit',
+                [
+                  for (final option in const [
+                    BoxFit.contain,
+                    BoxFit.cover,
+                    BoxFit.fill,
+                  ])
+                    (
+                      '${fit == option ? '✓ ' : ''}${_fitLabel(option)}',
+                      option,
+                    ),
+                ],
+              );
+              if (selectedFit != null) onSetFit(selectedFit);
+            case _PlayerActionKind.screenshot:
+              await onScreenshot();
+            case _PlayerActionKind.info:
+              onShowInfo();
+          }
+        },
+        itemBuilder: (BuildContext context) => [
+          if (RealMediaTracks(available).audio.isNotEmpty)
+            const PopupMenuItem<_PlayerAction>(
+              value: _PlayerAction(_PlayerActionKind.audioTracks),
+              child: Text('Audio tracks…'),
+            ),
+          if (RealMediaTracks(available).video.length > 1)
+            const PopupMenuItem<_PlayerAction>(
+              value: _PlayerAction(_PlayerActionKind.videoTracks),
+              child: Text('Video tracks…'),
+            ),
+          const PopupMenuItem<_PlayerAction>(
+            value: _PlayerAction(_PlayerActionKind.fit),
+            child: Text('Video fit…'),
+          ),
+          const PopupMenuDivider(),
+          const PopupMenuItem<_PlayerAction>(
+            value: _PlayerAction(_PlayerActionKind.screenshot),
+            child: Text('Save screenshot…'),
+          ),
+          const PopupMenuItem<_PlayerAction>(
+            value: _PlayerAction(_PlayerActionKind.info),
+            child: Text('Info'),
+          ),
+        ],
+        icon: const Icon(Icons.more_vert),
+      );
+    },
   );
 
   Future<T?> _chooseSelection<T extends Object>(
@@ -693,12 +666,6 @@ class _OverflowMenu extends StatelessWidget {
     ),
   );
 
-  static String _modeLabel(PlaylistMode mode) => switch (mode) {
-    PlaylistMode.none => 'No repeat',
-    PlaylistMode.single => 'Repeat one',
-    PlaylistMode.loop => 'Repeat queue',
-  };
-
   static String _fitLabel(BoxFit fit) => switch (fit) {
     BoxFit.contain => 'Fit',
     BoxFit.cover => 'Fill and crop',
@@ -724,14 +691,7 @@ class _OverflowMenu extends StatelessWidget {
   };
 }
 
-enum _PlayerActionKind {
-  audioTracks,
-  videoTracks,
-  playlistMode,
-  fit,
-  screenshot,
-  info,
-}
+enum _PlayerActionKind { audioTracks, videoTracks, fit, screenshot, info }
 
 class _PlayerAction {
   const _PlayerAction(this.kind);

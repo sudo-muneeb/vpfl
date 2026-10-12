@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
@@ -90,7 +91,7 @@ void main() {
     expect(selectedTrack, const AudioTrack('2', 'Alternate', 'eng'));
   });
 
-  testWidgets('overflow menu changes repeat mode and video fit', (
+  testWidgets('overflow omits repeat while the visible button still cycles', (
     tester,
   ) async {
     PlaylistMode? selectedMode;
@@ -106,10 +107,15 @@ void main() {
 
     await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Repeat mode…'));
+    expect(find.text('Repeat mode…'), findsNothing);
+    expect(find.text('Save screenshot…'), findsOneWidget);
+    await tester.tapAt(const Offset(400, 300));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Repeat one'));
-    await tester.pumpAndSettle();
+    expect(
+      find.byTooltip('Repeat off. Click to repeat this video'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('Repeat off. Click to repeat this video'));
     expect(selectedMode, PlaylistMode.single);
 
     await tester.tap(find.byTooltip('More playback options'));
@@ -119,6 +125,64 @@ void main() {
     await tester.tap(find.text('Fill and crop'));
     await tester.pumpAndSettle();
     expect(selectedFit, BoxFit.cover);
+  });
+
+  testWidgets('fullscreen icon and tooltip follow the supplied window state', (
+    tester,
+  ) async {
+    var toggles = 0;
+    Widget controls(bool fullscreen) => _app(
+      _controls(
+        fullscreen: fullscreen,
+        onToggleFullscreen: () async => toggles++,
+      ),
+    );
+
+    await tester.pumpWidget(controls(false));
+    expect(find.byTooltip('Enter Fullscreen'), findsOneWidget);
+    expect(find.byIcon(Icons.open_in_full_rounded), findsOneWidget);
+    await tester.tap(find.byTooltip('Enter Fullscreen'));
+    expect(toggles, 1);
+
+    await tester.pumpWidget(controls(true));
+    expect(find.byTooltip('Exit Fullscreen'), findsOneWidget);
+    expect(find.byIcon(Icons.close_fullscreen_rounded), findsOneWidget);
+    await tester.tap(find.byTooltip('Exit Fullscreen'));
+    expect(toggles, 2);
+
+    await tester.pumpWidget(controls(false));
+    expect(find.byTooltip('Enter Fullscreen'), findsOneWidget);
+  });
+
+  testWidgets('keyboard fullscreen change updates button state', (
+    tester,
+  ) async {
+    var fullscreen = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: VpflTheme.dark,
+        home: StatefulBuilder(
+          builder: (context, setState) => Scaffold(
+            body: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.keyF): () =>
+                    setState(() => fullscreen = !fullscreen),
+              },
+              child: Focus(
+                autofocus: true,
+                child: _controls(fullscreen: fullscreen),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byTooltip('Enter Fullscreen'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+    await tester.pump();
+    expect(find.byTooltip('Exit Fullscreen'), findsOneWidget);
+    expect(find.byIcon(Icons.close_fullscreen_rounded), findsOneWidget);
   });
 
   testWidgets('overflow menu exposes screenshot and one info action', (
@@ -189,6 +253,8 @@ PlayerControls _controls({
   Future<void> Function(Object)? onSetTrack,
   Future<void> Function(PlaylistMode)? onSetPlaylistMode,
   ValueChanged<BoxFit>? onSetFit,
+  bool fullscreen = false,
+  Future<void> Function()? onToggleFullscreen,
   Future<void> Function()? onScreenshot,
   VoidCallback? onShowInfo,
   double volume = 100,
@@ -227,5 +293,6 @@ PlayerControls _controls({
   onLoadSubtitleFile: () async {},
   onPrevious: () async {},
   onNext: () async {},
-  onToggleFullscreen: () async {},
+  onToggleFullscreen: onToggleFullscreen ?? () async {},
+  fullscreen: fullscreen,
 );

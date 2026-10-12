@@ -1,6 +1,7 @@
 # vpfl specific
 
 videos/
+.vpfl-debug-profile/
 
 
 

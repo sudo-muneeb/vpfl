@@ -9,14 +9,16 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const channel = MethodChannel('com.app.vpfl/window');
   final calls = <String>[];
+  var maximized = false;
 
   setUp(() {
     calls.clear();
+    maximized = false;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           calls.add(call.method);
           return call.method == 'isMaximized' || call.method == 'toggleMaximize'
-              ? false
+              ? maximized
               : null;
         });
   });
@@ -62,8 +64,8 @@ void main() {
     expect(openCount, 1);
     expect(calls, isNot(contains('startDrag')));
 
-    await tester.tap(find.byTooltip('Minimize window'));
-    await tester.tap(find.byTooltip('Maximize window'));
+    await tester.tap(find.byKey(const Key('window-minimize-button')));
+    await tester.tap(find.byKey(const Key('window-maximize-button')));
     await tester.pump(const Duration(milliseconds: 200));
     expect(calls, containsAll(['minimize', 'toggleMaximize']));
     expect(calls, isNot(contains('startDrag')));
@@ -118,13 +120,189 @@ void main() {
         ),
       );
       await tester.pump();
-      for (final label in [
-        'Minimize window',
-        'Maximize window',
-        'Close window',
+      for (final key in [
+        'window-minimize-button',
+        'window-maximize-button',
+        'window-close-button',
       ]) {
-        expect(tester.getSize(find.byTooltip(label)), const Size(40, 40));
+        expect(tester.getSize(find.byKey(Key(key))), const Size(32, 32));
       }
     }
   });
+
+  testWidgets('compact top bar keeps the logo and 40 px height', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(760, 480);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: VpflTheme.dark,
+        home: Scaffold(
+          body: AppTopBar(
+            title: 'movie.mp4',
+            themeMode: ThemeMode.dark,
+            onOpenFile: () {},
+            onThemeModeChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getSize(find.byKey(const Key('app-top-bar-surface'))).height,
+      40,
+    );
+    expect(find.text('VPFL'), findsNothing);
+    expect(find.byType(Image), findsOneWidget);
+    expect(tester.widget<Image>(find.byType(Image)).semanticLabel, 'VPFL logo');
+    expect(find.byTooltip('Open file'), findsOneWidget);
+    for (final key in [
+      'window-minimize-button',
+      'window-maximize-button',
+      'window-close-button',
+    ]) {
+      expect(tester.getSize(find.byKey(Key(key))), const Size(32, 32));
+    }
+  });
+
+  testWidgets('window glyphs follow actual maximize state and actions', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: VpflTheme.dark,
+        home: const Scaffold(body: WindowControlButtons()),
+      ),
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<WindowControlIcon>(find.byType(WindowControlIcon).at(0))
+          .glyph,
+      WindowControlGlyph.minimize,
+    );
+    expect(
+      tester
+          .widget<WindowControlIcon>(find.byType(WindowControlIcon).at(1))
+          .glyph,
+      WindowControlGlyph.maximize,
+    );
+    expect(
+      tester
+          .widget<WindowControlIcon>(find.byType(WindowControlIcon).at(2))
+          .glyph,
+      WindowControlGlyph.close,
+    );
+
+    await tester.tap(find.byKey(const Key('window-minimize-button')));
+    expect(calls, contains('minimize'));
+    maximized = true;
+    await WindowCommands.isMaximized();
+    await tester.pump();
+    expect(
+      tester
+          .widget<WindowControlIcon>(find.byType(WindowControlIcon).at(1))
+          .glyph,
+      WindowControlGlyph.restore,
+    );
+    await tester.tap(find.byKey(const Key('window-maximize-button')));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(calls, contains('toggleMaximize'));
+    await tester.tap(find.byKey(const Key('window-close-button')));
+    await tester.pump();
+    expect(calls, contains('close'));
+  });
+
+  testWidgets('native maximize events update the icon without a resize', (
+    tester,
+  ) async {
+    WindowCommands.installCloseHandler();
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: WindowControlButtons())),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('window-maximize-button')), findsOneWidget);
+
+    Future<void> sendState(bool value) async {
+      await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .handlePlatformMessage(
+            channel.name,
+            const StandardMethodCodec().encodeMethodCall(
+              MethodCall('maximizedChanged', value),
+            ),
+            null,
+          );
+      await tester.pump();
+    }
+
+    await sendState(true);
+    expect(
+      tester
+          .widget<WindowControlIcon>(find.byType(WindowControlIcon).at(1))
+          .glyph,
+      WindowControlGlyph.restore,
+    );
+    await sendState(false);
+    expect(
+      tester
+          .widget<WindowControlIcon>(find.byType(WindowControlIcon).at(1))
+          .glyph,
+      WindowControlGlyph.maximize,
+    );
+  });
+
+  testWidgets(
+    'all window controls use circular hover targets and compact glyphs',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: WindowControlButtons())),
+      );
+      await tester.pump();
+      for (final maximizedState in [false, true]) {
+        WindowCommands.maximized.value = maximizedState;
+        await tester.pump();
+        for (final key in [
+          'window-minimize-button',
+          'window-maximize-button',
+          'window-close-button',
+        ]) {
+          final target = find.byKey(Key(key));
+          expect(
+            tester.widget<InkWell>(target).borderRadius,
+            BorderRadius.circular(16),
+          );
+          expect(tester.getSize(target), const Size.square(32));
+        }
+        for (final label in [
+          'Minimize window',
+          maximizedState ? 'Restore window' : 'Maximize window',
+          'Close window',
+        ]) {
+          expect(find.bySemanticsLabel(label), findsOneWidget);
+        }
+        for (var index = 0; index < 3; index++) {
+          expect(
+            tester.getSize(find.byType(WindowControlIcon).at(index)),
+            const Size.square(14),
+          );
+        }
+      }
+      for (final label in [
+        'Minimize window',
+        'Maximize window',
+        'Restore window',
+        'Close window',
+      ]) {
+        expect(find.byTooltip(label), findsNothing);
+      }
+      WindowCommands.maximized.value = false;
+      semantics.dispose();
+    },
+  );
 }

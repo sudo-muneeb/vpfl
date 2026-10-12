@@ -22,6 +22,10 @@ abstract final class WindowCommands {
         await close();
         return null;
       }
+      if (call.method == 'maximizedChanged' && call.arguments is bool) {
+        maximized.value = call.arguments as bool;
+        return null;
+      }
       throw MissingPluginException('Unknown window method: ${call.method}');
     });
   }
@@ -137,18 +141,23 @@ class _WindowControlButtonsState extends State<WindowControlButtons> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _WindowButton(
-          tooltip: 'Minimize window',
-          glyph: _WindowGlyph.minimize,
+          controlKey: const Key('window-minimize-button'),
+          label: 'Minimize window',
+          glyph: WindowControlGlyph.minimize,
           onPressed: WindowCommands.minimize,
         ),
         _WindowButton(
-          tooltip: maximized ? 'Restore window' : 'Maximize window',
-          glyph: maximized ? _WindowGlyph.restore : _WindowGlyph.maximize,
+          controlKey: const Key('window-maximize-button'),
+          label: maximized ? 'Restore window' : 'Maximize window',
+          glyph: maximized
+              ? WindowControlGlyph.restore
+              : WindowControlGlyph.maximize,
           onPressed: _toggle,
         ),
         _WindowButton(
-          tooltip: 'Close window',
-          glyph: _WindowGlyph.close,
+          controlKey: const Key('window-close-button'),
+          label: 'Close window',
+          glyph: WindowControlGlyph.close,
           onPressed: WindowCommands.close,
           close: true,
         ),
@@ -159,14 +168,16 @@ class _WindowControlButtonsState extends State<WindowControlButtons> {
 
 class _WindowButton extends StatelessWidget {
   const _WindowButton({
-    required this.tooltip,
+    required this.controlKey,
+    required this.label,
     required this.glyph,
     required this.onPressed,
     this.close = false,
   });
 
-  final String tooltip;
-  final _WindowGlyph glyph;
+  final Key controlKey;
+  final String label;
+  final WindowControlGlyph glyph;
   final Future<void> Function() onPressed;
   final bool close;
 
@@ -175,13 +186,15 @@ class _WindowButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(left: 2),
-      child: Tooltip(
-        message: tooltip,
+      child: Semantics(
+        label: label,
+        button: true,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
+            key: controlKey,
             onTap: onPressed,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(16),
             hoverColor: close
                 ? scheme.errorContainer
                 : scheme.surfaceContainerHigh,
@@ -189,15 +202,11 @@ class _WindowButton extends StatelessWidget {
                 ? scheme.errorContainer
                 : scheme.secondaryContainer,
             child: SizedBox.square(
-              dimension: 40,
+              dimension: 32,
               child: Center(
-                child: CustomPaint(
-                  size: const Size.square(16),
-                  painter: _WindowGlyphPainter(
-                    glyph,
-                    scheme.onSurfaceVariant,
-                    View.of(context).devicePixelRatio,
-                  ),
+                child: WindowControlIcon(
+                  glyph: glyph,
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -208,54 +217,76 @@ class _WindowButton extends StatelessWidget {
   }
 }
 
-enum _WindowGlyph { minimize, maximize, restore, close }
+enum WindowControlGlyph { minimize, maximize, restore, close }
 
-/// Stroke geometry is snapped to the display's pixel grid, including at
-/// fractional desktop scale. This avoids font glyph and splash raster edges.
-class _WindowGlyphPainter extends CustomPainter {
-  const _WindowGlyphPainter(this.glyph, this.color, this.dpr);
+/// Chromium's 24-unit window-control silhouettes rendered as scalable paths.
+class WindowControlIcon extends StatelessWidget {
+  const WindowControlIcon({
+    required this.glyph,
+    required this.color,
+    super.key,
+  });
 
-  final _WindowGlyph glyph;
+  final WindowControlGlyph glyph;
   final Color color;
-  final double dpr;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: const Size.square(14),
+    painter: _WindowGlyphPainter(glyph, color),
+  );
+}
+
+/// Geometry adapted from Chromium's window_control_*.icon files.
+/// Copyright 2016 The Chromium Authors. BSD-style license; see
+/// third_party/chromium_window_icons/LICENSE.
+class _WindowGlyphPainter extends CustomPainter {
+  const _WindowGlyphPainter(this.glyph, this.color);
+
+  final WindowControlGlyph glyph;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
-    double snap(double value) => (value * dpr).round() / dpr;
-    final stroke = (1.4 * dpr).round().clamp(1, 4) / dpr;
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.square;
-    void line(double x1, double y1, double x2, double y2) => canvas.drawLine(
-      Offset(snap(x1), snap(y1)),
-      Offset(snap(x2), snap(y2)),
-      paint,
-    );
-    void rect(double left, double top, double right, double bottom) =>
-        canvas.drawRect(
-          Rect.fromLTRB(snap(left), snap(top), snap(right), snap(bottom)),
-          paint,
-        );
+    canvas.save();
+    canvas.scale(size.width / 24, size.height / 24);
+    final path = Path()..fillType = PathFillType.evenOdd;
     switch (glyph) {
-      case _WindowGlyph.minimize:
-        line(2, 8, 14, 8);
-      case _WindowGlyph.maximize:
-        rect(2, 2, 14, 14);
-      case _WindowGlyph.restore:
-        rect(2, 4, 12, 14);
-        line(4, 2, 14, 2);
-        line(14, 2, 14, 12);
-      case _WindowGlyph.close:
-        line(2.5, 2.5, 13.5, 13.5);
-        line(13.5, 2.5, 2.5, 13.5);
+      case WindowControlGlyph.minimize:
+        path.addRect(const Rect.fromLTRB(1, 19, 23, 23));
+      case WindowControlGlyph.maximize:
+        path.addRect(const Rect.fromLTRB(1, 1, 23, 23));
+        path.addRect(const Rect.fromLTRB(5, 5, 19, 19));
+      case WindowControlGlyph.restore:
+        path.addRect(const Rect.fromLTRB(8, 1, 23, 16));
+        path.addRect(const Rect.fromLTRB(12, 5, 19, 12));
+        path.moveTo(5, 8);
+        path.lineTo(1, 8);
+        path.lineTo(1, 23);
+        path.lineTo(16, 23);
+        path.lineTo(16, 19);
+        path.lineTo(5, 19);
+        path.close();
+      case WindowControlGlyph.close:
+        path.moveTo(23, 3.22);
+        path.lineTo(20.78, 1);
+        path.lineTo(12, 9.78);
+        path.lineTo(3.22, 1);
+        path.lineTo(1, 3.22);
+        path.lineTo(9.78, 12);
+        path.lineTo(1, 20.78);
+        path.lineTo(3.22, 23);
+        path.lineTo(12, 14.22);
+        path.lineTo(20.78, 23);
+        path.lineTo(23, 20.78);
+        path.lineTo(14.22, 12);
+        path.close();
     }
+    canvas.drawPath(path, Paint()..color = color);
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant _WindowGlyphPainter oldDelegate) =>
-      glyph != oldDelegate.glyph ||
-      color != oldDelegate.color ||
-      dpr != oldDelegate.dpr;
+      glyph != oldDelegate.glyph || color != oldDelegate.color;
 }

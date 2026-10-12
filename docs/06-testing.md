@@ -93,6 +93,18 @@ pointer leaves / idle timeout
 
 Bottom playback controls can use their separate visibility policy.
 
+## Window maximize state tests
+
+The title-bar widget test sends a native `maximizedChanged` event without a
+Flutter size change and checks both Maximize and Restore. The Linux integration
+test `integration_test/window_state_linux_test.dart` uses an external X11 window
+manager action to maximize and restore the real GTK window. Run it with
+Metacity, Xvfb, and `wmctrl` installed:
+
+```bash
+xvfb-run -a bash -c 'metacity --replace --no-composite >/tmp/vpfl-metacity.log 2>&1 & sleep 2; VPFL_TEST_EXTERNAL_MAXIMIZE=1 flutter test integration_test/window_state_linux_test.dart -d linux'
+```
+
 ## Integration tests
 
 Use real Linux/native integration for things widget tests cannot prove:
