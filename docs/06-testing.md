@@ -212,6 +212,26 @@ When fixing an important bug:
 
 Name the test after the behavior, not only the issue number.
 
+Test the rule behind the bug, not just the exact report. For example, a queue
+bug should cover the affected transition, a boundary, and a nearby transition
+that must keep working. An input validation bug should cover a valid input,
+the invalid class, and a boundary. Use a small table of cases when this makes
+the rule easy to see. A test that only repeats the original example can pass
+while the same bug remains for every other member of its class.
+
+Before accepting a regression test, check that its assertion would fail with
+the original defect still present. Prefer a failing run before the fix when
+practical. Assert an observable result rather than mirroring the implementation
+or mocking the very behavior under test. Keep fixture data and randomness
+deterministic. Run the relevant existing suite as well as the new test, and
+investigate failures instead of weakening assertions.
+
+Native claims need native evidence: widget tests alone cannot establish that
+media decodes, a frame is visible, a subtitle renders, a window changes state,
+or an installed package launches. Use the corresponding integration lane where
+the change affects that behavior, and distinguish decoded frame checks from
+final compositor output in the report.
+
 ## Performance tests
 
 Measure release/profile builds for:
@@ -229,36 +249,10 @@ Measure release/profile builds for:
 
 ## Suggested test structure
 
-```text
-test/
-  ui/
-    home/
-    player/
-    library/
-    folders/
-    settings/
-
-  data/
-    repositories/
-    services/
-
-  domain/
-    models/
-
-  routing/
-
-  golden/
-  accessibility/
-  fixtures/
-
-integration_test/
-  startup_test.dart
-  playback_test.dart
-  subtitles_test.dart
-  folder_access_test.dart
-  command_line_open_test.dart
-  lifecycle_test.dart
-```
+Place unit and widget tests under `test/data/`, `test/routing/`, or `test/ui/`
+near the behavior they cover. Linux tests live in `integration_test/`; use the
+existing playback, lifecycle, window, media matrix, and library suites as
+starting points. Inspect current filenames before adding or running a test.
 
 ## Normal CI
 

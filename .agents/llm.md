@@ -1,6 +1,9 @@
 source: https://github.com/flutter/samples/blob/main/.prompts/llm.md
 
-You are an expert Dart and Flutter developer on the Flutter team at Google. Your code must adhere to this style guide.
+This upstream Dart and Flutter style guide is a reference for VPFL. Apply its
+relevant conventions alongside `../AGENTS.md`, `../CONTRIBUTING.md`, and the
+current code and tests. The project guidance and installed dependencies govern
+VPFL-specific architecture, tooling, and checks. Examples below are illustrative.
 
 ## Core Philosophy
 
@@ -60,8 +63,8 @@ import 'dart:math';
 
 // 2. Flutter and package imports (alphabetically)
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 
 // 3. Relative imports (alphabetically)
 import '../models/user.dart';
@@ -195,8 +198,8 @@ Future<void> saveUser(User user) async {
 
 // DO prefer async/await over raw futures
 Future<List<User>> loadUsers() async {
-  final response = await http.get('/api/users');
-  return parseUsers(response.body);
+  final users = await repository.loadUsers();
+  return users;
 }
 ```
 
@@ -314,23 +317,23 @@ class CustomCard extends StatelessWidget {
 ```
 
 ## State Management
-- **Don't use a third party package for state management unless explicitly asked to do so.**
-- **Use manual dependency injection (declaring objects that the class depends in its constructor) as much as possible to make the dependencies required by the class clear in it's API.**
-- **If asked to use Provider, use it for app-level objects that are used often.**
-- **Use Model-View-ViewModel for application architecture.**
-- **Use ChangeNotifier or a class with ValueNotifiers for ViewModel classes.**
-- **Use a ListenableBuilder to listen to changes to the ViewModel.**
-- **Use a StatefulWidget for widgets that are reusable or single-purpose, and don't necessarily require a MVVM architecture.**
+- **Follow VPFL's existing Riverpod providers and state boundaries.** Keep
+  dependencies explicit and state in one place; inspect nearby features before
+  introducing a new provider or local widget state.
+- **Use `StatefulWidget` for local, short-lived widget state** when a provider
+  would add unnecessary shared state.
 
 ## Routing
 - **Use Navigator for screens that are short-lived and don't need to be deep-linkable.**
 
 ## Data
-- **Use json_serializable and json_annotation for parsing and encoding JSON data.**
-- **Use fieldRename: FieldRename.snake to encode data with snake case.**
+- **Follow the existing models and Drift persistence patterns.** Add a JSON
+  serialization dependency only when the feature needs it and the change is
+  approved as in scope.
 
 ## Code Generation
-- **Use build_runner for any generated code in the app.**
+- **Use the existing `build_runner` workflow for generated Drift code.** Review
+  generated changes with their source declarations.
 
 ## String and Collection Best Practices
 
@@ -406,16 +409,15 @@ Future<User> fetchUser(String id) async {
     throw UserFetchException('Failed to fetch user: ${e.message}');
   } on FormatException catch (e) {
     throw UserParseException('Invalid user data format: ${e.message}');
-  } catch (e) {
-    throw UserFetchException('Unexpected error: ${e.toString()}');
   }
 }
 ```
 
 ## Testing Guidelines
 
-- **Use package:integration_test for integration tests.**
-- **Use package:checks instead of matchers from package:test or package:matcher.**
+- **Use the existing `flutter_test` patterns for widget and unit tests.**
+- **Use `integration_test` and the native Linux checks where applicable.** See
+  `../docs/06-testing.md` for test placement and commands.
 
 ### Widget Testing
 ```dart
@@ -636,11 +638,7 @@ bool get isEnabled => !disabled; // Clear
 // DON'T use global state
 var globalCounter = 0; // Avoid
 
-// DO use proper state management
-class CounterProvider extends ChangeNotifier {
-  int _counter = 0;
-  int get counter => _counter;
-}
+// DO keep shared state in the relevant Riverpod provider.
 
 // DON'T create classes with only static members
 class MathUtils {
@@ -675,10 +673,10 @@ class TimeSlot {
 
 ### Required Tools
 - **`dart format`**: Automatic code formatting (mandatory)
-- **`dart analyze`**: Static analysis and linting
+- **`flutter analyze`**: Static analysis and linting
 - **`flutter test`**: Run tests
 - **IDE setup**: Configure your IDE to run these tools automatically
-- **Pre-commit hooks**: Ensure code quality before commits
+- **`CONTRIBUTING.md` checks**: Run the checks applicable to the change
 
 ### Code Quality Checklist
 - [ ] All code formatted with `dart format`
@@ -690,4 +688,5 @@ class TimeSlot {
 - [ ] Immutable objects used where appropriate
 - [ ] Assert statements used to verify contracts
 
-This unified style guide ensures consistency with both Flutter team practices and official Dart conventions, helping create maintainable, readable code that follows established patterns.
+Apply these conventions where they fit VPFL's current code and documented
+checks.

@@ -16,7 +16,8 @@ Keep the project's Flutter SDK revision and `pubspec.lock` reproducible.
 
 ## Initial dependencies
 
-Core application dependencies should stay small.
+The current dependencies are in `pubspec.yaml`. Keep them small; the list
+below includes planned integration categories, not packages to add up front.
 
 Expected categories:
 
@@ -80,7 +81,9 @@ The application should later support forwarding these requests to an existing in
 
 ## Desktop identity
 
-Choose one application ID and keep it consistent across:
+The native app and packages use `com.app.vpfl`, defined in
+`linux/CMakeLists.txt` and the packaging metadata. The existing
+`flatpak/com.app.vpfl.yml` also uses this ID. Check identity across:
 
 * executable/launcher
 * Linux runner identity
@@ -89,36 +92,20 @@ Choose one application ID and keep it consistent across:
 * AppStream metadata
 * Flatpak manifest
 
-Example placeholder:
-
-```text
-io.github.yourname.VPFL
-```
-
-Replace it before public release.
-
 ## Desktop entry
 
-Example:
-
-```ini
-[Desktop Entry]
-Type=Application
-Name=VPFL
-Comment=Play videos and browse saved folders
-Exec=vpfl %U
-Icon=io.github.yourname.VPFL
-Terminal=false
-Categories=AudioVideo;Player;Video;
-MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;video/x-msvideo;
-Keywords=video;movie;media;player;
-```
-
+Use the [packaged desktop entry](../packaging/linux/com.app.vpfl.desktop) as
+the source of truth for the native launcher, icon, and MIME types. Keep it
+aligned with `lib/data/services/media_format_policy.dart`,
+`lib/data/services/default_app_prompt_service.dart`, `ci/media-matrix.json`,
+and the [V1 media contract](ci/README.md#v1-media-contract).
 Only advertise formats that have actually been tested.
 
 ## Flatpak design
 
-Create a working Flatpak early.
+The repository has an initial manifest and build script, but Flatpak build and
+runtime behavior remain unverified. Validate them before making Flatpak
+distribution claims.
 
 The sandbox must contain the native libraries required by the packaged playback stack.
 
