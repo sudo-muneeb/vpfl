@@ -20,6 +20,8 @@ class VideoControlsOverlay extends StatefulWidget {
     this.playlistStream,
     this.onPrevious,
     this.onNext,
+    this.canPrevious,
+    this.canNext,
     this.inspectorMode,
     this.inspectorBuilder,
     super.key,
@@ -34,6 +36,8 @@ class VideoControlsOverlay extends StatefulWidget {
   final Stream<Playlist>? playlistStream;
   final Future<void> Function()? onPrevious;
   final Future<void> Function()? onNext;
+  final bool Function()? canPrevious;
+  final bool Function()? canNext;
   final ValueListenable<InspectorMode?>? inspectorMode;
   final Widget Function(InspectorMode mode, String? uri)? inspectorBuilder;
 
@@ -203,14 +207,18 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
                               _EdgeButton(
                                 tooltip: 'Previous video',
                                 icon: Icons.skip_previous_rounded,
-                                onPressed: queue.index > 0
+                                onPressed:
+                                    (widget.canPrevious?.call() ??
+                                        queue.index > 0)
                                     ? widget.onPrevious
                                     : null,
                               ),
                               _EdgeButton(
                                 tooltip: 'Next video',
                                 icon: Icons.skip_next_rounded,
-                                onPressed: queue.index < queue.medias.length - 1
+                                onPressed:
+                                    (widget.canNext?.call() ??
+                                        queue.index < queue.medias.length - 1)
                                     ? widget.onNext
                                     : null,
                               ),

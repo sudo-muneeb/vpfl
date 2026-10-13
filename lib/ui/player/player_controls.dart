@@ -108,6 +108,7 @@ class PlayerControls extends StatelessWidget {
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool compact = constraints.maxWidth < 860;
+              final bool narrow = constraints.maxWidth < 600;
               return SizedBox(
                 height: _controlHeight,
                 child: Stack(
@@ -122,6 +123,10 @@ class PlayerControls extends StatelessWidget {
                             tracks: tracks,
                             tracksStream: tracksStream,
                             onSetTrack: onSetTrack,
+                            onLoadSubtitleFile: onLoadSubtitleFile,
+                            onSetRate: onSetRate,
+                            rates: _rates,
+                            narrow: narrow,
                             fit: fit,
                             onSetFit: onSetFit,
                             onScreenshot: onScreenshot,
@@ -133,18 +138,20 @@ class PlayerControls extends StatelessWidget {
                             onSetVolume: onSetVolume,
                             showSlider: !compact,
                           ),
-                          _SubtitleButton(
-                            tracks: tracks,
-                            tracksStream: tracksStream,
-                            onSetTrack: onSetTrack,
-                            onLoadSubtitleFile: onLoadSubtitleFile,
-                          ),
-                          _RateButton(
-                            rate: rate,
-                            rateStream: rateStream,
-                            rates: _rates,
-                            onSetRate: onSetRate,
-                          ),
+                          if (!narrow) ...[
+                            _SubtitleButton(
+                              tracks: tracks,
+                              tracksStream: tracksStream,
+                              onSetTrack: onSetTrack,
+                              onLoadSubtitleFile: onLoadSubtitleFile,
+                            ),
+                            _RateButton(
+                              rate: rate,
+                              rateStream: rateStream,
+                              rates: _rates,
+                              onSetRate: onSetRate,
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -202,6 +209,13 @@ class PlayerControls extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          _ShuffleButton(
+                            shuffle: shuffle,
+                            stream: shuffleStream,
+                            playlist: playlist,
+                            playlistStream: playlistStream,
+                            onSet: onSetShuffle,
+                          ),
                           _RepeatButton(
                             mode: playlistMode,
                             stream: playlistModeStream,
@@ -497,6 +511,48 @@ class _SubtitleButton extends StatelessWidget {
   );
 }
 
+class _ShuffleButton extends StatelessWidget {
+  const _ShuffleButton({
+    required this.shuffle,
+    required this.stream,
+    required this.playlist,
+    required this.playlistStream,
+    required this.onSet,
+  });
+
+  final bool shuffle;
+  final Stream<bool> stream;
+  final Playlist playlist;
+  final Stream<Playlist> playlistStream;
+  final Future<void> Function(bool) onSet;
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<Playlist>(
+    stream: playlistStream,
+    initialData: playlist,
+    builder: (context, queueSnapshot) => StreamBuilder<bool>(
+      stream: stream,
+      initialData: shuffle,
+      builder: (context, shuffleSnapshot) {
+        final available = (queueSnapshot.data ?? playlist).medias.length > 1;
+        final enabled = available && (shuffleSnapshot.data ?? shuffle);
+        return IconButton(
+          tooltip: !available
+              ? 'Shuffle unavailable for one video'
+              : enabled
+              ? 'Shuffle on. Click to disable'
+              : 'Shuffle off. Click to enable',
+          onPressed: available ? () => onSet(!enabled) : null,
+          icon: Icon(
+            Icons.shuffle_rounded,
+            color: enabled ? Theme.of(context).colorScheme.primary : null,
+          ),
+        );
+      },
+    ),
+  );
+}
+
 class _RepeatButton extends StatelessWidget {
   const _RepeatButton({
     required this.mode,
@@ -544,6 +600,10 @@ class _OverflowMenu extends StatelessWidget {
     required this.tracks,
     required this.tracksStream,
     required this.onSetTrack,
+    required this.onLoadSubtitleFile,
+    required this.onSetRate,
+    required this.rates,
+    required this.narrow,
     required this.fit,
     required this.onSetFit,
     required this.onScreenshot,
@@ -553,6 +613,10 @@ class _OverflowMenu extends StatelessWidget {
   final Tracks tracks;
   final Stream<Tracks> tracksStream;
   final Future<void> Function(Object) onSetTrack;
+  final Future<void> Function() onLoadSubtitleFile;
+  final Future<void> Function(double) onSetRate;
+  final List<double> rates;
+  final bool narrow;
   final BoxFit fit;
   final ValueChanged<BoxFit> onSetFit;
   final Future<void> Function() onScreenshot;
@@ -568,6 +632,37 @@ class _OverflowMenu extends StatelessWidget {
         tooltip: 'More playback options',
         onSelected: (_PlayerAction action) async {
           switch (action.kind) {
+            case _PlayerActionKind.subtitles:
+              final Object? selected = await _chooseSelection<Object>(
+                context,
+                'Subtitles',
+                [
+                  for (final track in [
+                    SubtitleTrack.auto(),
+                    SubtitleTrack.no(),
+                    ...available.subtitle.where(
+                      (track) => track.id != 'auto' && track.id != 'no',
+                    ),
+                  ])
+                    (_trackLabel(track), track),
+                  ('Load subtitle file…', 'load-file'),
+                ],
+              );
+              if (selected is SubtitleTrack) {
+                await onSetTrack(selected);
+              } else if (selected == 'load-file') {
+                await onLoadSubtitleFile();
+              }
+            case _PlayerActionKind.rate:
+              final double? selected = await _chooseSelection<double>(
+                context,
+                'Playback speed',
+                [
+                  for (final value in rates)
+                    ('${_RateButton._formatRate(value)}×', value),
+                ],
+              );
+              if (selected != null) await onSetRate(selected);
             case _PlayerActionKind.audioTracks:
               final AudioTrack? track = await _chooseSelection<AudioTrack>(
                 context,
@@ -612,6 +707,16 @@ class _OverflowMenu extends StatelessWidget {
           }
         },
         itemBuilder: (BuildContext context) => [
+          if (narrow) ...[
+            const PopupMenuItem<_PlayerAction>(
+              value: _PlayerAction(_PlayerActionKind.subtitles),
+              child: Text('Subtitles…'),
+            ),
+            const PopupMenuItem<_PlayerAction>(
+              value: _PlayerAction(_PlayerActionKind.rate),
+              child: Text('Playback speed…'),
+            ),
+          ],
           if (RealMediaTracks(available).audio.isNotEmpty)
             const PopupMenuItem<_PlayerAction>(
               value: _PlayerAction(_PlayerActionKind.audioTracks),
@@ -691,7 +796,15 @@ class _OverflowMenu extends StatelessWidget {
   };
 }
 
-enum _PlayerActionKind { audioTracks, videoTracks, fit, screenshot, info }
+enum _PlayerActionKind {
+  subtitles,
+  rate,
+  audioTracks,
+  videoTracks,
+  fit,
+  screenshot,
+  info,
+}
 
 class _PlayerAction {
   const _PlayerAction(this.kind);

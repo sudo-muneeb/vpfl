@@ -9,6 +9,7 @@ import 'package:path/path.dart' as path;
 import 'media_format_policy.dart';
 import 'lifecycle_trace.dart';
 import 'playback_open_coordinator.dart';
+import 'queue_progression.dart';
 
 /// Owns the single foreground media player session.
 class PlaybackService {
@@ -18,10 +19,20 @@ class PlaybackService {
       ) {
     _nativeErrorSubscription = _player.stream.error.listen((message) {
       stderr.writeln('VPFL playback error: $message');
+      _errorController.add(message);
     });
     _nativePlaylistSubscription = _player.stream.playlist.listen((playlist) {
       if (_directoryQueue == null && !_playlistController.isClosed) {
         _playlistController.add(playlist);
+      }
+    });
+    _completionSubscription = _player.stream.completed.listen((completed) {
+      if (completed) {
+        unawaited(_onCompleted());
+      } else {
+        // Seeking or pressing Play at EOF starts another playthrough of the
+        // same source without selecting a new queue index.
+        _handledCompletionGeneration = -1;
       }
     });
     LifecycleTrace.event(
@@ -39,6 +50,16 @@ class PlaybackService {
   final StreamController<Playlist> _playlistController =
       StreamController<Playlist>.broadcast(sync: true);
   late final StreamSubscription<Playlist> _nativePlaylistSubscription;
+  late final StreamSubscription<bool> _completionSubscription;
+  final QueueProgression _progression = QueueProgression();
+  final StreamController<bool> _shuffleController =
+      StreamController<bool>.broadcast(sync: true);
+  final StreamController<PlaylistMode> _playlistModeController =
+      StreamController<PlaylistMode>.broadcast(sync: true);
+  final StreamController<String> _errorController =
+      StreamController<String>.broadcast(sync: true);
+  final StreamController<int> _sourceOpenController =
+      StreamController<int>.broadcast(sync: true);
   Playlist? _directoryQueue;
   final PlaybackOpenCoordinator _openCoordinator = PlaybackOpenCoordinator();
   late final VideoController _videoController = _createVideoController();
@@ -53,6 +74,8 @@ class PlaybackService {
   Future<void>? _disposeFuture;
   bool _closed = false;
   int _requestGeneration = 0;
+  int _handledCompletionGeneration = -1;
+  bool _sourceReady = false;
 
   /// The video surface controller consumed by the player UI.
   VideoController get videoController => _videoController;
@@ -80,10 +103,12 @@ class PlaybackService {
   double get volume => _player.state.volume;
 
   /// Whether queue shuffle is enabled.
-  bool get shuffle => _player.state.shuffle;
+  bool get shuffle => _progression.shuffle;
 
   /// Current playlist repeat behavior.
-  PlaylistMode get playlistMode => _player.state.playlistMode;
+  PlaylistMode get playlistMode => _progression.repeat;
+  bool get canNext => _progression.canNext;
+  bool get canPrevious => _progression.canPrevious;
 
   /// Current queue and its selected index.
   Playlist get playlist => _directoryQueue ?? _player.state.playlist;
@@ -113,16 +138,19 @@ class PlaybackService {
   Stream<double> get volumeStream => _player.stream.volume;
 
   /// Emits shuffle-state changes.
-  Stream<bool> get shuffleStream => _player.stream.shuffle;
+  Stream<bool> get shuffleStream => _shuffleController.stream;
 
   /// Emits playlist repeat behavior changes.
-  Stream<PlaylistMode> get playlistModeStream => _player.stream.playlistMode;
+  Stream<PlaylistMode> get playlistModeStream => _playlistModeController.stream;
 
   /// Emits queue changes and the active queue index.
   Stream<Playlist> get playlistStream => _playlistController.stream;
 
   /// Decoder/open errors reported asynchronously by media_kit.
-  Stream<String> get errorStream => _player.stream.error;
+  Stream<String> get errorStream => _errorController.stream;
+
+  /// Emits when a selected source actually starts opening, including replays.
+  Stream<int> get sourceOpenStream => _sourceOpenController.stream;
 
   /// Uses libmpv's null sink for headless video tests with no sound device.
   /// Audio tracks remain discoverable for codec checks in [tracks].
@@ -156,9 +184,9 @@ class PlaybackService {
   /// Opens and starts playing a media URI.
   Future<void> open(String uri) {
     _rejectUnsupportedLocalUri(uri);
-    _clearDirectoryQueue();
-    ++_requestGeneration;
-    return _enqueueOpen(() => _openPlayer(Media(uri), uri));
+    final request = ++_requestGeneration;
+    _sourceReady = false;
+    return _openQueueSelection(Playlist([Media(uri)]), request);
   }
 
   void _rejectUnsupportedLocalUri(String uri) {
@@ -187,6 +215,58 @@ class PlaybackService {
     LifecycleTrace.event('player.open.complete', session: sessionId);
   }
 
+  Future<void> _openQueueSelection(Playlist queue, int generation) {
+    return _enqueueOpen(() async {
+      if (_closed || generation != _requestGeneration) return;
+      _setQueue(queue);
+      final media = queue.medias[queue.index];
+      _sourceOpenController.add(generation);
+      await _openPlayer(media, media.uri);
+      if (!_closed && generation == _requestGeneration) _sourceReady = true;
+    });
+  }
+
+  void _setQueue(Playlist queue) {
+    _directoryQueue = queue;
+    _progression.reset(queue.medias.length, queue.index);
+    _playlistController.add(queue);
+    _shuffleController.add(_progression.shuffle);
+  }
+
+  Future<void> _onCompleted() async {
+    final generation = _requestGeneration;
+    if (_closed ||
+        !_sourceReady ||
+        _handledCompletionGeneration == generation) {
+      return;
+    }
+    // A damaged file can signal EOF after yielding a few frames. Only
+    // advance when playback reached the source's advertised duration.
+    await Future<void>.delayed(Duration.zero);
+    if (_closed ||
+        !_sourceReady ||
+        generation != _requestGeneration ||
+        _handledCompletionGeneration == generation ||
+        !_player.state.completed ||
+        duration <= Duration.zero ||
+        position + const Duration(milliseconds: 250) < duration) {
+      return;
+    }
+    _handledCompletionGeneration = generation;
+    if (_progression.repeat == PlaylistMode.none && !_progression.canNext) {
+      return;
+    }
+    final transition = _navigate(_progression.complete);
+    final transitionGeneration = _requestGeneration;
+    try {
+      await transition;
+    } on Object catch (error, stackTrace) {
+      stderr.writeln('VPFL automatic queue open failed: $error\n$stackTrace');
+      if (_closed || transitionGeneration != _requestGeneration) return;
+      if (!_errorController.isClosed) _errorController.add(error.toString());
+    }
+  }
+
   Future<void> _enqueueOpen(Future<void> Function() operation) => _closed
       ? Future<void>.error(StateError('Player is closed'))
       : _openCoordinator.run(operation);
@@ -194,6 +274,9 @@ class PlaybackService {
   void _clearDirectoryQueue() {
     if (_directoryQueue == null) return;
     _directoryQueue = null;
+    _sourceReady = false;
+    _progression.clear();
+    _shuffleController.add(false);
     if (!_playlistController.isClosed) {
       _playlistController.add(_player.state.playlist);
     }
@@ -205,6 +288,7 @@ class PlaybackService {
     if (_closed) throw StateError('Player is closed');
     _rejectUnsupportedLocalUri(uri);
     final request = ++_requestGeneration;
+    _sourceReady = false;
     final source = Uri.tryParse(uri);
     if (source == null || source.scheme != 'file') {
       return open(uri);
@@ -238,14 +322,12 @@ class PlaybackService {
       }
     } on FileSystemException {
       if (request != _requestGeneration || _closed) return;
-      _clearDirectoryQueue();
-      return _enqueueOpen(() => _openPlayer(Media(uri), uri));
+      return _openQueueSelection(Playlist([Media(uri)]), request);
     }
     if (request != _requestGeneration || _closed) return;
     if (!siblings.contains(selected)) siblings.add(selected);
     if (siblings.length < 2) {
-      _clearDirectoryQueue();
-      return _enqueueOpen(() => _openPlayer(Media(uri), uri));
+      return _openQueueSelection(Playlist([Media(uri)]), request);
     }
     siblings.sort(
       (a, b) => path
@@ -259,9 +341,7 @@ class PlaybackService {
     );
     // Keep the directory for manual next/previous navigation. Passing the
     // entire queue to mpv makes it auto-skip a file that fails to decode.
-    _directoryQueue = queue;
-    _playlistController.add(queue);
-    return _enqueueOpen(() => _openPlayer(Media(uri), uri));
+    return _openQueueSelection(queue, request);
   }
 
   /// Opens a queue and starts at [startIndex].
@@ -277,12 +357,9 @@ class PlaybackService {
       uris.map(Media.new).toList(growable: false),
       index: startIndex,
     );
-    ++_requestGeneration;
-    _directoryQueue = queue;
-    _playlistController.add(queue);
-    return _enqueueOpen(
-      () => _openPlayer(queue.medias[startIndex], uris[startIndex]),
-    );
+    final request = ++_requestGeneration;
+    _sourceReady = false;
+    return _openQueueSelection(queue, request);
   }
 
   /// Toggles playback.
@@ -308,39 +385,32 @@ class PlaybackService {
 
   /// Moves to the next item when the queue contains multiple items.
   Future<void> next() async {
-    if (_directoryQueue case final queue?) {
-      final nextIndex = queue.index + 1;
-      if (nextIndex < queue.medias.length) {
-        await _selectDirectoryIndex(nextIndex);
-      }
-      return;
-    }
-    if (playlist.medias.length > 1) {
-      await _player.next();
-    }
+    if (_closed || !_progression.canNext) return;
+    await _navigate(_progression.next);
   }
 
   /// Moves to the previous item when the queue contains multiple items.
   Future<void> previous() async {
-    if (_directoryQueue case final queue?) {
-      final previousIndex = queue.index - 1;
-      if (previousIndex >= 0) {
-        await _selectDirectoryIndex(previousIndex);
-      }
-      return;
-    }
-    if (playlist.medias.length > 1) {
-      await _player.previous();
-    }
+    if (_closed || !_progression.canPrevious) return;
+    await _navigate(_progression.previous);
   }
 
-  Future<void> _selectDirectoryIndex(int index) async {
-    final queue = _directoryQueue;
-    if (queue == null) return;
-    final media = queue.medias[index];
-    _directoryQueue = Playlist(queue.medias, index: index);
-    _playlistController.add(_directoryQueue!);
-    await _enqueueOpen(() => _openPlayer(media, media.uri));
+  Future<void> _navigate(int? Function() select) {
+    final request = ++_requestGeneration;
+    _sourceReady = false;
+    return _enqueueOpen(() async {
+      if (_closed || request != _requestGeneration) return;
+      final queue = _directoryQueue;
+      if (queue == null) return;
+      final index = select();
+      if (index == null) return;
+      final media = queue.medias[index];
+      _directoryQueue = Playlist(queue.medias, index: index);
+      _playlistController.add(_directoryQueue!);
+      _sourceOpenController.add(request);
+      await _openPlayer(media, media.uri);
+      if (!_closed && request == _requestGeneration) _sourceReady = true;
+    });
   }
 
   /// Sets volume, clamped to media_kit's 0–100 range.
@@ -363,12 +433,18 @@ class PlaybackService {
   }
 
   /// Toggles shuffle; a one-item queue always remains unshuffled.
-  Future<void> setShuffle(bool value) =>
-      _player.setShuffle(value && playlist.medias.length > 1);
+  Future<void> setShuffle(bool value) async {
+    _progression.setShuffle(value);
+    _shuffleController.add(_progression.shuffle);
+    if (_directoryQueue case final queue?) _playlistController.add(queue);
+  }
 
   /// Sets repeat behavior for the current queue.
-  Future<void> setPlaylistMode(PlaylistMode mode) =>
-      _player.setPlaylistMode(mode);
+  Future<void> setPlaylistMode(PlaylistMode mode) async {
+    _progression.repeat = mode;
+    _playlistModeController.add(mode);
+    if (_directoryQueue case final queue?) _playlistController.add(queue);
+  }
 
   /// Captures the current frame using the playback engine.
   Future<Uint8List?> screenshot() =>
@@ -409,16 +485,22 @@ class PlaybackService {
   /// Stops the foreground session while retaining the one player for reuse.
   Future<void> stop() async {
     if (_closed) return;
+    ++_requestGeneration;
+    _sourceReady = false;
     _clearDirectoryQueue();
     LifecycleTrace.event('player.stop.begin', session: sessionId);
-    final request = ++_requestGeneration;
+    final request = _requestGeneration;
     await _openCoordinator.cancelPending();
     if (request == _requestGeneration && !_closed) await _player.stop();
     LifecycleTrace.event('player.stop.complete', session: sessionId);
   }
 
   /// Stops a failed source without discarding its directory navigation queue.
-  Future<void> stopFailedMedia() => _enqueueOpen(() => _player.stop());
+  Future<void> stopFailedMedia() {
+    ++_requestGeneration;
+    _sourceReady = false;
+    return _enqueueOpen(() => _player.stop());
+  }
 
   /// Releases the player; media_kit releases VideoController via its callback.
   Future<void> dispose() => _disposeFuture ??= _dispose();
@@ -427,6 +509,7 @@ class PlaybackService {
     LifecycleTrace.event('player.dispose.begin', session: sessionId);
     _closed = true;
     ++_requestGeneration;
+    _sourceReady = false;
     await _openCoordinator.close();
     if (_videoControllerCreated) {
       LifecycleTrace.event(
@@ -437,7 +520,12 @@ class PlaybackService {
     await _player.dispose();
     await _nativeErrorSubscription.cancel();
     await _nativePlaylistSubscription.cancel();
+    await _completionSubscription.cancel();
     await _playlistController.close();
+    await _shuffleController.close();
+    await _playlistModeController.close();
+    await _errorController.close();
+    await _sourceOpenController.close();
     if (_videoControllerCreated) {
       LifecycleTrace.event(
         'video_controller.dispose.complete',

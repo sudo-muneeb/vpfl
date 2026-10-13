@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,6 +30,113 @@ void main() {
     expect(find.byTooltip('More playback options'), findsOneWidget);
 
     semantics.dispose();
+  });
+
+  testWidgets('shuffle sits beside repeat and is disabled for one item', (
+    tester,
+  ) async {
+    bool? selected;
+    final shuffleChanges = StreamController<bool>.broadcast(sync: true);
+    addTearDown(shuffleChanges.close);
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          playlist: Playlist([Media('file:///one.mp4')]),
+          onSetShuffle: (value) async => selected = value,
+        ),
+      ),
+    );
+    expect(find.byTooltip('Shuffle unavailable for one video'), findsOneWidget);
+    final shuffleButton = tester.widget<IconButton>(
+      find.ancestor(
+        of: find.byIcon(Icons.shuffle_rounded),
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(shuffleButton.onPressed, isNull);
+    expect(selected, isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          playlist: Playlist([
+            Media('file:///one.mp4'),
+            Media('file:///two.mp4'),
+          ]),
+          shuffleStream: shuffleChanges.stream,
+          onSetShuffle: (value) async {
+            selected = value;
+            shuffleChanges.add(value);
+          },
+        ),
+      ),
+    );
+    await tester.tap(find.byTooltip('Shuffle off. Click to enable'));
+    await tester.pump();
+    expect(selected, isTrue);
+    expect(find.byTooltip('Shuffle on. Click to disable'), findsOneWidget);
+    await tester.tap(find.byTooltip('Shuffle on. Click to disable'));
+    await tester.pump();
+    expect(selected, isFalse);
+    final shuffleCenter = tester.getCenter(find.byIcon(Icons.shuffle_rounded));
+    final repeatCenter = tester.getCenter(find.byIcon(Icons.repeat_rounded));
+    expect(shuffleCenter.dx, lessThan(repeatCenter.dx));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          playlist: Playlist([
+            Media('file:///one.mp4'),
+            Media('file:///two.mp4'),
+          ]),
+          shuffle: true,
+        ),
+      ),
+    );
+    expect(find.byTooltip('Shuffle on. Click to disable'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact controls keep shuffle clear of transport buttons', (
+    tester,
+  ) async {
+    double? selectedRate;
+    tester.view.physicalSize = const Size(480, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          onSetRate: (value) async => selectedRate = value,
+          playlist: Playlist([
+            Media('file:///one.mp4'),
+            Media('file:///two.mp4'),
+          ]),
+        ),
+      ),
+    );
+
+    final overflow = tester.getRect(find.byTooltip('More playback options'));
+    final backward = tester.getRect(find.byTooltip('Seek backward 10 seconds'));
+    final forward = tester.getRect(find.byTooltip('Seek forward 10 seconds'));
+    final shuffle = tester.getRect(
+      find.byTooltip('Shuffle off. Click to enable'),
+    );
+    expect(overflow.right, lessThanOrEqualTo(backward.left));
+    expect(forward.right, lessThanOrEqualTo(shuffle.left));
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    expect(find.text('Subtitles…'), findsOneWidget);
+    expect(find.text('Playback speed…'), findsOneWidget);
+    await tester.tap(find.text('Playback speed…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1.5×'));
+    await tester.pumpAndSettle();
+    expect(selectedRate, 1.5);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('seek control is disabled without a media duration', (
@@ -96,10 +205,16 @@ void main() {
   ) async {
     PlaylistMode? selectedMode;
     BoxFit? selectedFit;
+    final modeChanges = StreamController<PlaylistMode>.broadcast(sync: true);
+    addTearDown(modeChanges.close);
     await tester.pumpWidget(
       _app(
         _controls(
-          onSetPlaylistMode: (value) async => selectedMode = value,
+          playlistModeStream: modeChanges.stream,
+          onSetPlaylistMode: (value) async {
+            selectedMode = value;
+            modeChanges.add(value);
+          },
           onSetFit: (value) => selectedFit = value,
         ),
       ),
@@ -117,6 +232,14 @@ void main() {
     );
     await tester.tap(find.byTooltip('Repeat off. Click to repeat this video'));
     expect(selectedMode, PlaylistMode.single);
+    await tester.pump();
+    await tester.tap(
+      find.byTooltip('Repeat this video. Click to repeat queue'),
+    );
+    expect(selectedMode, PlaylistMode.loop);
+    await tester.pump();
+    await tester.tap(find.byTooltip('Repeat queue. Click to turn off'));
+    expect(selectedMode, PlaylistMode.none);
 
     await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
@@ -252,6 +375,7 @@ PlayerControls _controls({
   Future<void> Function(double)? onSetRate,
   Future<void> Function(Object)? onSetTrack,
   Future<void> Function(PlaylistMode)? onSetPlaylistMode,
+  Stream<PlaylistMode> playlistModeStream = const Stream<PlaylistMode>.empty(),
   ValueChanged<BoxFit>? onSetFit,
   bool fullscreen = false,
   Future<void> Function()? onToggleFullscreen,
@@ -259,6 +383,10 @@ PlayerControls _controls({
   VoidCallback? onShowInfo,
   double volume = 100,
   Future<void> Function(double)? onSetVolume,
+  Playlist playlist = const Playlist([]),
+  bool shuffle = false,
+  Future<void> Function(bool)? onSetShuffle,
+  Stream<bool> shuffleStream = const Stream<bool>.empty(),
 }) => PlayerControls(
   duration: duration,
   durationStream: const Stream<Duration>.empty(),
@@ -275,13 +403,13 @@ PlayerControls _controls({
   volume: volume,
   volumeStream: const Stream<double>.empty(),
   onSetVolume: onSetVolume ?? (_) async {},
-  playlist: const Playlist([]),
+  playlist: playlist,
   playlistStream: const Stream<Playlist>.empty(),
-  shuffle: false,
-  shuffleStream: const Stream<bool>.empty(),
-  onSetShuffle: (_) async {},
+  shuffle: shuffle,
+  shuffleStream: shuffleStream,
+  onSetShuffle: onSetShuffle ?? (_) async {},
   playlistMode: PlaylistMode.none,
-  playlistModeStream: const Stream<PlaylistMode>.empty(),
+  playlistModeStream: playlistModeStream,
   onSetPlaylistMode: onSetPlaylistMode ?? (_) async {},
   fit: BoxFit.contain,
   onSetFit: onSetFit ?? (_) {},

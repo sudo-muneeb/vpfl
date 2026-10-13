@@ -3,7 +3,9 @@ set -euo pipefail
 
 fixtures=$(realpath "${1:?usage: run_regressions.sh FIXTURE_DIRECTORY}")
 sample="$fixtures/regression.mp4"
+short="$fixtures/h264_mp4.mp4"
 test -f "$sample"
+test -f "$short"
 test -f "$fixtures/h264_mkv.mkv"
 test -f "$fixtures/vp8_webm.webm"
 
@@ -13,6 +15,14 @@ for suite in linux_playback_test library_open_failure_test \
   bash scripts/ci/run_display.sh x11 flutter test "integration_test/$suite.dart" \
     -d linux --dart-define=VPFL_TEST_VIDEO="$sample" --reporter expanded
 done
+
+bash scripts/ci/run_display.sh x11 flutter test \
+  integration_test/queue_playback_test.dart -d linux \
+  --dart-define=VPFL_TEST_VIDEO="$short" --reporter expanded
+
+bash scripts/ci/run_display.sh x11 flutter test \
+  integration_test/repeat_one_replay_test.dart -d linux \
+  --dart-define=VPFL_TEST_VIDEO="$sample" --reporter expanded
 
 bash scripts/ci/run_display.sh x11 flutter test \
   integration_test/linux_lifecycle_test.dart -d linux \

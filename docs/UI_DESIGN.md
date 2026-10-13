@@ -185,7 +185,7 @@ Normal player layout:
 │                                                              │
 │  00:21  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  01:42:13     │
 │                                                              │
-│  ⋮  🔊  CC  speed       ↶10  ▶/❚❚  ↷10       repeat    ⛶ │
+│  ⋮  🔊  CC  speed       ↶10  ▶/❚❚  ↷10    shuffle repeat ⛶ │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -200,6 +200,7 @@ Core controls:
 * speed button
 * subtitles button
 * repeat button
+* shuffle button
 * volume/mute
 * three-dot overflow menu
 * fullscreen
@@ -208,10 +209,13 @@ Default seek step can begin at 10 seconds and later become configurable.
 
 The bottom row has three anchored groups. More options, volume, subtitles,
 and speed sit at the left. Ten-second seek and play/pause stay centered in the
-video viewport. Repeat and fullscreen sit at the right edge. The seek bar is
-above them. The desktop volume slider is 125 logical pixels wide and updates
+video viewport. Shuffle, Repeat, and fullscreen sit at the right edge. The seek
+bar is above them. The desktop volume slider is 125 logical pixels wide and updates
 the 0–100 player volume as it moves. It hides at narrower widths while mute
-remains available. Speed opens a rate menu; subtitles always open a menu with
+remains available. When the control row has less than 600 logical pixels,
+speed and subtitles move into More options so they remain accessible beside
+the transport and queue controls. Speed opens a rate menu; subtitles always
+open a menu with
 Auto, Off, embedded tracks when present, and Load subtitle file. The latter
 uses the native picker for SRT, ASS, SSA, and WebVTT files, then selects the loaded
 track. The fullscreen button shows an outward icon with “Enter Fullscreen” in
@@ -221,7 +225,7 @@ the current video fullscreen state.
 Previous and next appear at the far sides, halfway down the video when a
 multi-item queue exists. Opening a local file builds a queue from video files
 in the same directory if folder access permits it. The end buttons disable
-at the start and end of the queue. A single file or inaccessible parent
+at the start and end of a nonrepeating sequential queue. A single file or inaccessible parent
 folder has no edge navigation.
 If a file fails to open, show its error with Previous and Next actions for
 the retained directory queue. Keep the selected item in place until the user
@@ -274,9 +278,20 @@ libmpv only while Diagnostics is visible and omitted when unavailable.
 
 ## Queue playback
 
-Repeat is always available: off, one item, and queue. Shuffle remains part of
-playback state but is not a primary control until its queue interaction is
-designed. Do not present shuffle as meaningful for an isolated file.
+Repeat is always available: off, one item, and queue. Off advances after each
+successful natural completion and stops after the final item. Repeat One
+restarts the current item. Repeat Queue wraps to the first item after the last.
+The logical VPFL queue owns this progression; the playback engine receives only
+the selected item, so a failed file is never skipped automatically.
+
+The independent Shuffle toggle sits immediately left of Repeat. It is disabled
+for an isolated file. Enabling it leaves the current video playing and shuffles
+the remaining queue indices without reordering the directory queue. Next follows
+that stable order and Previous retraces playback history. Each item is visited
+once per shuffle cycle. With Repeat Queue, a new randomized cycle begins after
+the last item and does not immediately replay it. Repeat One keeps replaying the
+current item even while Shuffle is enabled. Turning Shuffle off resumes normal
+sequential progression from the current item.
 
 ## Fullscreen behavior
 
