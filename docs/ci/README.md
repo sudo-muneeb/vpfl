@@ -28,6 +28,9 @@ and verified in the same CI fixture job. Its 20 generated files cover cue
 timing, language metadata, sidecar naming, ASS styles/effects, font attachment,
 Unicode, malformed text, and a source-switch pair. They are fixture checks, not
 new native playback assertions.
+The opt-in [native subtitle comparison](native-subtitle-verification.md)
+checks standalone mpv and pinned media_kit rendering separately from the
+required PR jobs.
 
 ## Required pull request jobs
 
@@ -115,8 +118,8 @@ local documentation audit.
 - The 31-file integration test checks decoded mpv screenshots. The installed
   package smoke captures final compositor pixels for one 30-second video; it
   does not repeat that capture for all 31 fixtures or for Wayland/XWayland.
-- Subtitle tests check track discovery; they do not yet assert rendered cue
-  text, timing, or style.
+- Required PR subtitle tests check track discovery; the opt-in native subtitle
+  suite checks rendered cue text, timing, and style below the Flutter UI.
 - The suite covers pause, seek, resume, and natural completion for each video.
   The GPU initialization fault is injected in one X11 lane; other native
   renderer faults are not yet covered.
