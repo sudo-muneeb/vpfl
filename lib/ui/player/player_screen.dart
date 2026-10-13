@@ -63,6 +63,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription<dynamic>? _playlistSubscription;
   StreamSubscription<bool>? _playingSubscription;
   StreamSubscription<String>? _errorSubscription;
+  StreamSubscription<int>? _sourceOpenSubscription;
   StreamSubscription<Tracks>? _tracksSubscription;
   StreamSubscription<Track>? _selectedTracksSubscription;
   Timer? _errorProbe;
@@ -89,7 +90,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         return;
       }
       final String uri = queue.medias[queue.index].uri;
-      if (uri != _playingUri) ++_openGeneration;
+      if (uri != _playingUri ||
+          (_selectedQueueIndex != null && queue.index != _selectedQueueIndex)) {
+        ++_openGeneration;
+      }
       if (uri != _playingUri || queue.index != _selectedQueueIndex) {
         _resetMediaError();
         _playGeneration += 1;
@@ -101,6 +105,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (playing) _recordPromptPlayIfNeeded();
     });
     _errorSubscription = _playback.errorStream.listen(_handlePlayerError);
+    _sourceOpenSubscription = _playback.sourceOpenStream.listen((_) {
+      if (mounted) _resetMediaError();
+    });
     _tracksSubscription = _playback.tracksStream.listen((_) {
       if (mounted) setState(() {});
     });
@@ -162,7 +169,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     LifecycleTrace.event(
       'media.open.failed',
       session: _playback.sessionId,
-      detail: 'reason=unsupported-or-invalid',
+      detail: 'reason=player-screen message=${Uri.encodeComponent(message)}',
     );
     setState(() => _mediaError = message);
     unawaited(_stopFailedMedia());
@@ -299,6 +306,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     unawaited(_playlistSubscription?.cancel());
     unawaited(_playingSubscription?.cancel());
     unawaited(_errorSubscription?.cancel());
+    unawaited(_sourceOpenSubscription?.cancel());
     unawaited(_tracksSubscription?.cancel());
     unawaited(_selectedTracksSubscription?.cancel());
     _renderingModeSource?.removeListener(_updateRenderingMode);
@@ -493,6 +501,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   playlistStream: _playback.playlistStream,
                                   onPrevious: _previousVideo,
                                   onNext: _nextVideo,
+                                  canPrevious: () => _playback.canPrevious,
+                                  canNext: () => _playback.canNext,
                                   inspectorMode: _inspectorMode,
                                   inspectorBuilder: (mode, uri) =>
                                       PlayerInspector(
@@ -519,6 +529,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             playlistStream: _playback.playlistStream,
                             onPrevious: _previousVideo,
                             onNext: _nextVideo,
+                            canPrevious: () => _playback.canPrevious,
+                            canNext: () => _playback.canNext,
                           ),
                   ),
                 ),
@@ -589,6 +601,8 @@ class _EmptyPlayer extends StatelessWidget {
     required this.playlistStream,
     required this.onPrevious,
     required this.onNext,
+    required this.canPrevious,
+    required this.canNext,
   });
 
   final String? error;
@@ -596,6 +610,8 @@ class _EmptyPlayer extends StatelessWidget {
   final Stream<Playlist> playlistStream;
   final Future<void> Function() onPrevious;
   final Future<void> Function() onNext;
+  final bool Function() canPrevious;
+  final bool Function() canNext;
 
   @override
   Widget build(BuildContext context) {
@@ -625,15 +641,13 @@ class _EmptyPlayer extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: queue.index > 0 ? onPrevious : null,
+                      onPressed: canPrevious() ? onPrevious : null,
                       icon: const Icon(Icons.skip_previous_rounded),
                       label: const Text('Previous video'),
                     ),
                     const SizedBox(width: 12),
                     OutlinedButton.icon(
-                      onPressed: queue.index < queue.medias.length - 1
-                          ? onNext
-                          : null,
+                      onPressed: canNext() ? onNext : null,
                       icon: const Icon(Icons.skip_next_rounded),
                       label: const Text('Next video'),
                     ),

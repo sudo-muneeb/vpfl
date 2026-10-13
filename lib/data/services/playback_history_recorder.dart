@@ -43,6 +43,7 @@ class PlaybackHistoryRecorder {
   late final StreamSubscription<Duration> _positionSubscription;
   late final StreamSubscription<Duration> _durationSubscription;
   String? _uri;
+  int? _queueIndex;
   String? _recordedUri;
   String? _startingUri;
   String? _capturedUri;
@@ -64,16 +65,14 @@ class PlaybackHistoryRecorder {
     final String? nextUri = playlist.medias.isEmpty
         ? null
         : _canonicalUri(playlist.medias[playlist.index].uri);
-    if (nextUri == _uri) return;
+    if (nextUri == _uri && playlist.index == _queueIndex) return;
     _queueProgressSave();
     _uri = nextUri;
+    _queueIndex = playlist.index;
     _recordedUri = null;
     _position = _playback.position;
     _duration = _playback.duration;
     _lastSavedPositionMs = 0;
-    if (_playback.isPlaying) {
-      _track(_recordStarted());
-    }
   }
 
   void _onPlaying(bool playing) {
