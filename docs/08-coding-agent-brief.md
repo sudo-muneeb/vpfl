@@ -1,6 +1,8 @@
 # VPFL coding agent brief
 
-Use the repository documentation as the implementation specification.
+This brief contains design guidance from early implementation work. Check the
+current code, tests, and [CI guide](ci/README.md) before treating an example or
+milestone as implemented behavior.
 
 ## Architecture
 
@@ -11,7 +13,6 @@ Use:
 ```text
 ui/
 data/
-domain/
 routing/
 ```
 
@@ -19,7 +20,8 @@ Organize UI by feature.
 
 Organize data by repositories/services.
 
-Keep shared application models in `domain/models`.
+Keep models near their owners; introduce a shared domain model only when
+multiple layers need it.
 
 Use Riverpod for view-model/state responsibilities.
 
@@ -33,11 +35,13 @@ Keep:
 
 ```text
 widgets
-→ view model/providers
-→ PlaybackRepository
+→ playbackServiceProvider
 → PlaybackService
 → media_kit
 ```
+
+Persistence uses separate repositories. Add a playback repository only when
+the behavior needs one, not to match an older layer diagram.
 
 Do not expose raw native playback properties in widget code.
 
@@ -113,7 +117,9 @@ overflow menu
 fullscreen
 ```
 
-Overflow menu owns secondary actions such as subtitles and audio tracks.
+Subtitles and speed have direct controls at wider widths and move into More
+options below 600 logical pixels. Audio and video track selection stays in
+More options when those tracks are available.
 
 ## Fullscreen interaction
 
@@ -164,7 +170,8 @@ All file-open entry points should call the same internal action.
 
 ## Linux
 
-Build a working Flatpak early.
+Validate the existing Flatpak manifest and its runtime behavior before making
+Flatpak support claims.
 
 Use user-granted folder access.
 
@@ -205,17 +212,9 @@ do not eagerly build the whole library
 do not perform media I/O in build()
 ```
 
-## First implementation task
+## Current milestone status
 
-Complete Phase 0 from `07-roadmap.md`.
-
-Produce:
-
-* minimal player
-* release Linux build
-* thin Flatpak
-* compatibility report
-* native playback tests
-* exact dependency versions
-
-Do not implement the full product UI until the selected playback stack is proven.
+The initial playback baseline and native DEB, RPM, and Arch package checks are
+documented in the [CI guide](ci/README.md). Flatpak remains a planned release
+target; use the [release checklist](ci/release-checklist.md) for the validation
+still needed before a release claim.

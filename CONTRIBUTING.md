@@ -49,6 +49,10 @@ assertions described in the [CI guide](docs/ci/README.md). For changes to
 playback, the Linux runner, or packaging, run the relevant native checks there
 as well.
 
+If an AI coding agent is assisting, follow [AGENTS.md](AGENTS.md) as well.
+In particular, prepare and review the diff and test evidence before the owner
+authorizes staging, committing, pushing, or opening a pull request.
+
 Before opening a pull request, run the checks that apply to your change:
 
 ```bash

@@ -1,5 +1,9 @@
 source: https://github.com/flutter/website/blob/main/sites/docs/src/content/perf/best-practices.md
 
+This is the full upstream Flutter performance reference. Its template tags and
+web-specific examples are part of that source. For VPFL decisions, also read
+`PERFORMANCE.md`, `../docs/04-performance.md`, and the relevant implementation.
+
 ---
 title: Performance best practices
 shortTitle: Best practices

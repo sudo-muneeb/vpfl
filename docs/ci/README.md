@@ -137,3 +137,10 @@ threads, and linear history. It blocks deletion and force-pushes to `main` and
 allows squash or rebase merges. It currently requires zero approving reviews
 and does not require a status check. Contributors should still fix failing CI
 jobs before merging. See the [contributor guide](../../CONTRIBUTING.md).
+
+For enforceable CI protection, add `ci / required-gate` as a required status
+check in the `main` ruleset after it has reported on a pull request. Require
+at least one independent approval if review by another person is part of the
+merge policy. The pull request template and `AGENTS.md` ask for evidence, but
+repository instructions alone cannot prevent an agent from committing or
+merging; branch rules and the owner's review provide the separate gate.

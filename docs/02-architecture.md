@@ -2,7 +2,10 @@
 
 VPFL follows Flutter's recommended separation between UI and data layers, adapted for Riverpod and a desktop media application.
 
-The domain layer is intentionally small. Flutter's architecture guide treats a domain layer as optional and most useful when complex shared business logic justifies it.
+VPFL does not currently have a domain layer. Add one only if complex shared
+business rules justify it.
+The diagrams describe dependency direction; consult the current `lib/` tree
+before adding a layer or class shown here.
 
 ## Layer overview
 
@@ -11,9 +14,7 @@ UI layer
   ↓
 View model / Riverpod controller
   ↓
-Repository
-  ↓
-Service
+Repository or service
   ↓
 SQLite / filesystem / media_kit / Linux desktop APIs
 ```
@@ -33,7 +34,7 @@ user action
   ↓
 provider/view model command
   ↓
-repository/service
+repository or service
 ```
 
 ## Playback architecture
@@ -43,16 +44,17 @@ Use exactly one foreground player session.
 ```text
 Player widgets
     ↓
-player providers
-    ↓
-PlaybackRepository
+playbackServiceProvider
     ↓
 PlaybackService
     ↓
 media_kit
 ```
 
-Widgets never call native playback properties directly.
+The current player screen obtains the single `PlaybackService` from Riverpod.
+`PlaybackService` owns the player and coordinates source changes; persistence
+uses separate repositories. Do not add a playback repository only to match an
+older diagram. Widgets never call native playback properties directly.
 
 ### Player state by update frequency
 
@@ -115,9 +117,9 @@ The UI does not browse the filesystem directly.
 ```text
 user adds folder
     ↓
-LibraryService scans folder
+LibraryScanner scans folder
     ↓
-MediaRepository updates SQLite
+LibraryRepository updates SQLite
     ↓
 library providers expose indexed data
     ↓
@@ -150,96 +152,21 @@ Independent initialization may run concurrently after required prerequisites are
 
 ## Media metadata
 
-Metadata extraction must be bounded.
-
-Do not run an unlimited future for every media file in a large directory.
-
-Start with a conservative worker pool such as:
-
-```dart
-final workerCount =
-    (Platform.numberOfProcessors ~/ 2).clamp(1, 4);
-```
-
-Tune only after measuring.
+The current scanner records file size and modification time without decoding
+video or extracting stream metadata. If metadata extraction is added later,
+bound concurrent requests and measure scan impact before increasing the limit.
 
 ## Thumbnails without a separate converter
 
+`ThumbnailService.resolve` checks valid Freedesktop thumbnails, then VPFL's
+cached frame, then returns no image so the card shows a placeholder. It
+checks the system thumbnail's modification time and its URI when present.
+Folder scanning does not generate artwork or decode video.
 
-
-VPFL does not add a separate conversion or thumbnail-generation executable in V1.
-
-Initial thumbnail policy:
-
-```text
-never played media
-→ placeholder / file artwork
-
-media successfully starts playing
-→ optionally capture one frame using media_kit screenshot support
-→ resize/cache that image
-→ use it for Recent and library cards
-```
-
-Do not seek the active player merely to generate a thumbnail.
-
-For VPFL right now, I would use a 3 level thumbnail strategy and keep it simple.
-First choice: reuse the Linux Freedesktop thumbnail cache. Linux desktops commonly store thumbnails under $XDG_CACHE_HOME/thumbnails or ~/.cache/thumbnails, with standard sizes such as 128, 256, 512, and 1024 pixels. The thumbnail filename is the MD5 of the canonical file URI, and validity is checked using metadata such as the original URI and modification time. Freedesktop Specifications
-video file
-   ↓
-check Linux thumbnail cache
-   ↓
-found + valid?
-   ├── yes → use it
-   └── no
-         ↓
-check VPFL cache
-         ↓
-found?
-   ├── yes → use it
-   └── no → placeholder
-
-For V1, I would not generate thumbnails for every video during folder scanning. That can make adding a large folder expensive.
-Instead, when the user actually plays a video, media_kit already exposes Player.screenshot(), which captures the current video frame as encoded image bytes. Dart packages
-So VPFL can do:
-movie.mkv
-   ↓
-user starts playback
-   ↓
-wait until playback has reached a sensible frame
-   ↓
-player.screenshot()
-   ↓
-resize
-   ↓
-save in VPFL cache
-   ↓
-future Home/Library cards use it
-
-I would avoid capturing frame 0 because intros frequently start black. Something around the first few seconds after playback starts is more useful, but do not seek just for the thumbnail. Capture once playback naturally reaches a suitable position.
-Your V1 thumbnail resolver should therefore be:
-ThumbnailService.getThumbnail(media)
-
-1. check memory cache
-
-2. check Freedesktop thumbnail cache
-   ~/.cache/thumbnails/
-
-3. check VPFL thumbnail cache
-   ~/.cache/vpfl/thumbnails/
-
-4. return placeholder
-
-Then during successful playback:
-if VPFL has no thumbnail
-and Linux cache has no thumbnail
-and playback position > suitable threshold:
-
-    screenshot current frame
-    resize it
-    save it
-
-I would keep VPFL's own cache separate rather than writing VPFL screenshots into the system Freedesktop cache at first. Reading the system cache is easy. Correctly writing compliant system thumbnails means also storing the required PNG metadata, canonical URI, modification time, using atomic writes, handling failures correctly, and respecting the Freedesktop specification.
+After a file starts playing and reaches ten seconds naturally, the history
+recorder may capture one PNG frame if no thumbnail exists and history is
+enabled. VPFL stores that frame in its own cache. It never seeks the active
+player for artwork and does not write to the Freedesktop thumbnail cache.
 
 ## In-flight work deduplication
 
@@ -270,7 +197,9 @@ VPFL uses Drift with a versioned schema. The Linux database is stored at
 steps in `AppDatabase.migration` and increase `schemaVersion` for every schema
 change.
 
-Suggested records:
+The implemented tables and migrations are in
+`lib/data/model/app_database.dart`. The records below are design examples for
+future needs, not a list of tables to create for an unrelated change.
 
 ### MediaEntry
 

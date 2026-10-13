@@ -41,7 +41,7 @@ Folder scanning should:
 1. enumerate candidate files
 2. compare lightweight identity
 3. skip unchanged files
-4. read metadata only for new/changed items
+4. if stream metadata extraction is added, read it only for new/changed items
 5. batch database writes
 6. remove missing records carefully
 7. notify UI after useful batches rather than every file

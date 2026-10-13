@@ -1,140 +1,29 @@
 # VPFL project structure
 
-This structure intentionally follows the official Flutter architecture case-study style:
+The current source tree groups UI by feature and data code by responsibility.
+Read the relevant files before adding a new layer or directory.
 
-* UI organized by feature
-* data organized by type
-* shared domain models in `domain`
-* routing separated
-* shared widgets and themes under `ui/core`
-
-Riverpod can be used for view-model/state responsibilities without changing this layer structure.
-
-## Recommended structure
+## Current structure
 
 ```text
 lib/
   main.dart
-
+  routing/                 local media-open request parsing
   ui/
-    core/
-      widgets/
-        app_dialog.dart
-        loading_indicator.dart
-        error_view.dart
-        empty_state.dart
-
-      themes/
-        vpfl_theme.dart
-        vpfl_color_tokens.dart
-        vpfl_typography.dart
-        vpfl_spacing.dart
-        vpfl_radius.dart
-        vpfl_theme_extension.dart
-        system_theme_adapter.dart
-
-    shell/
-      view_models/
-        shell_view_model.dart
-      widgets/
-        app_shell.dart
-        sidebar.dart
-        title_bar.dart
-
-    home/
-      view_models/
-        home_view_model.dart
-      widgets/
-        home_screen.dart
-        recent_media_section.dart
-        recent_media_card.dart
-        all_videos_section.dart
-        media_card.dart
-
-    player/
-      view_models/
-        player_view_model.dart
-      widgets/
-        player_screen.dart
-        video_surface.dart
-        player_controls.dart
-        seek_bar.dart
-        seek_back_button.dart
-        seek_forward_button.dart
-        play_pause_button.dart
-        volume_control.dart
-        speed_button.dart
-        shuffle_button.dart
-        player_overflow_menu.dart
-        fullscreen_top_bar.dart
-
-    library/
-      view_models/
-        library_view_model.dart
-      widgets/
-        library_screen.dart
-        media_grid.dart
-        media_list.dart
-        library_toolbar.dart
-
-    folders/
-      view_models/
-        folders_view_model.dart
-      widgets/
-        folders_screen.dart
-        folder_browser.dart
-        folder_tile.dart
-        folder_breadcrumbs.dart
-        add_folder_button.dart
-
-    settings/
-      view_models/
-        settings_view_model.dart
-      widgets/
-        settings_screen.dart
-        appearance_settings.dart
-        playback_settings.dart
-        subtitle_settings.dart
-        hardware_settings.dart
-        privacy_settings.dart
-
+    core/                  shared theme and window widgets
+    shell/ home/ player/ library/ folders/ settings/
   data/
-    repositories/
-      playback_repository.dart
-      media_repository.dart
-      playback_history_repository.dart
-      saved_folder_repository.dart
-      playlist_repository.dart
-      settings_repository.dart
+    model/                 Drift database and track models
+    repositories/          library and playback history persistence
+    services/              playback, scanning, thumbnails, shutdown, etc.
+    *_provider.dart         Riverpod wiring for shared services and data
 
-    services/
-      playback_service.dart
-      media_library_service.dart
-      media_metadata_service.dart
-      database_service.dart
-      desktop_file_access_service.dart
-      window_service.dart
-      shortcut_service.dart
-      single_instance_service.dart
-      system_theme_service.dart
-
-    model/
-      database_models.dart
-
-  domain/
-    models/
-      media_entry.dart
-      playback_history.dart
-      saved_folder.dart
-      playlist.dart
-      playlist_item.dart
-      media_preferences.dart
-      playback_diagnostics.dart
-
-  routing/
-    app_router.dart
-    routes.dart
+test/                      unit and widget tests by feature/layer
+integration_test/          Linux playback, display, and package-related checks
 ```
+
+There is no `lib/domain/` or `PlaybackRepository` today. Add a domain layer or
+new repository only when a concrete shared rule needs one.
 
 ## Why this structure
 
@@ -157,13 +46,14 @@ That suits VPFL well because:
 * Player owns Player widgets and Player state
 * repositories can be shared by multiple features
 * services encapsulate filesystem, database, player, and Linux APIs
-* models are reused across UI and data layers
+* shared models can be reused across UI and data layers
 
 ## Domain layer policy
 
 Do not create a large use-case layer immediately.
 
-For V1, `domain/` primarily contains shared models.
+There is no `domain/` directory in the current implementation. Keep a model
+near its owner unless multiple layers need a shared domain type.
 
 Add domain use-cases only if business logic becomes:
 
@@ -178,7 +68,7 @@ tiny widget used by one parent only
 → private widget in the same file
 
 widget used by one feature
-→ ui/<feature>/widgets/
+→ ui/<feature>/
 
 widget used by unrelated features
 → ui/core/widgets/
@@ -188,31 +78,18 @@ Do not create one giant global `widgets/` folder.
 
 ## View-model rule
 
-Each important screen should have one primary view model.
-
-Examples:
-
-```text
-HomeScreen
-↔ HomeViewModel
-
-PlayerScreen
-↔ PlayerViewModel
-
-FoldersScreen
-↔ FoldersViewModel
-```
-
-Riverpod providers/notifiers can implement the view-model role.
+Use Riverpod providers to expose shared services and data to screens. Keep
+screen-local interaction state with its screen when appropriate. Do not add a
+view-model class solely to match an example tree.
 
 ## Dependency direction
 
 ```text
 ui
  ↓
-repositories
+providers / controllers
  ↓
-services
+repositories or services
 ```
 
 Domain models may be shared across layers.
@@ -228,31 +105,10 @@ Widgets must not know:
 * raw mpv property names
 * Linux runner implementation details
 
-## Tests should mirror the source tree
+## Tests
 
-```text
-test/
-  ui/
-    home/
-    player/
-    library/
-    folders/
-    settings/
-
-  data/
-    repositories/
-    services/
-
-  domain/
-    models/
-
-  routing/
-```
-
-Keep shared test fakes separately if useful:
-
-```text
-testing/
-  fakes/
-  models/
-```
+Place focused unit and widget tests near the matching feature or data layer
+under `test/`. Put behavior that needs the real Linux runner, media backend,
+window, or package under `integration_test/`; follow
+[the testing guide](06-testing.md) for the applicable native checks. Keep test
+fixtures isolated from personal media and user databases.

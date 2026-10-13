@@ -413,18 +413,17 @@ warning
 success
 ```
 
-Files:
+Current theme files:
 
 ```text
 ui/core/themes/
   vpfl_theme.dart
-  vpfl_color_tokens.dart
-  vpfl_typography.dart
-  vpfl_spacing.dart
-  vpfl_radius.dart
   vpfl_theme_extension.dart
-  system_theme_adapter.dart
+  vpfl_typography.dart
 ```
+
+The token names above describe design roles. Add a separate token file only
+when the current theme implementation needs it.
 
 ### Settings and About
 

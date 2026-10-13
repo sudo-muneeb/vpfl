@@ -16,9 +16,9 @@ Conversion, transcoding, and broad host access
 are out of scope. Direct network playback and advanced native controls are
 later milestones.
 
-Flutter UI sends actions through feature view models/providers and
-repositories to services that own `media_kit`, SQLite, filesystem access, and
-Linux APIs. SQLite owns VPFL records; `media_kit` owns live playback state.
+Flutter UI sends actions through providers to the repositories or services
+that own `media_kit`, SQLite, filesystem access, and Linux APIs. SQLite owns
+VPFL records; `media_kit` owns live playback state.
 Thumbnails resolve from valid Freedesktop cache, VPFL cache, then placeholder;
 frames may be cached after natural playback, never by seeking the active player.
 The UI loads cached data before asynchronous scans. Position events stay

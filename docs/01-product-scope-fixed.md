@@ -25,7 +25,7 @@ executed checks and their limits.
 
 4. Support the main public media_kit playback features. Put additional mpv controls behind a small Linux adapter and expose them only when the packaged backend supports them.
 
-5. Create a small working Flatpak early. Persistent folder access, native libraries, GPU access, and launcher behavior are architectural requirements.
+5. Validate the initial Flatpak manifest before distribution. Persistent folder access, native libraries, GPU access, and launcher behavior are architectural requirements.
 
 6. Keep the first release focused on local video, recent items, saved folders, subtitles, playlists, accessibility, and dependable installation. Direct network playback and advanced controls can arrive in the next milestones without changing the architecture.
 
