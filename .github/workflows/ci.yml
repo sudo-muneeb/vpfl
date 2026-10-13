@@ -17,8 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get -o Acquire::Retries=5 update && sudo apt-get -o Acquire::Retries=5 install -y ffmpeg
-      - run: python3 scripts/ci/generate_fixtures.py --out build/ci-fixtures
-      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures
+      - run: python3 -m unittest discover -s test/ci -p 'test_*.py' -v
+      - run: python3 scripts/ci/generate_fixtures.py --out build/ci-fixtures --subtitle-suite
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures --subtitle-suite
       - run: bash scripts/ci/generate_regression_video.sh build/ci-fixtures/regression.mp4
       - uses: actions/upload-artifact@v4
         if: always()
@@ -83,7 +84,7 @@ jobs:
         with:
           name: media-fixtures
           path: build/ci-fixtures
-      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures --subtitle-suite
       - run: flutter pub get --enforce-lockfile
       - name: Build native package
         run: |
@@ -182,7 +183,7 @@ jobs:
         with:
           name: media-fixtures
           path: build/ci-fixtures
-      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures --subtitle-suite
       - run: flutter pub get --enforce-lockfile
       - name: Play video matrix and assert GTK backend
         run: |

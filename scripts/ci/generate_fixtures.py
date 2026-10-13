@@ -7,6 +7,8 @@ import pathlib
 import subprocess
 import sys
 
+from subtitle_fixture_suite import DEFAULT_MANIFEST, DEFAULT_SOURCES, generate_suite
+
 
 def call(cmd):
     proc = subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -28,7 +30,13 @@ def main():
     ap.add_argument('--manifest', type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2] / 'ci/media-matrix.json')
     ap.add_argument('--out', type=pathlib.Path, required=True)
     ap.add_argument('--only', help='comma-separated IDs for initial validation; omit for full every-PR matrix')
+    ap.add_argument('--subtitle-suite', action='store_true',
+                    help='also generate the deterministic subtitle suite')
+    ap.add_argument('--subtitle-manifest', type=pathlib.Path, default=DEFAULT_MANIFEST)
+    ap.add_argument('--subtitle-sources', type=pathlib.Path, default=DEFAULT_SOURCES)
     args = ap.parse_args()
+    if args.subtitle_suite and args.only:
+        ap.error('--subtitle-suite requires the full base matrix (omit --only)')
     m = json.loads(args.manifest.read_text())
     args.out.mkdir(parents=True, exist_ok=True)
     selected = set(args.only.split(',')) if args.only else None
@@ -92,6 +100,8 @@ def main():
         raise RuntimeError(f"generated {len(summary['fixtures'])}/{expected} fixtures")
     (args.out / 'index.json').write_text(json.dumps(summary,indent=2)+'\n')
     print('generated', len(summary['fixtures']), 'fixtures, total bytes', sum(x['bytes'] for x in summary['fixtures']))
+    if args.subtitle_suite:
+        generate_suite(args.subtitle_manifest, args.subtitle_sources, args.out)
 
 
 if __name__ == '__main__':

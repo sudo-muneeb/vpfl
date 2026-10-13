@@ -23,6 +23,12 @@ resume, natural completion, and stop for each video. It checks subtitle track
 discovery and a decoded frame for the embedded-subtitle video. **The current
 test does not prove visible subtitle text or final Flutter composition.**
 
+The [additional subtitle fixture suite](subtitle-fixtures.md) is generated
+and verified in the same CI fixture job. Its 20 generated files cover cue
+timing, language metadata, sidecar naming, ASS styles/effects, font attachment,
+Unicode, malformed text, and a source-switch pair. They are fixture checks, not
+new native playback assertions.
+
 ## Required pull request jobs
 
 | Check | Action |
@@ -66,8 +72,9 @@ flutter pub get --enforce-lockfile
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test --reporter expanded
-python3 scripts/ci/generate_fixtures.py --out build/ci-video-fixtures
-python3 scripts/ci/verify_fixtures.py --dir build/ci-video-fixtures
+python3 -m unittest discover -s test/ci -p 'test_*.py' -v
+python3 scripts/ci/generate_fixtures.py --out build/ci-video-fixtures --subtitle-suite
+python3 scripts/ci/verify_fixtures.py --dir build/ci-video-fixtures --subtitle-suite
 ./scripts/ci/run_display.sh x11 flutter test integration_test/media_matrix_test.dart \
   -d linux --dart-define=VPFL_CI_FIXTURES="$PWD/build/ci-video-fixtures"
 bash scripts/ci/generate_regression_video.sh build/ci-video-fixtures/regression.mp4
