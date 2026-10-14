@@ -90,6 +90,12 @@ database; the display wrapper gives the app isolated XDG directories.
 For distribution-specific runs, use the same scripts as the workflow inside
 the named target container. Avoid using a real VPFL user profile.
 
+The opt-in [Part 4 subtitle integration check](../compatibility/subtitle-integration-part4.md)
+uses the generated subtitle suite with VPFL's actual `PlaybackService` and
+Flutter video surface. Run its four Linux test files in separate Flutter
+invocations after fixture verification; this host's Flutter runner could not
+start the second app when multiple files were passed to one command.
+
 ## Validation record
 
 The [fifth hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38117032738)

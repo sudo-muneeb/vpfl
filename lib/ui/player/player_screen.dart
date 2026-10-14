@@ -36,6 +36,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required this.resumeEnabled,
     required this.onHistoryEnabledChanged,
     required this.onResumeEnabledChanged,
+    this.subtitleFilePicker,
     super.key,
   });
 
@@ -49,6 +50,10 @@ class PlayerScreen extends ConsumerStatefulWidget {
   final bool resumeEnabled;
   final ValueChanged<bool> onHistoryEnabledChanged;
   final ValueChanged<bool> onResumeEnabledChanged;
+
+  /// Supplies a deterministic choice in UI tests; otherwise uses the desktop
+  /// picker.
+  final Future<String?> Function()? subtitleFilePicker;
 
   @override
   ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
@@ -73,6 +78,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   int _playGeneration = 0;
   int _openGeneration = 0;
   int _countedGeneration = 0;
+  bool _subtitlePickerBusy = false;
   ValueNotifier<String?>? _renderingModeSource;
   BoxFit _videoFit = BoxFit.contain;
   final ValueNotifier<InspectorMode?> _inspectorMode = ValueNotifier(null);
@@ -213,14 +219,43 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<void> _pickSubtitleFile() async {
+    if (_subtitlePickerBusy) return;
+    _subtitlePickerBusy = true;
+    final generation = _playback.sourceGeneration;
     try {
-      final String? path = await pickSubtitlePath();
-      if (path == null) return;
+      final String? path =
+          await (widget.subtitleFilePicker?.call() ?? pickSubtitlePath());
+      if (!mounted ||
+          generation != _playback.sourceGeneration ||
+          path == null) {
+        return;
+      }
       await _playback.loadSubtitleFile(path);
     } on Object catch (error) {
-      if (mounted) {
+      if (mounted && generation == _playback.sourceGeneration) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not load subtitles: $error')),
+          SnackBar(
+            content: Text(
+              error is SubtitleLoadException
+                  ? error.toString()
+                  : 'Could not load subtitles: $error',
+            ),
+          ),
+        );
+      }
+    } finally {
+      _subtitlePickerBusy = false;
+    }
+  }
+
+  Future<void> _setTrack(Object track, int generation) async {
+    if (!mounted || generation != _playback.sourceGeneration) return;
+    try {
+      await _playback.setTrack(track);
+    } on Object catch (error) {
+      if (mounted && generation == _playback.sourceGeneration) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not select track: $error')),
         );
       }
     }
@@ -545,43 +580,48 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   PlayerControls _buildPlayerControls({
     required Future<void> Function() onToggleFullscreen,
     required bool fullscreen,
-  }) => PlayerControls(
-    duration: _playback.duration,
-    durationStream: _playback.durationStream,
-    isPlaying: _playback.isPlaying,
-    onPlayPause: _playback.playOrPause,
-    onSeek: _playback.seek,
-    position: _playback.position,
-    positionStream: _playback.positionStream,
-    playingStream: _playback.playingStream,
-    rate: _playback.rate,
-    rateStream: _playback.rateStream,
-    onSetRate: _playback.setRate,
-    volume: _playback.volume,
-    volumeStream: _playback.volumeStream,
-    onSetVolume: _playback.setVolume,
-    playlist: _playback.playlist,
-    playlistStream: _playback.playlistStream,
-    shuffle: _playback.shuffle,
-    shuffleStream: _playback.shuffleStream,
-    onSetShuffle: _playback.setShuffle,
-    playlistMode: _playback.playlistMode,
-    playlistModeStream: _playback.playlistModeStream,
-    onSetPlaylistMode: _playback.setPlaylistMode,
-    fit: _videoFit,
-    onSetFit: (BoxFit fit) => setState(() => _videoFit = fit),
-    onScreenshot: _saveScreenshot,
-    onShowInfo: _toggleInfo,
-    tracks: _playback.tracks,
-    tracksStream: _playback.tracksStream,
-    onSetTrack: _playback.setTrack,
-    onLoadSubtitleFile: _pickSubtitleFile,
-    onSeekBy: _playback.seekBy,
-    onPrevious: _previousVideo,
-    onNext: _nextVideo,
-    onToggleFullscreen: onToggleFullscreen,
-    fullscreen: fullscreen,
-  );
+  }) {
+    final sourceGeneration = _playback.sourceGeneration;
+    return PlayerControls(
+      duration: _playback.duration,
+      durationStream: _playback.durationStream,
+      isPlaying: _playback.isPlaying,
+      onPlayPause: _playback.playOrPause,
+      onSeek: _playback.seek,
+      position: _playback.position,
+      positionStream: _playback.positionStream,
+      playingStream: _playback.playingStream,
+      rate: _playback.rate,
+      rateStream: _playback.rateStream,
+      onSetRate: _playback.setRate,
+      volume: _playback.volume,
+      volumeStream: _playback.volumeStream,
+      onSetVolume: _playback.setVolume,
+      playlist: _playback.playlist,
+      playlistStream: _playback.playlistStream,
+      shuffle: _playback.shuffle,
+      shuffleStream: _playback.shuffleStream,
+      onSetShuffle: _playback.setShuffle,
+      playlistMode: _playback.playlistMode,
+      playlistModeStream: _playback.playlistModeStream,
+      onSetPlaylistMode: _playback.setPlaylistMode,
+      fit: _videoFit,
+      onSetFit: (BoxFit fit) => setState(() => _videoFit = fit),
+      onScreenshot: _saveScreenshot,
+      onShowInfo: _toggleInfo,
+      tracks: _playback.tracks,
+      tracksStream: _playback.tracksStream,
+      selectedTracks: _playback.selectedTracks,
+      selectedTracksStream: _playback.selectedTracksStream,
+      onSetTrack: (track) => _setTrack(track, sourceGeneration),
+      onLoadSubtitleFile: _pickSubtitleFile,
+      onSeekBy: _playback.seekBy,
+      onPrevious: _previousVideo,
+      onNext: _nextVideo,
+      onToggleFullscreen: onToggleFullscreen,
+      fullscreen: fullscreen,
+    );
+  }
 
   String _titleFor(String? uri) {
     if (uri == null) {

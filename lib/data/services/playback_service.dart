@@ -1,15 +1,17 @@
-import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path/path.dart' as path;
 
-import 'media_format_policy.dart';
 import 'lifecycle_trace.dart';
+import 'media_format_policy.dart';
 import 'playback_open_coordinator.dart';
 import 'queue_progression.dart';
+import 'subtitle_file_identity.dart';
 
 /// Owns the single foreground media player session.
 class PlaybackService {
@@ -76,6 +78,10 @@ class PlaybackService {
   int _requestGeneration = 0;
   int _handledCompletionGeneration = -1;
   bool _sourceReady = false;
+  Future<void> _subtitleTail = Future<void>.value();
+
+  /// Changes whenever a new media source is requested or the player stops.
+  int get sourceGeneration => _requestGeneration;
 
   /// The video surface controller consumed by the player UI.
   VideoController get videoController => _videoController;
@@ -204,7 +210,10 @@ class PlaybackService {
     }
   }
 
-  Future<void> _openPlayer(Playable media, String uri) async {
+  Future<void> _openPlayer(Playable media, String uri, int generation) async {
+    // Finish an in-flight subtitle command before replacing its media source.
+    await _subtitleTail;
+    if (_closed || generation != _requestGeneration) return;
     final name = Uri.tryParse(uri)?.pathSegments.lastOrNull ?? 'media';
     LifecycleTrace.event(
       'player.open.begin',
@@ -221,7 +230,7 @@ class PlaybackService {
       _setQueue(queue);
       final media = queue.medias[queue.index];
       _sourceOpenController.add(generation);
-      await _openPlayer(media, media.uri);
+      await _openPlayer(media, media.uri, generation);
       if (!_closed && generation == _requestGeneration) _sourceReady = true;
     });
   }
@@ -408,7 +417,7 @@ class PlaybackService {
       _directoryQueue = Playlist(queue.medias, index: index);
       _playlistController.add(_directoryQueue!);
       _sourceOpenController.add(request);
-      await _openPlayer(media, media.uri);
+      await _openPlayer(media, media.uri, request);
       if (!_closed && request == _requestGeneration) _sourceReady = true;
     });
   }
@@ -450,21 +459,149 @@ class PlaybackService {
   Future<Uint8List?> screenshot() =>
       _player.screenshot(format: 'image/png', includeLibassSubtitles: true);
 
+  Future<void> _queueSubtitleOperation(
+    Future<void> Function(int generation) operation,
+  ) {
+    final generation = _requestGeneration;
+    final result = _subtitleTail.then((_) async {
+      if (_closed) throw StateError('Player is closed.');
+      if (generation != _requestGeneration) return;
+      if (!_sourceReady) throw StateError('No media source is ready.');
+      await operation(generation);
+    });
+    _subtitleTail = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
+
+  Future<String> _nativeSubtitleId() async {
+    final platform = _player.platform;
+    if (platform is! NativePlayer) {
+      throw StateError('Native subtitle state is unavailable.');
+    }
+    return platform.getProperty('sid');
+  }
+
+  /// Effective mpv subtitle selection, queried only for diagnostics.
+  Future<String> effectiveSubtitleId() => _nativeSubtitleId();
+
+  /// Number of native subtitle streams in the current media.
+  Future<int> nativeSubtitleTrackCount() async =>
+      (await _nativeSubtitleTracks()).length;
+
+  Future<List<Map<String, dynamic>>> _nativeSubtitleTracks() async {
+    final platform = _player.platform;
+    if (platform is! NativePlayer) {
+      throw StateError('Native subtitle tracks are unavailable.');
+    }
+    final decoded = jsonDecode(await platform.getProperty('track-list'));
+    if (decoded is! List) {
+      throw StateError('Native subtitle track list is unavailable.');
+    }
+    return decoded
+        .whereType<Map<String, dynamic>>()
+        .where((entry) => entry['type'] == 'sub')
+        .toList(growable: false);
+  }
+
+  Future<SubtitleTrack?> _externalTrackForPath(String canonicalPath) async {
+    for (final native in await _nativeSubtitleTracks()) {
+      if (native['external'] != true ||
+          native['external-filename'] is! String) {
+        continue;
+      }
+      final nativePath = await canonicalSubtitlePath(
+        native['external-filename'] as String,
+      );
+      if (nativePath != canonicalPath) continue;
+      final id = '${native['id']}';
+      return _waitForMediaKitSubtitle(id);
+    }
+    return null;
+  }
+
+  Future<SubtitleTrack> _waitForMediaKitSubtitle(String id) async {
+    SubtitleTrack? current() {
+      for (final track in _player.state.tracks.subtitle) {
+        if (track.id == id) return track;
+      }
+      return null;
+    }
+
+    final available = current();
+    if (available != null) return available;
+    final changed = Completer<SubtitleTrack>();
+    final subscription = _player.stream.tracks.listen((tracks) {
+      for (final track in tracks.subtitle) {
+        if (track.id == id && !changed.isCompleted) changed.complete(track);
+      }
+    });
+    try {
+      final nowAvailable = current();
+      if (nowAvailable != null) return nowAvailable;
+      return await changed.future.timeout(const Duration(seconds: 2));
+    } on TimeoutException {
+      throw StateError(
+        'Native subtitle track $id was not reported by media_kit.',
+      );
+    } finally {
+      await subscription.cancel();
+    }
+  }
+
+  Future<void> _selectSubtitle(SubtitleTrack track) async {
+    await _player.setSubtitleTrack(track);
+    if (track.id == 'auto' || track.uri || track.data) return;
+    final sid = await _nativeSubtitleId();
+    if (sid != track.id) {
+      throw StateError(
+        'Native subtitle selection did not change to ${track.id}.',
+      );
+    }
+  }
+
   /// Selects a video, audio, or subtitle track.
   Future<void> setTrack(Object track) => switch (track) {
     VideoTrack value => _player.setVideoTrack(value),
     AudioTrack value => _player.setAudioTrack(value),
-    SubtitleTrack value => _player.setSubtitleTrack(value),
+    SubtitleTrack value => _queueSubtitleOperation((_) async {
+      if (value.uri || value.data) {
+        throw ArgumentError('Use loadSubtitleFile for external subtitles.');
+      }
+      final previous = _player.state.track.subtitle;
+      try {
+        await _selectSubtitle(value);
+      } on Object catch (error, stackTrace) {
+        try {
+          await _selectSubtitle(previous);
+        } on Object catch (restoreError) {
+          stderr.writeln(
+            'VPFL could not restore subtitle selection: $restoreError',
+          );
+        }
+        Error.throwWithStackTrace(error, stackTrace);
+      }
+    }),
     _ => Future<void>.error(ArgumentError.value(track, 'track')),
   };
 
   /// Adds and selects a local SRT, ASS, SSA, or WebVTT subtitle track.
-  Future<void> loadSubtitleFile(String filePath) async {
-    if (!await File(filePath).exists()) {
+  Future<void> loadSubtitleFile(String filePath) => _queueSubtitleOperation(
+    (generation) => _loadSubtitleFile(filePath, generation),
+  );
+
+  Future<void> _loadSubtitleFile(String filePath, int generation) async {
+    final canonicalPath = await canonicalSubtitlePath(filePath);
+    if (canonicalPath == null) {
+      throw ArgumentError.value(filePath, 'filePath', 'Expected a local file');
+    }
+    if (!await File(canonicalPath).exists()) {
       throw FileSystemException('Subtitle file does not exist', filePath);
     }
     final extension = path
-        .extension(filePath)
+        .extension(canonicalPath)
         .replaceFirst('.', '')
         .toLowerCase();
     if (!MediaFormatPolicy.supportedSubtitleExtensions.contains(extension)) {
@@ -474,12 +611,65 @@ class PlaybackService {
         'Unsupported subtitle format',
       );
     }
-    await _player.setSubtitleTrack(
-      SubtitleTrack.uri(
-        Uri.file(filePath).toString(),
-        title: path.basename(filePath),
-      ),
-    );
+    if (generation != _requestGeneration || _closed) return;
+    final existing = await _externalTrackForPath(canonicalPath);
+    if (existing != null) {
+      await _selectSubtitle(existing);
+      return;
+    }
+
+    final previous = _player.state.track.subtitle;
+    final beforeCount = (await _nativeSubtitleTracks()).length;
+    final changed = Completer<void>();
+    final subscription = _player.stream.tracks.listen((tracks) {
+      final count = tracks.subtitle
+          .where((track) => track.id != 'auto' && track.id != 'no')
+          .length;
+      if (count > beforeCount && !changed.isCompleted) changed.complete();
+    });
+    try {
+      await _player.setSubtitleTrack(
+        SubtitleTrack.uri(
+          Uri.file(canonicalPath).toString(),
+          title: path.basename(canonicalPath),
+        ),
+      );
+      if (generation != _requestGeneration || _closed) return;
+      var loaded = await _externalTrackForPath(canonicalPath);
+      if (loaded == null) {
+        try {
+          await changed.future.timeout(const Duration(seconds: 2));
+        } on TimeoutException {
+          // A rejected native command need not emit a track-list update.
+        }
+        if (generation != _requestGeneration || _closed) return;
+        loaded = await _externalTrackForPath(canonicalPath);
+      }
+      if (loaded == null) {
+        throw const SubtitleLoadException();
+      }
+      await _selectSubtitle(loaded);
+    } on Object catch (error, stackTrace) {
+      if (generation == _requestGeneration && !_closed) {
+        // media_kit may have recorded the requested URI even when mpv rejected
+        // it. Restore the last usable request without re-adding its file.
+        try {
+          final restore = previous.uri
+              ? await _externalTrackForPath(
+                  (await canonicalSubtitlePath(previous.id)) ?? '',
+                )
+              : previous;
+          await _selectSubtitle(restore ?? SubtitleTrack.auto());
+        } on Object catch (restoreError) {
+          stderr.writeln(
+            'VPFL could not restore subtitle selection: $restoreError',
+          );
+        }
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    } finally {
+      await subscription.cancel();
+    }
   }
 
   /// Stops the foreground session while retaining the one player for reuse.
@@ -491,15 +681,19 @@ class PlaybackService {
     LifecycleTrace.event('player.stop.begin', session: sessionId);
     final request = _requestGeneration;
     await _openCoordinator.cancelPending();
+    await _subtitleTail;
     if (request == _requestGeneration && !_closed) await _player.stop();
     LifecycleTrace.event('player.stop.complete', session: sessionId);
   }
 
   /// Stops a failed source without discarding its directory navigation queue.
   Future<void> stopFailedMedia() {
-    ++_requestGeneration;
+    final request = ++_requestGeneration;
     _sourceReady = false;
-    return _enqueueOpen(() => _player.stop());
+    return _enqueueOpen(() async {
+      await _subtitleTail;
+      if (request == _requestGeneration && !_closed) await _player.stop();
+    });
   }
 
   /// Releases the player; media_kit releases VideoController via its callback.
@@ -511,6 +705,7 @@ class PlaybackService {
     ++_requestGeneration;
     _sourceReady = false;
     await _openCoordinator.close();
+    await _subtitleTail;
     if (_videoControllerCreated) {
       LifecycleTrace.event(
         'video_controller.dispose.begin',
@@ -534,6 +729,15 @@ class PlaybackService {
     }
     LifecycleTrace.event('player.dispose.complete', session: sessionId);
   }
+}
+
+/// A subtitle file that mpv did not add to the current native track list.
+class SubtitleLoadException implements Exception {
+  const SubtitleLoadException();
+
+  @override
+  String toString() =>
+      'Could not load this subtitle file. It may be invalid or unsupported.';
 }
 
 class UnsupportedMediaException implements Exception {
