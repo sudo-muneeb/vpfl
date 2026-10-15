@@ -488,6 +488,85 @@ void main() {
     await tester.pumpAndSettle();
     expect(selected, 'no');
   });
+
+  testWidgets('subtitle timing displays native updates and actions', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final changes = StreamController<int>.broadcast(sync: true);
+    addTearDown(changes.close);
+    final steps = <int>[];
+    var current = 0;
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          subtitleDelayStream: changes.stream,
+          subtitleDelayValue: () => current,
+          onAdjustSubtitleDelay: (step) async {
+            steps.add(step);
+            current += step;
+            changes.add(current);
+          },
+          onResetSubtitleDelay: () async {
+            current = 0;
+            changes.add(current);
+          },
+        ),
+      ),
+    );
+    await tester.tap(find.byTooltip('Subtitles'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Subtitle timing…'));
+    await tester.pumpAndSettle();
+    expect(find.text('0 ms'), findsOneWidget);
+    await tester.tap(find.byTooltip('Show subtitles 100 ms later'));
+    await tester.pump();
+    expect(find.text('+100 ms'), findsOneWidget);
+    await tester.tap(find.byTooltip('Show subtitles 100 ms earlier'));
+    await tester.pump();
+    expect(steps, [100, -100]);
+    current = -300;
+    changes.add(current);
+    await tester.pump();
+    expect(find.text('−300 ms'), findsOneWidget);
+    await tester.tap(find.text('Reset'));
+    await tester.pump();
+    expect(find.text('0 ms'), findsOneWidget);
+    current = 5000;
+    changes.add(current);
+    await tester.pump();
+    expect(
+      tester
+          .widget<IconButton>(find.widgetWithIcon(IconButton, Icons.add))
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Subtitles'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Subtitle timing…'));
+    await tester.pumpAndSettle();
+    expect(find.text('+5000 ms'), findsOneWidget);
+  });
+
+  testWidgets('compact CC dialog opens subtitle timing', (tester) async {
+    tester.view.physicalSize = const Size(480, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_app(_controls(subtitleDelayMilliseconds: -200)));
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Subtitles…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Subtitle timing…'));
+    await tester.pumpAndSettle();
+    expect(find.text('−200 ms'), findsOneWidget);
+  });
 }
 
 Widget _app(Widget child) => MaterialApp(
@@ -506,6 +585,11 @@ PlayerControls _controls({
   Future<void> Function(double)? onSetRate,
   Future<void> Function(Object)? onSetTrack,
   Future<void> Function()? onLoadSubtitleFile,
+  int subtitleDelayMilliseconds = 0,
+  int Function()? subtitleDelayValue,
+  Stream<int> subtitleDelayStream = const Stream<int>.empty(),
+  Future<void> Function(int)? onAdjustSubtitleDelay,
+  Future<void> Function()? onResetSubtitleDelay,
   Future<void> Function(PlaylistMode)? onSetPlaylistMode,
   Stream<PlaylistMode> playlistModeStream = const Stream<PlaylistMode>.empty(),
   ValueChanged<BoxFit>? onSetFit,
@@ -553,6 +637,11 @@ PlayerControls _controls({
   selectedTracksStream: selectedTracksStream,
   onSetTrack: onSetTrack ?? (_) async {},
   onLoadSubtitleFile: onLoadSubtitleFile ?? () async {},
+  subtitleDelayMilliseconds:
+      subtitleDelayValue ?? () => subtitleDelayMilliseconds,
+  subtitleDelayStream: subtitleDelayStream,
+  onAdjustSubtitleDelay: onAdjustSubtitleDelay ?? (_) async {},
+  onResetSubtitleDelay: onResetSubtitleDelay ?? () async {},
   onPrevious: () async {},
   onNext: () async {},
   onToggleFullscreen: onToggleFullscreen ?? () async {},

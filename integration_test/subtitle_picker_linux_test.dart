@@ -91,6 +91,10 @@ void main() {
       expect(playback.selectedTracks.subtitle.id, 'auto');
       expect(playback.hasVideoOutput, isTrue);
 
+      tester
+          .state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger))
+          .removeCurrentSnackBar();
+      await tester.pumpAndSettle();
       chosenPath = '${root.path}/external/english.srt';
       await chooseFile();
       for (

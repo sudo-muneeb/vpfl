@@ -261,6 +261,32 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
+  Future<void> _changeSubtitleDelay(int step, int generation) async {
+    if (!mounted || generation != _playback.sourceGeneration) return;
+    try {
+      await _playback.adjustSubtitleDelay(step);
+    } on Object catch (error) {
+      if (mounted && generation == _playback.sourceGeneration) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not change subtitle timing: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _resetSubtitleDelay(int generation) async {
+    if (!mounted || generation != _playback.sourceGeneration) return;
+    try {
+      await _playback.resetSubtitleDelay();
+    } on Object catch (error) {
+      if (mounted && generation == _playback.sourceGeneration) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not reset subtitle timing: $error')),
+        );
+      }
+    }
+  }
+
   bool get _textEntryHasFocus =>
       FocusManager.instance.primaryFocus?.context
           ?.findAncestorWidgetOfExactType<EditableText>() !=
@@ -615,6 +641,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       selectedTracksStream: _playback.selectedTracksStream,
       onSetTrack: (track) => _setTrack(track, sourceGeneration),
       onLoadSubtitleFile: _pickSubtitleFile,
+      subtitleDelayMilliseconds: () => _playback.subtitleDelayMilliseconds,
+      subtitleDelayStream: _playback.subtitleDelayStream,
+      onAdjustSubtitleDelay: (step) =>
+          _changeSubtitleDelay(step, _playback.sourceGeneration),
+      onResetSubtitleDelay: () =>
+          _resetSubtitleDelay(_playback.sourceGeneration),
       onSeekBy: _playback.seekBy,
       onPrevious: _previousVideo,
       onNext: _nextVideo,

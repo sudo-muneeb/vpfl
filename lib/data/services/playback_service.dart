@@ -11,6 +11,7 @@ import 'lifecycle_trace.dart';
 import 'media_format_policy.dart';
 import 'playback_open_coordinator.dart';
 import 'queue_progression.dart';
+import 'subtitle_delay.dart';
 import 'subtitle_file_identity.dart';
 
 /// Owns the single foreground media player session.
@@ -79,9 +80,16 @@ class PlaybackService {
   int _handledCompletionGeneration = -1;
   bool _sourceReady = false;
   Future<void> _subtitleTail = Future<void>.value();
+  final StreamController<int> _subtitleDelayController =
+      StreamController<int>.broadcast(sync: true);
+  int _subtitleDelayMilliseconds = 0;
+  bool _observingSubtitleDelay = false;
 
   /// Changes whenever a new media source is requested or the player stops.
   int get sourceGeneration => _requestGeneration;
+
+  int get subtitleDelayMilliseconds => _subtitleDelayMilliseconds;
+  Stream<int> get subtitleDelayStream => _subtitleDelayController.stream;
 
   /// The video surface controller consumed by the player UI.
   VideoController get videoController => _videoController;
@@ -214,6 +222,9 @@ class PlaybackService {
     // Finish an in-flight subtitle command before replacing its media source.
     await _subtitleTail;
     if (_closed || generation != _requestGeneration) return;
+    // mpv retains sub-delay on this Player across media opens.
+    await _writeSubtitleDelay(0);
+    if (_closed || generation != _requestGeneration) return;
     final name = Uri.tryParse(uri)?.pathSegments.lastOrNull ?? 'media';
     LifecycleTrace.event(
       'player.open.begin',
@@ -221,8 +232,91 @@ class PlaybackService {
       detail: 'file=${Uri.encodeComponent(name)}',
     );
     await _player.open(media);
+    await _observeSubtitleDelay();
     LifecycleTrace.event('player.open.complete', session: sessionId);
   }
+
+  NativePlayer get _nativePlayer {
+    final platform = _player.platform;
+    if (platform is! NativePlayer) {
+      throw StateError('Native subtitle settings are unavailable.');
+    }
+    return platform;
+  }
+
+  void _publishSubtitleDelay(int milliseconds) {
+    if (_subtitleDelayMilliseconds == milliseconds) return;
+    _subtitleDelayMilliseconds = milliseconds;
+    if (!_subtitleDelayController.isClosed) {
+      _subtitleDelayController.add(milliseconds);
+    }
+  }
+
+  Future<void> _observeSubtitleDelay() async {
+    if (_observingSubtitleDelay) return;
+    await _nativePlayer.observeProperty('sub-delay', (value) async {
+      try {
+        _publishSubtitleDelay(subtitleDelayMillisecondsFromNative(value));
+      } on FormatException catch (error) {
+        stderr.writeln('VPFL could not read subtitle delay: $error');
+      }
+    });
+    _observingSubtitleDelay = true;
+    _publishSubtitleDelay(
+      subtitleDelayMillisecondsFromNative(
+        await _nativePlayer.getProperty('sub-delay'),
+      ),
+    );
+  }
+
+  Future<void> _writeSubtitleDelay(int milliseconds) async {
+    await _nativePlayer.setProperty(
+      'sub-delay',
+      subtitleDelayNativeValue(milliseconds),
+    );
+    final applied = subtitleDelayMillisecondsFromNative(
+      await _nativePlayer.getProperty('sub-delay'),
+    );
+    if (applied != milliseconds) {
+      throw StateError('Native subtitle delay did not change.');
+    }
+    _publishSubtitleDelay(applied);
+  }
+
+  /// Changes subtitle timing in 100 ms steps, bounded by the UI's ±5 s range.
+  Future<void> adjustSubtitleDelay(int stepMilliseconds) {
+    if (stepMilliseconds != -100 && stepMilliseconds != 100) {
+      throw ArgumentError.value(stepMilliseconds, 'stepMilliseconds');
+    }
+    return _queueSubtitleOperation((_) async {
+      final current = subtitleDelayMillisecondsFromNative(
+        await _nativePlayer.getProperty('sub-delay'),
+      );
+      if ((stepMilliseconds > 0 && current >= 5000) ||
+          (stepMilliseconds < 0 && current <= -5000)) {
+        return;
+      }
+      final next = current >= -5000 && current <= 5000
+          ? (current + stepMilliseconds).clamp(-5000, 5000).toInt()
+          : current + stepMilliseconds;
+      if (next != current) await _writeSubtitleDelay(next);
+    });
+  }
+
+  Future<void> resetSubtitleDelay() =>
+      _queueSubtitleOperation((_) => _writeSubtitleDelay(0));
+
+  /// Native readback for Linux integration checks and diagnostics.
+  Future<int> nativeSubtitleDelayMilliseconds() async =>
+      subtitleDelayMillisecondsFromNative(
+        await _nativePlayer.getProperty('sub-delay'),
+      );
+
+  /// Native subtitle cue visible at the current playback position.
+  Future<String> nativeSubtitleText() => _nativePlayer.getProperty('sub-text');
+
+  Future<double> nativeTimePositionSeconds() async =>
+      double.parse(await _nativePlayer.getProperty('time-pos'));
 
   Future<void> _openQueueSelection(Playlist queue, int generation) {
     return _enqueueOpen(() async {
@@ -456,8 +550,11 @@ class PlaybackService {
   }
 
   /// Captures the current frame using the playback engine.
-  Future<Uint8List?> screenshot() =>
-      _player.screenshot(format: 'image/png', includeLibassSubtitles: true);
+  Future<Uint8List?> screenshot({bool includeSubtitles = true}) =>
+      _player.screenshot(
+        format: 'image/png',
+        includeLibassSubtitles: includeSubtitles,
+      );
 
   Future<void> _queueSubtitleOperation(
     Future<void> Function(int generation) operation,
@@ -682,7 +779,10 @@ class PlaybackService {
     final request = _requestGeneration;
     await _openCoordinator.cancelPending();
     await _subtitleTail;
-    if (request == _requestGeneration && !_closed) await _player.stop();
+    if (request == _requestGeneration && !_closed) {
+      await _player.stop();
+      await _writeSubtitleDelay(0);
+    }
     LifecycleTrace.event('player.stop.complete', session: sessionId);
   }
 
@@ -692,7 +792,10 @@ class PlaybackService {
     _sourceReady = false;
     return _enqueueOpen(() async {
       await _subtitleTail;
-      if (request == _requestGeneration && !_closed) await _player.stop();
+      if (request == _requestGeneration && !_closed) {
+        await _player.stop();
+        await _writeSubtitleDelay(0);
+      }
     });
   }
 
@@ -706,6 +809,10 @@ class PlaybackService {
     _sourceReady = false;
     await _openCoordinator.close();
     await _subtitleTail;
+    if (_observingSubtitleDelay) {
+      await _nativePlayer.unobserveProperty('sub-delay');
+      _observingSubtitleDelay = false;
+    }
     if (_videoControllerCreated) {
       LifecycleTrace.event(
         'video_controller.dispose.begin',
@@ -720,6 +827,7 @@ class PlaybackService {
     await _shuffleController.close();
     await _playlistModeController.close();
     await _errorController.close();
+    await _subtitleDelayController.close();
     await _sourceOpenController.close();
     if (_videoControllerCreated) {
       LifecycleTrace.event(

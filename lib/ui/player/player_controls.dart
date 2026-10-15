@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 
 import '../../data/model/real_media_tracks.dart';
+import '../../data/services/subtitle_delay.dart';
 
 import '../core/themes/vpfl_theme_extension.dart';
 import '../core/themes/vpfl_typography.dart';
@@ -45,6 +46,10 @@ class PlayerControls extends StatelessWidget {
     required this.selectedTracksStream,
     required this.onSetTrack,
     required this.onLoadSubtitleFile,
+    required this.subtitleDelayMilliseconds,
+    required this.subtitleDelayStream,
+    required this.onAdjustSubtitleDelay,
+    required this.onResetSubtitleDelay,
     required this.onPrevious,
     required this.onNext,
     required this.onToggleFullscreen,
@@ -85,6 +90,10 @@ class PlayerControls extends StatelessWidget {
   final Stream<Track> selectedTracksStream;
   final Future<void> Function(Object) onSetTrack;
   final Future<void> Function() onLoadSubtitleFile;
+  final int Function() subtitleDelayMilliseconds;
+  final Stream<int> subtitleDelayStream;
+  final Future<void> Function(int) onAdjustSubtitleDelay;
+  final Future<void> Function() onResetSubtitleDelay;
   final Future<void> Function() onPrevious;
   final Future<void> Function() onNext;
   final Future<void> Function() onToggleFullscreen;
@@ -130,6 +139,11 @@ class PlayerControls extends StatelessWidget {
                             selectedTracksStream: selectedTracksStream,
                             onSetTrack: onSetTrack,
                             onLoadSubtitleFile: onLoadSubtitleFile,
+                            subtitleDelayMilliseconds:
+                                subtitleDelayMilliseconds,
+                            subtitleDelayStream: subtitleDelayStream,
+                            onAdjustSubtitleDelay: onAdjustSubtitleDelay,
+                            onResetSubtitleDelay: onResetSubtitleDelay,
                             onSetRate: onSetRate,
                             rates: _rates,
                             narrow: narrow,
@@ -152,6 +166,11 @@ class PlayerControls extends StatelessWidget {
                               selectedTracksStream: selectedTracksStream,
                               onSetTrack: onSetTrack,
                               onLoadSubtitleFile: onLoadSubtitleFile,
+                              subtitleDelayMilliseconds:
+                                  subtitleDelayMilliseconds,
+                              subtitleDelayStream: subtitleDelayStream,
+                              onAdjustSubtitleDelay: onAdjustSubtitleDelay,
+                              onResetSubtitleDelay: onResetSubtitleDelay,
                             ),
                             _RateButton(
                               rate: rate,
@@ -475,6 +494,10 @@ class _SubtitleButton extends StatelessWidget {
     required this.selectedTracksStream,
     required this.onSetTrack,
     required this.onLoadSubtitleFile,
+    required this.subtitleDelayMilliseconds,
+    required this.subtitleDelayStream,
+    required this.onAdjustSubtitleDelay,
+    required this.onResetSubtitleDelay,
   });
 
   final Tracks tracks;
@@ -483,6 +506,10 @@ class _SubtitleButton extends StatelessWidget {
   final Stream<Track> selectedTracksStream;
   final Future<void> Function(Object) onSetTrack;
   final Future<void> Function() onLoadSubtitleFile;
+  final int Function() subtitleDelayMilliseconds;
+  final Stream<int> subtitleDelayStream;
+  final Future<void> Function(int) onAdjustSubtitleDelay;
+  final Future<void> Function() onResetSubtitleDelay;
 
   @override
   Widget build(BuildContext context) => StreamBuilder<Track>(
@@ -499,6 +526,14 @@ class _SubtitleButton extends StatelessWidget {
           onSelected: (choice) async {
             if (choice is SubtitleTrack) {
               await onSetTrack(choice);
+            } else if (choice == 'timing') {
+              await _showSubtitleDelayDialog(
+                context,
+                subtitleDelayMilliseconds(),
+                subtitleDelayStream,
+                onAdjustSubtitleDelay,
+                onResetSubtitleDelay,
+              );
             } else {
               await onLoadSubtitleFile();
             }
@@ -520,6 +555,10 @@ class _SubtitleButton extends StatelessWidget {
             const PopupMenuItem<Object>(
               value: 'load-file',
               child: Text('Load subtitle file…'),
+            ),
+            const PopupMenuItem<Object>(
+              value: 'timing',
+              child: Text('Subtitle timing…'),
             ),
           ],
           icon: const Icon(Icons.closed_caption_outlined),
@@ -613,6 +652,73 @@ class _RepeatButton extends StatelessWidget {
   );
 }
 
+Future<void> _showSubtitleDelayDialog(
+  BuildContext context,
+  int initialMilliseconds,
+  Stream<int> changes,
+  Future<void> Function(int) adjust,
+  Future<void> Function() reset,
+) => showDialog<void>(
+  context: context,
+  builder: (context) => AlertDialog(
+    title: const Text('Subtitle timing'),
+    content: StreamBuilder<int>(
+      stream: changes,
+      initialData: initialMilliseconds,
+      builder: (context, snapshot) {
+        final milliseconds = snapshot.data ?? initialMilliseconds;
+        return SizedBox(
+          width: 310,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Positive values show subtitles later.'),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    tooltip: 'Show subtitles 100 ms earlier',
+                    onPressed: milliseconds <= -5000
+                        ? null
+                        : () => unawaited(adjust(-100)),
+                    icon: const Icon(Icons.remove),
+                  ),
+                  SizedBox(
+                    width: 110,
+                    child: Text(
+                      subtitleDelayLabel(milliseconds),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Show subtitles 100 ms later',
+                    onPressed: milliseconds >= 5000
+                        ? null
+                        : () => unawaited(adjust(100)),
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => unawaited(reset()),
+        child: const Text('Reset'),
+      ),
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Close'),
+      ),
+    ],
+  ),
+);
+
 class _OverflowMenu extends StatelessWidget {
   const _OverflowMenu({
     required this.tracks,
@@ -621,6 +727,10 @@ class _OverflowMenu extends StatelessWidget {
     required this.selectedTracksStream,
     required this.onSetTrack,
     required this.onLoadSubtitleFile,
+    required this.subtitleDelayMilliseconds,
+    required this.subtitleDelayStream,
+    required this.onAdjustSubtitleDelay,
+    required this.onResetSubtitleDelay,
     required this.onSetRate,
     required this.rates,
     required this.narrow,
@@ -636,6 +746,10 @@ class _OverflowMenu extends StatelessWidget {
   final Stream<Track> selectedTracksStream;
   final Future<void> Function(Object) onSetTrack;
   final Future<void> Function() onLoadSubtitleFile;
+  final int Function() subtitleDelayMilliseconds;
+  final Stream<int> subtitleDelayStream;
+  final Future<void> Function(int) onAdjustSubtitleDelay;
+  final Future<void> Function() onResetSubtitleDelay;
   final Future<void> Function(double) onSetRate;
   final List<double> rates;
   final bool narrow;
@@ -660,6 +774,14 @@ class _OverflowMenu extends StatelessWidget {
                 await onSetTrack(selected);
               } else if (selected == 'load-file') {
                 await onLoadSubtitleFile();
+              } else if (selected == 'timing' && context.mounted) {
+                await _showSubtitleDelayDialog(
+                  context,
+                  subtitleDelayMilliseconds(),
+                  subtitleDelayStream,
+                  onAdjustSubtitleDelay,
+                  onResetSubtitleDelay,
+                );
               }
             case _PlayerActionKind.rate:
               final double? selected = await _chooseSelection<double>(
@@ -779,12 +901,18 @@ class _OverflowMenu extends StatelessWidget {
                   width: 360,
                   child: ListView.builder(
                     shrinkWrap: true,
-                    itemCount: options.length + 1,
+                    itemCount: options.length + 2,
                     itemBuilder: (context, index) {
                       if (index == options.length) {
                         return ListTile(
                           title: const Text('Load subtitle file…'),
                           onTap: () => Navigator.of(context).pop('load-file'),
+                        );
+                      }
+                      if (index == options.length + 1) {
+                        return ListTile(
+                          title: const Text('Subtitle timing…'),
+                          onTap: () => Navigator.of(context).pop('timing'),
                         );
                       }
                       final track = options[index];

@@ -96,6 +96,10 @@ Flutter video surface. Run its four Linux test files in separate Flutter
 invocations after fixture verification; this host's Flutter runner could not
 start the second app when multiple files were passed to one command.
 
+The [Part 5 subtitle timing check](../compatibility/subtitle-settings-part5.md)
+uses the same fixture suite to verify native delay readback, cue timing, and
+libass pixels through VPFL's playback service.
+
 ## Validation record
 
 The [fifth hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38117032738)
