@@ -28,9 +28,9 @@ and verified in the same CI fixture job. Its 20 generated files cover cue
 timing, language metadata, sidecar naming, ASS styles/effects, font attachment,
 Unicode, malformed text, and a source-switch pair. They are fixture checks, not
 new native playback assertions.
-The opt-in [native subtitle comparison](native-subtitle-verification.md)
-checks standalone mpv and pinned media_kit rendering separately from the
-required PR jobs.
+The [native subtitle comparison](native-subtitle-verification.md) checks
+standalone mpv and pinned media_kit rendering before the required graphical
+subtitle job checks VPFL's final X11 window.
 
 ## Required pull request jobs
 
@@ -41,8 +41,9 @@ required PR jobs.
 | `ci / native-build (ubuntu)` | Compile and package a DEB in Ubuntu 24.04; play the matrix and existing playback, lifecycle, error, inspector, and GIO regression suites in Xvfb. |
 | `ci / native-build (fedora)` | Compile and package an RPM in Fedora 44; play the matrix in Xvfb. |
 | `ci / native-build (arch)` | Compile on Arch, build `vpfl-bin` with `makepkg`, and play the matrix in Xvfb. |
-| `ci / package-install (ubuntu/fedora/arch)` | Install the generated package with the target package manager, check files and libraries, capture six video color bars from the installed app's X11 window, close it, then remove it. |
+| `ci / package-install (ubuntu/fedora/arch)` | Install the generated package with the target package manager, check files and libraries, capture video color bars plus authored ASS and external SRT captions from the installed app's X11 window, close it, then remove it. |
 | `ci / display (wayland/xwayland/x11-fallback)` | Run the matrix under headless Weston or injected GPU initialization failure; query the selected GTK backend and require software fallback state. |
+| `ci / graphical-subtitles (ubuntu-x11)` | Compare standalone mpv/media_kit subtitle frames, then check paired CC On/Off pixels from VPFL's actual X11 window. |
 | `ci / required-gate` | Fail if any required job fails, is canceled, or is skipped. |
 
 The separate, manually dispatched `gpu / physical-hardware` workflow needs a
@@ -100,6 +101,14 @@ The [Part 5 subtitle timing check](../compatibility/subtitle-settings-part5.md)
 uses the same fixture suite to verify native delay readback, cue timing, and
 libass pixels through VPFL's playback service.
 
+The [Part 6 graphical subtitle check](subtitle-window-checks.md) captures
+actual VPFL X11 window pixels and compares CC On/Off frames from the Flutter
+video texture. A dedicated Ubuntu CI job runs it alongside the native
+mpv/media_kit comparison; package-install jobs also check authored ASS and
+automatically discovered SRT captions in installed VPFL windows.
+The [Part 6 compatibility report](../compatibility/subtitle-rendering-part6.md)
+records the executed results and remaining platform limits.
+
 ## Validation record
 
 The [fifth hosted run](https://github.com/sudo-muneeb/vpfl/actions/runs/38117032738)
@@ -126,10 +135,12 @@ local documentation audit.
 ## Known limits
 
 - The 31-file integration test checks decoded mpv screenshots. The installed
-  package smoke captures final compositor pixels for one 30-second video; it
-  does not repeat that capture for all 31 fixtures or for Wayland/XWayland.
-- Required PR subtitle tests check track discovery; the opt-in native subtitle
-  suite checks rendered cue text, timing, and style below the Flutter UI.
+  package smoke captures final compositor pixels for one 30-second video and
+  authored ASS/external SRT fixtures; it does not repeat that capture for all
+  31 fixtures or for Wayland/XWayland.
+- The graphical subtitle lane checks both native subtitle pixels and final
+  VPFL X11 window pixels. It does not establish glyph shaping semantics or
+  Wayland compositor output.
 - The suite covers pause, seek, resume, and natural completion for each video.
   The GPU initialization fault is injected in one X11 lane; other native
   renderer faults are not yet covered.

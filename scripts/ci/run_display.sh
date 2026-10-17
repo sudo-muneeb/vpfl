@@ -37,7 +37,11 @@ case "$mode" in
     unset WAYLAND_DISPLAY
     export GDK_BACKEND=x11
     export VPFL_CI_DISPLAY_BACKEND=GdkX11Display
-    exec_cmd=(xvfb-run -a "$@")
+    exec_cmd=(xvfb-run -a)
+    if [[ -n "${VPFL_CI_X11_SCREEN_ARGS:-}" ]]; then
+      exec_cmd+=(-s "$VPFL_CI_X11_SCREEN_ARGS")
+    fi
+    exec_cmd+=("$@")
     ;;
   wayland|xwayland)
     unset DISPLAY

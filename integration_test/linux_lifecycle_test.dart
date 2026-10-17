@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:vpfl/data/playback_service_provider.dart';
+import 'package:vpfl/data/model/real_media_tracks.dart';
 import 'package:vpfl/data/playback_history_recorder_provider.dart';
 import 'package:vpfl/data/persistence_providers.dart';
 import 'package:vpfl/data/thumbnail_providers.dart';
@@ -21,6 +22,10 @@ void main() {
   const sourceB = String.fromEnvironment('VPFL_TEST_VIDEO_B');
   const sourceC = String.fromEnvironment('VPFL_TEST_VIDEO_C');
   const cycles = int.fromEnvironment('VPFL_TEST_CYCLES', defaultValue: 20);
+  const subtitleTracks = int.fromEnvironment(
+    'VPFL_TEST_SUBTITLE_TRACKS',
+    defaultValue: -1,
+  );
 
   testWidgets('Home stops playback over $cycles return cycles', (tester) async {
     final container = ProviderContainer();
@@ -32,10 +37,24 @@ void main() {
       ),
     );
     final playback = container.read(playbackServiceProvider);
+    Future<void> expectSubtitleCount(int count) async {
+      for (
+        var attempt = 0;
+        attempt < 100 &&
+            RealMediaTracks(playback.tracks).subtitle.length != count;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(RealMediaTracks(playback.tracks).subtitle.length, count);
+      expect(await playback.nativeSubtitleTrackCount(), count);
+    }
+
     for (var i = 0; i < 120 && !playback.isPlaying; i++) {
       await tester.pump(const Duration(milliseconds: 250));
     }
     expect(playback.isPlaying, isTrue);
+    if (subtitleTracks >= 0) await expectSubtitleCount(subtitleTracks);
     final controller = playback.videoController;
     for (var cycle = 0; cycle < cycles; cycle++) {
       debugPrint('lifecycle cycle ${cycle + 1}/$cycles: Home');
@@ -44,6 +63,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
       expect(playback.isPlaying, isFalse, reason: 'cycle $cycle');
+      if (subtitleTracks >= 0) await expectSubtitleCount(0);
       final stopped = playback.position;
       if (cycle == 0) {
         await Future<void>.delayed(const Duration(seconds: 10));
@@ -63,6 +83,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
       expect(playback.isPlaying, isTrue, reason: 'reopen cycle $cycle');
+      if (subtitleTracks >= 0) await expectSubtitleCount(subtitleTracks);
       if (cycle == 0) {
         final pausedAfterReturn = playback.playingStream
             .firstWhere((playing) => !playing)
@@ -107,8 +128,11 @@ void main() {
       }
 
       await expectSource(b, () => playback.open(b));
+      if (subtitleTracks >= 0) await expectSubtitleCount(0);
       await expectSource(c, () => playback.open(c));
+      if (subtitleTracks >= 0) await expectSubtitleCount(3);
       await expectSource(uri, () => playback.open(uri));
+      if (subtitleTracks >= 0) await expectSubtitleCount(subtitleTracks);
       final selectedDuringBurst = <String>[];
       final subscription = playback.playlistStream.listen((queue) {
         if (queue.medias.isNotEmpty && queue.index >= 0) {
@@ -125,6 +149,7 @@ void main() {
       expect(selectedDuringBurst, isNot(contains(localPath(b))));
       expect(selectedDuringBurst, isNot(contains(localPath(c))));
       expect(localPath(playback.playlist.medias.single.uri), localPath(uri));
+      if (subtitleTracks >= 0) await expectSubtitleCount(subtitleTracks);
       for (var i = 0; i < 80 && !playback.hasVideoOutput; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }

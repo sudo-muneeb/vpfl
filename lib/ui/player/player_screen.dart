@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:media_kit_video/media_kit_video_controls/media_kit_video_controls.dart'
+    as video_controls;
 
 import '../../data/playback_service_provider.dart';
 import '../../data/model/real_media_tracks.dart';
@@ -554,10 +556,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             key: _videoKey,
                             controller: _playback.videoController,
                             fit: _videoFit,
-                            controls: (VideoState state) =>
-                                VideoControlsOverlay(
+                            controls: (VideoState state) => Builder(
+                              builder: (controlsContext) {
+                                // Resolve fullscreen from this active subtree;
+                                // VideoState may retain a deactivated context
+                                // while its route is being removed.
+                                final fullscreen = video_controls.isFullscreen(
+                                  controlsContext,
+                                );
+                                return VideoControlsOverlay(
                                   title: _titleFor(_playingUri),
-                                  fullscreen: state.isFullscreen(),
+                                  fullscreen: fullscreen,
                                   playlist: _playback.playlist,
                                   playlistStream: _playback.playlistStream,
                                   onPrevious: _previousVideo,
@@ -578,11 +587,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                       ),
                                   controls: _buildPlayerControls(
                                     onToggleFullscreen: state.toggleFullscreen,
-                                    fullscreen: state.isFullscreen(),
+                                    fullscreen: fullscreen,
                                   ),
                                   onExit: state.exitFullscreen,
                                   bindings: _fullscreenShortcuts(state),
-                                ),
+                                );
+                              },
+                            ),
                           )
                         : _EmptyPlayer(
                             error: error,
