@@ -7,7 +7,8 @@ The Linux patch initializes an EGL context shared with Flutter inside the
 texture's raster callback, renders mpv frames into a shared GL texture, and
 falls back to software output when GPU setup or rendering fails. The Dart part
 mounts the initial texture and exposes `initializing`, `gpu`, `software`, or
-`unavailable` renderer status.
+`unavailable` renderer status. Resizing a paused output requests a fresh
+texture frame so its new dimensions reach Flutter without advancing playback.
 
 To try an upstream version:
 

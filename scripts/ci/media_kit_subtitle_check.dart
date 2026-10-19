@@ -395,7 +395,11 @@ class Suite {
         }
         final markers = (source['markers'] as List?)?.cast<String>() ?? [];
         if (markers.any((marker) => marker.contains(r'\move('))) {
-          final first = (source['cues'] as List).first as List;
+          final first =
+              (source['cues'] as List)[(source['motion_cue_index'] as num?)
+                          ?.toInt() ??
+                      0]
+                  as List;
           await context.capture(
             'move_start',
             (first[0] as num).toDouble() + 0.2,

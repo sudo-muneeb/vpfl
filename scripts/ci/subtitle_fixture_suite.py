@@ -110,6 +110,10 @@ def load_manifest(manifest_path: Path) -> dict:
         raise RuntimeError(f'{manifest_path}: duplicate source or video ID')
     for entry in manifest['sources']:
         _safe_file(Path('.'), entry['file'])
+        if 'motion_cue_index' in entry and not (
+                isinstance(entry['motion_cue_index'], int) and
+                0 <= entry['motion_cue_index'] < len(entry['cues'])):
+            raise RuntimeError(f"{entry['id']}: invalid motion cue index")
         if entry['source_type'] != 'subtitle_file' or not re.fullmatch(r'[a-z]{3}', entry['language']):
             raise RuntimeError(f"{entry['id']}: invalid subtitle source type or language")
     for entry in manifest['videos']:
@@ -141,6 +145,17 @@ def load_manifest(manifest_path: Path) -> dict:
         raise RuntimeError('source_switch must name two known videos')
     if len(videos[switch[0]]['tracks']) == len(videos[switch[1]]['tracks']):
         raise RuntimeError('source_switch videos must have different subtitle counts')
+    external_sources = {entry['file']: entry['source'] for entry in manifest['external']}
+    experiment_ids = set()
+    for experiment in manifest.get('resize_experiments', []):
+        source = sources.get(experiment['source'])
+        if (experiment['id'] in experiment_ids or source is None or
+                external_sources.get(experiment['file']) != experiment['source'] or
+                experiment['region'] not in ('top', 'middle', 'bottom') or
+                not any(start < experiment['seconds'] < end
+                        for start, end, _ in source['cues'])):
+            raise RuntimeError(f'invalid resize experiment: {experiment}')
+        experiment_ids.add(experiment['id'])
     return manifest
 
 

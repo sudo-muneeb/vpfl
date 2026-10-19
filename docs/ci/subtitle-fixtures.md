@@ -33,6 +33,16 @@ VTT, ASS, ASS motion/color effects, an unavailable font, mixed RTL/LTR text,
 overlap and gaps, and malformed SRT. The `plain` and `multilingual` pair has
 zero and three subtitle tracks for source-switch tests.
 
+Five additional ASS sidecars support resize recovery experiments. The red,
+blue, green, and white sources use the same `AUTHORED BLUE` text, 30-point Noto
+Sans Display font, position (160,170), outline 3, shadow 1, alignment 2, timing,
+and opaque alpha; only their primary foreground color differs. The variants
+source changes position, outline, font size, text, overlapping events, and
+motion independently, and includes the original red event recolored blue.
+`resize_experiments` records the paused cue times and expected regions. These
+files bring the generated suite inventory to 25 files without changing the
+original media matrix or the existing subtitle sources.
+
 Normal sources have cues at 1.0–2.5, 4.0–5.5, and 6.0–7.5 seconds; the first
 0.8 seconds and the spaces between cues are intentionally blank. The overlap
 source has cues at 1.0–3.0 and 2.0–4.0 seconds, then two cues after gaps.

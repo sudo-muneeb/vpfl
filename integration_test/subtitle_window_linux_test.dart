@@ -21,15 +21,17 @@ import 'package:vpfl/data/services/playback_service.dart';
 import 'package:vpfl/ui/app.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
 import 'package:vpfl/ui/library/media_card.dart';
+import 'package:vpfl/ui/player/player_controls.dart';
 import 'package:vpfl/ui/player/player_screen.dart';
 
 const _fixturesPath = String.fromEnvironment('VPFL_SUBTITLE_FIXTURES');
 
-Future<String> _command(String executable, List<String> arguments) async {
-  final result = await Process.run(
-    executable,
-    arguments,
-  ).timeout(const Duration(seconds: 15));
+Future<String> _command(
+  String executable,
+  List<String> arguments, {
+  Duration timeout = const Duration(seconds: 15),
+}) async {
+  final result = await Process.run(executable, arguments).timeout(timeout);
   if (result.exitCode != 0) {
     throw TestFailure(
       '$executable ${arguments.join(' ')} failed (${result.exitCode}): '
@@ -116,7 +118,9 @@ Future<Map<String, dynamic>> _compare(
   bool record = true,
 }) async {
   final (windowX, windowY) = await _windowOrigin();
-  final texture = tester.getRect(find.byType(Texture).first);
+  final texture = tester
+      .getRect(find.byType(Texture).first)
+      .intersect(tester.getRect(find.byType(Video)));
   final ratio = tester.view.devicePixelRatio;
   final left = windowX + (texture.left * ratio).round() + 3;
   final top = windowY + (texture.top * ratio).round() + 3;
@@ -332,6 +336,47 @@ void main() {
         );
       }
 
+      Future<void> compareAuthoredWithNative(
+        String name,
+        double seconds,
+        String region,
+      ) async {
+        final (windowX, windowY) = await _windowOrigin();
+        final texture = tester.getRect(find.byType(Texture).first);
+        final scale = tester.view.devicePixelRatio;
+        final output = await _command('python3', [
+          'scripts/ci/check_subtitle_sharpness.py',
+          '--fixture',
+          File('${root.path}/authored_ass.mkv').absolute.path,
+          '--window-on',
+          '${artifacts.path}/$name-on.png',
+          '--window-off',
+          '${artifacts.path}/$name-off.png',
+          '--rect',
+          '${windowX + (texture.left * scale).round()}',
+          '${windowY + (texture.top * scale).round()}',
+          '${(texture.width * scale).round()}',
+          '${(texture.height * scale).round()}',
+          '--seconds',
+          '$seconds',
+          '--expected-region',
+          region,
+          '--minimum-shape-overlap',
+          '0.95',
+          '--out',
+          '${artifacts.path}/$name-native-reference',
+        ], timeout: const Duration(seconds: 60));
+        final metrics = jsonDecode(output) as Map<String, dynamic>;
+        expect(
+          metrics['edge_variance_ratio'] as num,
+          greaterThanOrEqualTo(0.85),
+        );
+        expect(
+          metrics['caption_shape_overlap'] as num,
+          greaterThanOrEqualTo(0.95),
+        );
+      }
+
       try {
         await playback.useNullAudioOutput();
         await tester.pumpWidget(screen('embedded_srt.mkv'));
@@ -391,6 +436,7 @@ void main() {
           greaterThan(100),
         );
         expect(styled['darker_pixels'] as int, greaterThan(100));
+        await compareAuthoredWithNative('authored-top', 1.5, 'top');
         await playback.seek(const Duration(milliseconds: 4500));
         final blue = await pair(
           'authored-middle',
@@ -402,6 +448,7 @@ void main() {
           greaterThan(100),
         );
         expect(blue['darker_pixels'] as int, greaterThan(100));
+        await compareAuthoredWithNative('authored-middle', 4.5, 'middle');
         await playback.seek(const Duration(milliseconds: 6500));
         final green = await pair(
           'authored-bottom',
@@ -413,6 +460,7 @@ void main() {
           greaterThan(100),
         );
         expect(green['darker_pixels'] as int, greaterThan(100));
+        await compareAuthoredWithNative('authored-bottom', 6.5, 'bottom');
         await open('attached_ass.mkv', 1);
         await pair('attached-font', 'Attached font');
 
@@ -826,6 +874,729 @@ void main() {
         database: container.read(appDatabaseProvider),
       );
       await shutdown.shutdown();
+      container.dispose();
+    }
+  });
+
+  testWidgets(
+    'Attached ASS stays sharp at native, resized, and fullscreen sizes',
+    (tester) async {
+      final fixture = File('$_fixturesPath/subtitle-suite/attached_ass.mkv')
+          .absolute;
+      final source = fixture.uri.toString();
+      final artifacts = Directory('build/ci-logs/subtitle-sharpness/$pid')
+        ..createSync(recursive: true);
+      final database = AppDatabase(NativeDatabase.memory());
+      final container = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+      );
+      final playback = container.read(playbackServiceProvider);
+      final exactNativeSize = ValueNotifier(false);
+      final screen = UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: VpflTheme.dark,
+          home: ValueListenableBuilder<bool>(
+            valueListenable: exactNativeSize,
+            child: PlayerScreen(
+              key: GlobalKey(),
+              initialMediaUri: source,
+              startupError: null,
+              onOpenMedia: (_) {},
+              onBack: () {},
+              themeMode: ThemeMode.dark,
+              onThemeModeChanged: (_) {},
+              historyEnabled: false,
+              resumeEnabled: false,
+              onHistoryEnabledChanged: (_) {},
+              onResumeEnabledChanged: (_) {},
+            ),
+            builder: (context, exact, child) => exact
+                ? Center(child: SizedBox(width: 640, height: 400, child: child))
+                : SizedBox.expand(child: child),
+          ),
+        ),
+      );
+
+      Future<void> waitForOutputSize() async {
+        final platform = await playback.videoController.platform.future;
+        for (var attempt = 0; attempt < 100; attempt++) {
+          await tester.pump(const Duration(milliseconds: 100));
+          final texture = tester.getRect(find.byType(Texture).first);
+          final ratio = tester.view.devicePixelRatio;
+          final native = platform.rect.value;
+          if (native != null &&
+              (native.width - texture.width * ratio).abs() <= 1 &&
+              (native.height - texture.height * ratio).abs() <= 1) {
+            return;
+          }
+        }
+        throw TestFailure(
+          'Native video output did not match the displayed physical size: '
+          '${platform.rect.value} versus '
+          '${tester.getRect(find.byType(Texture).first)} at '
+          'DPR ${tester.view.devicePixelRatio}',
+        );
+      }
+
+      Future<void> resizeWindow(int width, int height) async {
+        final before = tester.getRect(find.byType(Texture).first).size;
+        final ids = (await _command('xdotool', [
+          'search',
+          '--pid',
+          '$pid',
+          '--onlyvisible',
+        ])).split('\n');
+        for (final id in ids.reversed) {
+          final geometry = await _command('xdotool', [
+            'getwindowgeometry',
+            '--shell',
+            id,
+          ]);
+          if (!geometry.contains('WIDTH=')) continue;
+          await _command('xdotool', ['windowsize', id, '$width', '$height']);
+          for (var attempt = 0; attempt < 80; attempt++) {
+            await tester.pump(const Duration(milliseconds: 100));
+            if (tester.getRect(find.byType(Texture).first).size != before) {
+              break;
+            }
+          }
+          if (tester.getRect(find.byType(Texture).first).size == before) {
+            throw TestFailure(
+              'VPFL texture did not follow the X11 window resize',
+            );
+          }
+          await waitForOutputSize();
+          return;
+        }
+        throw TestFailure('No VPFL X11 window found for resizing');
+      }
+
+      Future<void> capture(String name) async {
+        await waitForOutputSize();
+        await _chooseSubtitle(tester, 'Attached font');
+        await _quietOverlay(tester);
+        final position = await playback.nativeTimePositionSeconds();
+        final shown = File('${artifacts.path}/$name-on.png');
+        await _capture(tester, shown);
+        if (name == 'windowed') {
+          final native = await playback.screenshot();
+          expect(native, isNotNull);
+          await File('${artifacts.path}/media-kit-native.png')
+              .writeAsBytes(native!);
+        }
+        await _chooseSubtitle(tester, 'Off');
+        await _quietOverlay(tester);
+        final hidden = File('${artifacts.path}/$name-off.png');
+        await _capture(tester, hidden);
+        expect(
+          ((await playback.nativeTimePositionSeconds()) - position).abs(),
+          lessThan(0.08),
+        );
+        final (windowX, windowY) = await _windowOrigin();
+        final texture = tester.getRect(find.byType(Texture).first);
+        final ratio = tester.view.devicePixelRatio;
+        final left = windowX + (texture.left * ratio).round();
+        final top = windowY + (texture.top * ratio).round();
+        final width = (texture.width * ratio).round();
+        final height = (texture.height * ratio).round();
+        final result = await _command('python3', [
+          'scripts/ci/check_subtitle_sharpness.py',
+          '--fixture',
+          fixture.path,
+          '--window-on',
+          shown.path,
+          '--window-off',
+          hidden.path,
+          if (name == 'windowed') ...[
+            '--media-kit-native',
+            '${artifacts.path}/media-kit-native.png',
+          ],
+          '--rect',
+          '$left',
+          '$top',
+          '$width',
+          '$height',
+          '--out',
+          '${artifacts.path}/$name-reference',
+        ], timeout: const Duration(seconds: 60));
+        final metrics = jsonDecode(result) as Map<String, dynamic>;
+        expect(
+          metrics['edge_variance_ratio'] as num,
+          greaterThanOrEqualTo(0.85),
+        );
+        if (name == 'windowed') {
+          expect(metrics['media_kit_native_matches_mpv'], isTrue);
+        }
+        debugPrint('SHARPNESS $name $result');
+      }
+
+      try {
+        await playback.useNullAudioOutput();
+        await tester.pumpWidget(screen);
+        await _waitForVideo(tester, playback, 1);
+        if (playback.isPlaying) await playback.playOrPause();
+        await playback.seek(const Duration(milliseconds: 1500));
+        expect(tester.view.devicePixelRatio, 1.0);
+        await capture('windowed');
+        await resizeWindow(640, 480);
+        await capture('minimum-window');
+        exactNativeSize.value = true;
+        await tester.pump();
+        await waitForOutputSize();
+        expect(
+          tester.getRect(find.byType(Texture).first).size,
+          const Size(640, 360),
+        );
+        await capture('native-size');
+        exactNativeSize.value = false;
+        await tester.pump();
+        await waitForOutputSize();
+        await resizeWindow(1124, 672);
+        expect(
+          tester.getRect(find.byType(Texture).first).size,
+          const Size(1124, 632),
+        );
+        await capture('comparison-size');
+        await resizeWindow(999, 800);
+        await capture('resized');
+        await _toggleFullscreen(tester, true);
+        await capture('fullscreen');
+        await _toggleFullscreen(tester, false);
+        await capture('after-fullscreen');
+        // Native output sizing must preserve the existing video fit choices.
+        // In particular, Stretch must fill the viewport without mpv inserting
+        // a second letterbox inside the Flutter texture.
+        for (final fit in [BoxFit.cover, BoxFit.fill, BoxFit.contain]) {
+          tester
+              .widget<PlayerControls>(find.byType(PlayerControls))
+              .onSetFit(fit);
+          await tester.pump(const Duration(milliseconds: 100));
+          await _quietOverlay(tester);
+          final frame = File('${artifacts.path}/fit-${fit.name}.png');
+          await _capture(tester, frame);
+          final (windowX, windowY) = await _windowOrigin();
+          final visible = tester
+              .getRect(find.byType(Texture).first)
+              .intersect(tester.getRect(find.byType(Video)));
+          final ratio = tester.view.devicePixelRatio;
+          await _command('python3', [
+            'scripts/ci/check_subtitle_window.py',
+            frame.path,
+            frame.path,
+            '--rect',
+            '${windowX + (visible.left * ratio).round() + 3}',
+            '${windowY + (visible.top * ratio).round() + 3}',
+            '${(visible.width * ratio).round() - 6}',
+            '${(visible.height * ratio).round() - 6}',
+            '--expect',
+            'plain',
+            '--metrics',
+            '${artifacts.path}/fit-${fit.name}-metrics.json',
+          ]);
+        }
+      } finally {
+        await tester.pumpAndSettle();
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        await container.read(playbackHistoryRecorderProvider).dispose();
+        await playback.dispose();
+        await database.close();
+        exactNativeSize.dispose();
+        container.dispose();
+      }
+    },
+  );
+  testWidgets('ASS recovers after repeated Linux window resizes', (
+    tester,
+  ) async {
+    final root = Directory('$_fixturesPath/subtitle-suite').absolute;
+    final fixture = File('${root.path}/authored_ass.mkv');
+    final artifacts = Directory('build/ci-logs/subtitle-settle/$pid')
+      ..createSync(recursive: true);
+    final manifest = jsonDecode(
+      File('test/fixtures/subtitles/subtitle-matrix.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final cases =
+        <({String id, String? external, double seconds, String region})>[
+          (id: 'original-red', external: null, seconds: 1.5, region: 'top'),
+          (id: 'original-blue', external: null, seconds: 4.5, region: 'middle'),
+          (
+            id: 'original-green',
+            external: null,
+            seconds: 6.5,
+            region: 'bottom',
+          ),
+          for (final item in manifest['resize_experiments'] as List)
+            (
+              id: item['id'] as String,
+              external: item['file'] as String,
+              seconds: (item['seconds'] as num).toDouble(),
+              region: item['region'] as String,
+            ),
+        ];
+    const selectedResizeCases = String.fromEnvironment('VPFL_RESIZE_CASES');
+    if (selectedResizeCases.isNotEmpty) {
+      final selected = selectedResizeCases.split(',').toSet();
+      cases.removeWhere((item) => !selected.contains(item.id));
+      expect(cases, isNotEmpty);
+    }
+    final database = AppDatabase(NativeDatabase.memory());
+    final container = ProviderContainer(
+      overrides: [appDatabaseProvider.overrideWithValue(database)],
+    );
+    final playback = container.read(playbackServiceProvider);
+    final clock = Stopwatch()..start();
+    final events = <Map<String, dynamic>>[];
+    final comparisons = <Map<String, dynamic>>[];
+    void Function()? removeNativeListener;
+    try {
+      await playback.useNullAudioOutput();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: VpflTheme.dark,
+            home: PlayerScreen(
+              initialMediaUri: fixture.uri.toString(),
+              startupError: null,
+              onOpenMedia: (_) {},
+              onBack: () {},
+              themeMode: ThemeMode.dark,
+              onThemeModeChanged: (_) {},
+              historyEnabled: false,
+              resumeEnabled: false,
+              onHistoryEnabledChanged: (_) {},
+              onResumeEnabledChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+      await _waitForVideo(tester, playback, 1);
+      if (playback.isPlaying) await playback.playOrPause();
+      await playback.seek(const Duration(milliseconds: 1500));
+      await _quietOverlay(tester);
+      final embedded = playback.selectedTracks.subtitle;
+      final platform = await playback.videoController.platform.future;
+      expect(
+        platform.renderingMode.value,
+        Platform.environment['VPFL_TEST_FAIL_GPU_INIT'] == '1'
+            ? 'software'
+            : 'gpu',
+        reason: 'The recovery lane must exercise its requested renderer',
+      );
+      void record(String event, [Map<String, dynamic> extra = const {}]) {
+        final texture = tester.getRect(find.byType(Texture).first);
+        final native = platform.rect.value;
+        events.add({
+          'event': event,
+          'microseconds': clock.elapsedMicroseconds,
+          'viewport': [
+            tester.view.physicalSize.width,
+            tester.view.physicalSize.height,
+          ],
+          'texture': [texture.left, texture.top, texture.width, texture.height],
+          'native': [native?.width, native?.height],
+          'dpr': tester.view.devicePixelRatio,
+          'filter': tester
+              .widget<Texture>(find.byType(Texture).first)
+              .filterQuality
+              .name,
+          'rendering_mode': platform.renderingMode.value,
+          ...extra,
+        });
+      }
+
+      void onNativeSize() {
+        final native = platform.rect.value;
+        events.add({
+          'event': 'native_dimension_notification',
+          'microseconds': clock.elapsedMicroseconds,
+          'native': [native?.width, native?.height],
+          'rendering_mode': platform.renderingMode.value,
+        });
+      }
+
+      platform.rect.addListener(onNativeSize);
+      removeNativeListener = () => platform.rect.removeListener(onNativeSize);
+      final ids = (await _command('xdotool', [
+        'search',
+        '--pid',
+        '$pid',
+        '--onlyvisible',
+      ])).split('\n');
+      String? window;
+      for (final id in ids.reversed) {
+        final geometry = await _command('xdotool', [
+          'getwindowgeometry',
+          '--shell',
+          id,
+        ]);
+        if (RegExp(r'WIDTH=([6-9]\d\d|\d{4,})').hasMatch(geometry)) {
+          window = id;
+          break;
+        }
+      }
+      if (window == null) {
+        throw TestFailure('VPFL window not found for resize recovery');
+      }
+      await _command('xdotool', ['windowmove', window, '0', '0']);
+      Future<void> resize(int width, int height) async {
+        record('resize_request', {
+          'requested': [width, height],
+        });
+        await _command('xdotool', ['windowsize', window!, '$width', '$height']);
+        await tester.pump(const Duration(milliseconds: 16));
+        record('after_resize_pump');
+      }
+
+      Future<void> drag(List<(int, int)> sizes) async {
+        final (x, y) = await _windowOrigin();
+        final size = tester.view.physicalSize;
+        final arguments = <String>[
+          'mousemove',
+          '--window',
+          window!,
+          '${size.width.round() - 4}',
+          '${size.height.round() - 4}',
+          'mousedown',
+          '1',
+          'sleep',
+          '0.20',
+          for (final (w, h) in sizes) ...[
+            'mousemove',
+            '--sync',
+            '${x + w - 4}',
+            '${y + h - 4}',
+            'sleep',
+            '0.18',
+          ],
+          'mouseup',
+          '1',
+        ];
+        record('gtk_pointer_drag_start', {
+          'targets': [
+            for (final (w, h) in sizes) [w, h],
+          ],
+        });
+        final process = await Process.start('xdotool', arguments);
+        final errors = process.stderr.transform(utf8.decoder).join();
+        final output = process.stdout.drain<void>();
+        int? result;
+        final finished = process.exitCode.then((code) => result = code);
+        try {
+          final deadline = clock.elapsedMilliseconds + 8000;
+          while (result == null && clock.elapsedMilliseconds < deadline) {
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          if (result == null) {
+            process.kill();
+            throw TestFailure('GTK pointer resize did not finish within 8s');
+          }
+          await finished;
+          await output;
+          expect(result, 0, reason: await errors);
+        } finally {
+          await _command('xdotool', ['mouseup', '1']);
+        }
+        record('gtk_pointer_drag_released');
+      }
+
+      Future<void> settle(int width, int height) async {
+        var stable = 0;
+        final start = clock.elapsedMilliseconds;
+        while (clock.elapsedMilliseconds - start < 1500) {
+          await tester.pump(const Duration(milliseconds: 16));
+          final size = tester.view.physicalSize;
+          final texture = tester.getRect(find.byType(Texture).first);
+          final ratio = tester.view.devicePixelRatio;
+          final native = platform.rect.value;
+          final matches =
+              size.width == width &&
+              size.height == height &&
+              native != null &&
+              (native.width - texture.width * ratio).abs() <= 1 &&
+              (native.height - texture.height * ratio).abs() <= 1 &&
+              (texture.left * ratio - (texture.left * ratio).round()).abs() <
+                  0.001 &&
+              (texture.top * ratio - (texture.top * ratio).round()).abs() <
+                  0.001;
+          stable = matches ? stable + 1 : 0;
+          record('settle_sample');
+          if (stable == 3) {
+            record('dimensions_settled', {
+              'elapsed_ms': clock.elapsedMilliseconds - start,
+            });
+            return;
+          }
+        }
+        throw TestFailure(
+          'Native output did not converge to $width x $height within 1500ms',
+        );
+      }
+
+      Future<File> grab(String name) async {
+        final path = File('${artifacts.path}/$name.png');
+        await _command('ffmpeg', [
+          '-nostdin',
+          '-v',
+          'error',
+          '-y',
+          '-f',
+          'x11grab',
+          '-draw_mouse',
+          '0',
+          '-window_id',
+          window!,
+          '-i',
+          Platform.environment['DISPLAY']!,
+          '-frames:v',
+          '1',
+          path.path,
+        ]);
+        record('window_capture', {'file': path.path});
+        return path;
+      }
+
+      for (var index = 0; index < cases.length; index++) {
+        final item = cases[index];
+        if (item.external == null) {
+          await playback.setTrack(embedded);
+        } else {
+          await playback.loadSubtitleFile('${root.path}/${item.external}');
+        }
+        final selected = playback.selectedTracks.subtitle;
+        await playback.seek(
+          Duration(milliseconds: (item.seconds * 1000).round()),
+        );
+        const width = int.fromEnvironment(
+          'VPFL_RESIZE_WIDTH',
+          defaultValue: 1000,
+        );
+        File? firstLate;
+        for (var cycle = 0; cycle < 2; cycle++) {
+          await playback.setTrack(selected);
+          final steps = cycle == 0
+              ? [(760, 480), (1201, 740), (850, 610), (1207, 741), (width, 800)]
+              : [(1200, 800), (900, 600), (1100, 740), (width, 800)];
+          if (cycle == 0) {
+            for (final (w, h) in steps) {
+              await resize(w, h);
+            }
+          } else {
+            await drag(steps);
+          }
+          // A window manager may coalesce the final pointer motion. Test the
+          // actual released geometry rather than treating pointer coordinates
+          // as an acknowledgement that the window reached that exact size.
+          await tester.pump(const Duration(milliseconds: 100));
+          final finalWidth = tester.view.physicalSize.width.round();
+          final finalHeight = tester.view.physicalSize.height.round();
+          if (cycle == 0) {
+            expect(finalWidth, width);
+            expect(finalHeight, 800);
+          }
+          await settle(finalWidth, finalHeight);
+          final name = '${item.id}-$cycle';
+          final early = await grab('$name-early');
+          await tester.pump(const Duration(milliseconds: 500));
+          final late = await grab('$name-late');
+          final native = await playback.screenshot();
+          expect(native, isNotNull);
+          final nativeFile = File('${artifacts.path}/$name-media-kit.png');
+          await nativeFile.writeAsBytes(native!);
+          await playback.setTrack(SubtitleTrack.no());
+          await tester.pump(const Duration(milliseconds: 100));
+          final off = await grab('$name-off');
+          final texture = tester.getRect(find.byType(Texture).first);
+          final ratio = tester.view.devicePixelRatio;
+          final crop = [
+            (texture.left * ratio).round(),
+            (texture.top * ratio).round(),
+            (texture.width * ratio).round(),
+            (texture.height * ratio).round(),
+          ];
+          for (final (phase, shown) in [('early', early), ('late', late)]) {
+            final output = await _command('python3', [
+              'scripts/ci/check_subtitle_sharpness.py',
+              '--fixture',
+              fixture.path,
+              '--reference-mode',
+              'window',
+              '--reference-vo',
+              const String.fromEnvironment(
+                'VPFL_REFERENCE_VO',
+                defaultValue: 'gpu',
+              ),
+              if (item.external != null) ...[
+                '--subtitle-file',
+                '${root.path}/${item.external}',
+              ],
+              '--window-on',
+              shown.path,
+              '--window-off',
+              off.path,
+              '--media-kit-native',
+              nativeFile.path,
+              '--rect',
+              ...crop.map((value) => '$value'),
+              '--seconds',
+              '${item.seconds}',
+              '--expected-region',
+              item.region,
+              '--registration-radius',
+              '1',
+              '--minimum-shape-overlap',
+              '0.99',
+              '--out',
+              '${artifacts.path}/$name-$phase-reference',
+            ], timeout: const Duration(seconds: 60));
+            comparisons.add({
+              'case': item.id,
+              'cycle': cycle,
+              'phase': phase,
+              ...jsonDecode(output) as Map<String, dynamic>,
+            });
+          }
+          if (cycle == 0 &&
+              const bool.fromEnvironment('VPFL_RESIZE_PIXEL_PHASE')) {
+            final normalControls = tester
+                .widget<Video>(find.byType(Video))
+                .controls;
+            for (final (label, alignment, filter) in [
+              ('integer-origin', Alignment.topCenter, FilterQuality.none),
+              ('center-return', Alignment.center, FilterQuality.none),
+              ('center-linear', Alignment.center, FilterQuality.low),
+              ('integer-linear', Alignment.topCenter, FilterQuality.low),
+            ]) {
+              await playback.setTrack(selected);
+              await tester.pump(const Duration(milliseconds: 100));
+              // Freeze the application sizing callback for this controlled
+              // placement experiment, without changing the native frame size.
+              tester
+                  .state<VideoState>(find.byType(Video))
+                  .update(
+                    alignment: alignment,
+                    filterQuality: filter,
+                    controls: (_) => const SizedBox.shrink(),
+                  );
+              await tester.pump(const Duration(milliseconds: 100));
+              final shown = await grab('$name-$label-on');
+              await playback.setTrack(SubtitleTrack.no());
+              await tester.pump(const Duration(milliseconds: 100));
+              tester
+                  .state<VideoState>(find.byType(Video))
+                  .update(
+                    alignment: alignment,
+                    filterQuality: filter,
+                    controls: (_) => const SizedBox.shrink(),
+                  );
+              await tester.pump(const Duration(milliseconds: 100));
+              final hidden = await grab('$name-$label-off');
+              final rect = tester.getRect(find.byType(Texture).first);
+              final phaseCrop = [
+                (rect.left * ratio).round(),
+                (rect.top * ratio).round(),
+                (rect.width * ratio).round(),
+                (rect.height * ratio).round(),
+              ];
+              final output = await _command('python3', [
+                'scripts/ci/check_subtitle_sharpness.py',
+                '--fixture',
+                fixture.path,
+                '--reference-mode',
+                'window',
+                '--reference-vo',
+                const String.fromEnvironment(
+                  'VPFL_REFERENCE_VO',
+                  defaultValue: 'gpu',
+                ),
+                if (item.external != null) ...[
+                  '--subtitle-file',
+                  '${root.path}/${item.external}',
+                ],
+                '--window-on',
+                shown.path,
+                '--window-off',
+                hidden.path,
+                '--rect',
+                ...phaseCrop.map((value) => '$value'),
+                '--seconds',
+                '${item.seconds}',
+                '--expected-region',
+                item.region,
+                '--registration-radius',
+                '1',
+                '--minimum-shape-overlap',
+                '0',
+                '--minimum-ratio',
+                '0',
+                '--out',
+                '${artifacts.path}/$name-$label-reference',
+              ], timeout: const Duration(seconds: 60));
+              comparisons.add({
+                'case': item.id,
+                'cycle': cycle,
+                'phase': label,
+                ...jsonDecode(output) as Map<String, dynamic>,
+              });
+              debugPrint('PIXEL_PHASE ${item.id} $label $output');
+            }
+            tester
+                .state<VideoState>(find.byType(Video))
+                .update(
+                  controls: normalControls,
+                  filterQuality: FilterQuality.none,
+                  alignment: Alignment.center,
+                );
+            await tester.pump(const Duration(milliseconds: 100));
+            // Remounting controls for this optional experiment restarts their
+            // visibility timer. Hide them before the next resize comparison.
+            await _quietOverlay(tester);
+          }
+          if (firstLate != null && finalWidth == width && finalHeight == 800) {
+            await _command('python3', [
+              'scripts/ci/check_subtitle_window.py',
+              firstLate.path,
+              late.path,
+              '--rect',
+              ...crop.map((value) => '$value'),
+              '--expect',
+              'absent',
+            ]);
+          }
+          firstLate = late;
+          if (cycle == 1) {
+            await playback.setTrack(selected);
+            await resize(finalWidth - 1, finalHeight);
+            await resize(finalWidth, finalHeight);
+            await settle(finalWidth, finalHeight);
+            final refreshed = await grab('$name-refreshed');
+            await _command('python3', [
+              'scripts/ci/check_subtitle_window.py',
+              late.path,
+              refreshed.path,
+              '--rect',
+              ...crop.map((value) => '$value'),
+              '--expect',
+              'absent',
+            ]);
+          }
+          debugPrint(
+            'SETTLED ${item.id} cycle=$cycle ${jsonEncode(comparisons.last)}',
+          );
+        }
+      }
+    } finally {
+      removeNativeListener?.call();
+      await File('${artifacts.path}/events.json')
+          .writeAsString(jsonEncode(events));
+      await File('${artifacts.path}/comparisons.json')
+          .writeAsString(jsonEncode(comparisons));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await container.read(playbackHistoryRecorderProvider).dispose();
+      await playback.dispose();
+      await database.close();
       container.dispose();
     }
   });

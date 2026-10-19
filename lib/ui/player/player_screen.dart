@@ -24,6 +24,7 @@ import '../settings/default_app_controls.dart';
 import 'player_controls.dart';
 import 'player_inspector.dart';
 import 'video_controls_overlay.dart';
+import 'video_output_size.dart';
 
 /// Minimal playback surface used for the Linux compatibility baseline.
 class PlayerScreen extends ConsumerStatefulWidget {
@@ -73,6 +74,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription<int>? _sourceOpenSubscription;
   StreamSubscription<Tracks>? _tracksSubscription;
   StreamSubscription<Track>? _selectedTracksSubscription;
+  StreamSubscription<VideoParams>? _videoParamsSubscription;
   Timer? _errorProbe;
   String? _playingUri;
   int? _selectedQueueIndex;
@@ -83,6 +85,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _subtitlePickerBusy = false;
   ValueNotifier<String?>? _renderingModeSource;
   BoxFit _videoFit = BoxFit.contain;
+  ({int width, int height})? _pendingVideoOutputSize;
+  ({int width, int height})? _appliedVideoOutputSize;
+  ({
+    BuildContext context,
+    VideoState state,
+    Size viewport,
+    double ratio,
+    ({int width, int height}) output,
+    BoxFit fit,
+  })?
+  _pendingVideoPresentation;
+  bool _videoOutputSizeResetRequired = false;
+  bool _videoOutputSizeUpdateScheduled = false;
   final ValueNotifier<InspectorMode?> _inspectorMode = ValueNotifier(null);
 
   @override
@@ -114,13 +129,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     });
     _errorSubscription = _playback.errorStream.listen(_handlePlayerError);
     _sourceOpenSubscription = _playback.sourceOpenStream.listen((_) {
-      if (mounted) _resetMediaError();
+      if (mounted) {
+        _resetMediaError();
+        _videoOutputSizeResetRequired = true;
+        _appliedVideoOutputSize = null;
+        _scheduleVideoOutputSizeUpdate();
+      }
     });
     _tracksSubscription = _playback.tracksStream.listen((_) {
       if (mounted) setState(() {});
     });
     _selectedTracksSubscription = _playback.selectedTracksStream.listen((_) {
       if (mounted) setState(() {});
+    });
+    _videoParamsSubscription = _playback.videoParamsStream.listen((_) {
+      if (mounted) {
+        _videoOutputSizeResetRequired = true;
+        _appliedVideoOutputSize = null;
+        setState(() {});
+        _scheduleVideoOutputSizeUpdate();
+      }
     });
     ref.read(playbackHistoryRecorderProvider);
     unawaited(_readRenderingMode());
@@ -360,6 +388,122 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
+  void _requestVideoOutputSize(
+    Size viewport,
+    double devicePixelRatio,
+    BuildContext context,
+    VideoState state,
+  ) {
+    if (!Platform.isLinux ||
+        !viewport.width.isFinite ||
+        !viewport.height.isFinite ||
+        viewport.isEmpty) {
+      return;
+    }
+    final params = _playback.videoParams;
+    final sideways = params.rotate != 0 && params.rotate != 180;
+    final sourceWidth = sideways ? params.dh ?? 0 : params.dw ?? 0;
+    final sourceHeight = sideways ? params.dw ?? 0 : params.dh ?? 0;
+    if (sourceWidth <= 0 || sourceHeight <= 0) return;
+
+    // The Linux video texture otherwise stays at the source resolution.
+    // libass text is then enlarged with the frame by Flutter's FittedBox.
+    final target = videoOutputSize(
+      source: Size(sourceWidth.toDouble(), sourceHeight.toDouble()),
+      viewport: viewport,
+      fit: _videoFit,
+      devicePixelRatio: devicePixelRatio,
+    );
+    _pendingVideoPresentation = (
+      context: context,
+      state: state,
+      viewport: viewport,
+      ratio: devicePixelRatio,
+      output: target,
+      fit: _videoFit,
+    );
+    if (target == _appliedVideoOutputSize &&
+        !_videoOutputSizeResetRequired &&
+        !_videoOutputSizeUpdateScheduled) {
+      _scheduleVideoOutputSizeUpdate();
+      return;
+    }
+    _pendingVideoOutputSize = target;
+    _scheduleVideoOutputSizeUpdate();
+  }
+
+  void _scheduleVideoOutputSizeUpdate() {
+    if (_videoOutputSizeUpdateScheduled) return;
+    _videoOutputSizeUpdateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_applyVideoOutputSize());
+    });
+  }
+
+  Future<void> _applyVideoOutputSize() async {
+    try {
+      while (mounted &&
+          (_videoOutputSizeResetRequired ||
+              _pendingVideoOutputSize != null ||
+              _pendingVideoPresentation != null)) {
+        if (_videoOutputSizeResetRequired) {
+          _videoOutputSizeResetRequired = false;
+          // media_kit updates the native output to source dimensions on a new
+          // video's videoParams event. Reset its size cache before reapplying
+          // the viewport size, even when both videos have the same dimensions.
+          await _playback.videoController.setSize();
+          _appliedVideoOutputSize = null;
+        }
+        final target = _pendingVideoOutputSize;
+        _pendingVideoOutputSize = null;
+        if (target != null && target != _appliedVideoOutputSize) {
+          await _playback.videoController.setSize(
+            width: target.width,
+            height: target.height,
+          );
+          _appliedVideoOutputSize = target;
+        }
+        if (_pendingVideoOutputSize != null || _videoOutputSizeResetRequired) {
+          continue;
+        }
+        final presentation = _pendingVideoPresentation;
+        _pendingVideoPresentation = null;
+        if (presentation == null ||
+            !presentation.context.mounted ||
+            !presentation.state.mounted) {
+          continue;
+        }
+        if (!(ModalRoute.of(presentation.context)?.isCurrent ?? true)) continue;
+        final box = presentation.context.findRenderObject();
+        if (box is! RenderBox || !box.hasSize) continue;
+        // An odd-sized letterbox can otherwise leave the native glyph texture
+        // centered at a half pixel indefinitely after the resize has stopped.
+        presentation.state.update(
+          alignment: videoOutputAlignment(
+            viewport: presentation.viewport,
+            output: Size(
+              presentation.output.width.toDouble(),
+              presentation.output.height.toDouble(),
+            ),
+            fit: presentation.fit,
+            devicePixelRatio: presentation.ratio,
+            viewportOrigin: box.localToGlobal(Offset.zero),
+          ),
+        );
+      }
+    } on Object catch (error, stackTrace) {
+      stderr.writeln('VPFL could not resize video output: $error\n$stackTrace');
+    } finally {
+      _videoOutputSizeUpdateScheduled = false;
+      if (mounted &&
+          (_videoOutputSizeResetRequired ||
+              _pendingVideoOutputSize != null ||
+              _pendingVideoPresentation != null)) {
+        _scheduleVideoOutputSizeUpdate();
+      }
+    }
+  }
+
   @override
   void dispose() {
     ++_openGeneration;
@@ -372,6 +516,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     unawaited(_sourceOpenSubscription?.cancel());
     unawaited(_tracksSubscription?.cancel());
     unawaited(_selectedTracksSubscription?.cancel());
+    unawaited(_videoParamsSubscription?.cancel());
     _renderingModeSource?.removeListener(_updateRenderingMode);
     super.dispose();
   }
@@ -556,8 +701,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             key: _videoKey,
                             controller: _playback.videoController,
                             fit: _videoFit,
-                            controls: (VideoState state) => Builder(
-                              builder: (controlsContext) {
+                            filterQuality: FilterQuality.none,
+                            controls: (VideoState state) => LayoutBuilder(
+                              builder: (controlsContext, constraints) {
+                                if (ModalRoute.of(controlsContext)?.isCurrent ??
+                                    true) {
+                                  _requestVideoOutputSize(
+                                    constraints.biggest,
+                                    MediaQuery.devicePixelRatioOf(
+                                      controlsContext,
+                                    ),
+                                    controlsContext,
+                                    state,
+                                  );
+                                }
                                 // Resolve fullscreen from this active subtree;
                                 // VideoState may retain a deactivated context
                                 // while its route is being removed.

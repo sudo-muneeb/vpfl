@@ -200,6 +200,8 @@ def verify_style(rows: list[dict], manifest: dict) -> list[dict]:
                 distance = abs((start[0] + start[2]) / 2 - (end[0] + end[2]) / 2)
                 if distance < 70:
                     raise AssertionError(f'timed ASS move shifted only {distance:.1f} pixels')
+                row['style_validation'] = 'timed move pass'
+            if 'color_start' in captures and 'color_end' in captures:
                 before = captures['color_start']['metrics']['dominant_colors']['red']
                 after = captures['color_end']['metrics']['dominant_colors']['red']
                 if abs(after - before) < 150:

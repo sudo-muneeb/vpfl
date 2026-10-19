@@ -24,10 +24,10 @@ discovery and a decoded frame for the embedded-subtitle video. **The current
 test does not prove visible subtitle text or final Flutter composition.**
 
 The [additional subtitle fixture suite](subtitle-fixtures.md) is generated
-and verified in the same CI fixture job. Its 20 generated files cover cue
+and verified in the same CI fixture job. Its 25 generated files cover cue
 timing, language metadata, sidecar naming, ASS styles/effects, font attachment,
-Unicode, malformed text, and a source-switch pair. They are fixture checks, not
-new native playback assertions.
+Unicode, malformed text, a source-switch pair, and controlled resize captions.
+They are fixture checks, not new native playback assertions.
 The [native subtitle comparison](native-subtitle-verification.md) checks
 standalone mpv and pinned media_kit rendering before the required graphical
 subtitle job checks VPFL's final X11 window.

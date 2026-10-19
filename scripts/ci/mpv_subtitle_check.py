@@ -28,7 +28,8 @@ class IPCError(RuntimeError):
 class MpvIPC:
     """Separate command responses from asynchronous events by request ID."""
 
-    def __init__(self, directory: Path, log: Path):
+    def __init__(self, directory: Path, log: Path,
+                 extra_arguments: tuple[str, ...] = ()):
         self.directory = directory
         self.socket_path = directory / 'ipc'
         self.condition = threading.Condition()
@@ -47,7 +48,7 @@ class MpvIPC:
             ['mpv', '--no-config', '--idle=yes', '--keep-open=yes', '--pause=yes',
              '--vo=null', '--ao=null', '--hwdec=no', '--osc=no', '--osd-level=0',
              '--input-ipc-server=ipc', f'--log-file={log}',
-             '--msg-level=all=info'],
+             '--msg-level=all=info', *extra_arguments],
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL, env=env, cwd=directory,
         )
@@ -320,7 +321,7 @@ class Suite:
                              region='bottom' if source['codec'] != 'ass' else None)
             markers = source.get('markers', [])
             if any('\\move(' in marker for marker in markers):
-                first = source['cues'][0]
+                first = source['cues'][source.get('motion_cue_index', 0)]
                 for label, seconds in [('move_start', first[0] + 0.2),
                                        ('move_end', first[1] - 0.2)]:
                     self.capture(ipc, folder, result, label, seconds, source)

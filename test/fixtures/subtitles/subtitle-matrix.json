@@ -25,7 +25,12 @@
     {"id": "unicode", "file": "unicode.srt", "codec": "subrip", "language": "mul", "source_type": "subtitle_file", "cues": [[1.0, 2.5, "اردو VPFL 123"], [4.0, 5.5, "العربية test 42"], [6.0, 7.5, "RTL/LTR: سلام VPFL"]]},
     {"id": "overlap", "file": "overlap.srt", "codec": "subrip", "language": "eng", "source_type": "subtitle_file", "cues": [[1.0, 3.0, "OVERLAP A"], [2.0, 4.0, "OVERLAP B"], [5.0, 6.5, "AFTER GAP"], [7.0, 8.0, "FINAL AFTER GAP"]]},
     {"id": "unrelated", "file": "unrelated.srt", "codec": "subrip", "language": "eng", "source_type": "subtitle_file", "cues": [[1.0, 2.5, "UNRELATED FILE"], [4.0, 5.5, "NOT A MATCH"], [6.0, 7.5, "IGNORE THIS"]]},
-    {"id": "malformed", "file": "malformed.srt", "codec": "subrip", "valid": false, "language": "eng", "source_type": "subtitle_file", "cues": []}
+    {"id": "malformed", "file": "malformed.srt", "codec": "subrip", "valid": false, "language": "eng", "source_type": "subtitle_file", "cues": []},
+    {"id": "resize_red", "file": "resize_red.ass", "codec": "ass", "language": "eng", "source_type": "subtitle_file", "cues": [[1.0, 2.5, "AUTHORED BLUE"], [4.0, 5.5, "AUTHORED BLUE"], [6.0, 7.5, "AUTHORED BLUE"]], "markers": ["&H000000FF", "\\pos(160,170)"]},
+    {"id": "resize_blue", "file": "resize_blue.ass", "codec": "ass", "language": "eng", "source_type": "subtitle_file", "cues": [[1.0, 2.5, "AUTHORED BLUE"], [4.0, 5.5, "AUTHORED BLUE"], [6.0, 7.5, "AUTHORED BLUE"]], "markers": ["&H00FF0000", "\\pos(160,170)"]},
+    {"id": "resize_green", "file": "resize_green.ass", "codec": "ass", "language": "eng", "source_type": "subtitle_file", "cues": [[1.0, 2.5, "AUTHORED BLUE"], [4.0, 5.5, "AUTHORED BLUE"], [6.0, 7.5, "AUTHORED BLUE"]], "markers": ["&H0000FF00", "\\pos(160,170)"]},
+    {"id": "resize_white", "file": "resize_white.ass", "codec": "ass", "language": "eng", "source_type": "subtitle_file", "cues": [[1.0, 2.5, "AUTHORED BLUE"], [4.0, 5.5, "AUTHORED BLUE"], [6.0, 7.5, "AUTHORED BLUE"]], "markers": ["&H00FFFFFF", "\\pos(160,170)"]},
+    {"id": "resize_variants", "file": "resize_variants.ass", "motion_cue_index": 6, "codec": "ass", "language": "eng", "source_type": "subtitle_file", "cues": [[1.1, 1.6, "AUTHORED BLUE"], [1.7, 2.2, "AUTHORED BLUE"], [2.3, 2.8, "AUTHORED BLUE"], [2.9, 3.4, "AUTHORED RED"], [3.5, 4.2, "AUTHORED BLUE"], [3.5, 4.2, "AUTHORED BLUE"], [4.3, 5.8, "AUTHORED BLUE"], [6.0, 7.0, "AUTHORED RED"]], "markers": ["\\pos(", "\\bord1", "\\fs20", "\\move(", "\\c&HFF0000&"]}
   ],
   "videos": [
     {"id": "plain", "file": "plain.mp4", "container": "mov,mp4,m4a,3gp,3g2,mj2", "source_type": "video", "tracks": []},
@@ -45,7 +50,12 @@
     {"id": "external_missing_font", "video": "plain", "file": "external/missing_font.ass", "source_type": "external", "source": "missing_font"},
     {"id": "external_unicode", "video": "plain", "file": "external/unicode.srt", "source_type": "external", "source": "unicode"},
     {"id": "external_overlap", "video": "plain", "file": "external/overlap.srt", "source_type": "external", "source": "overlap"},
-    {"id": "external_malformed", "video": "plain", "file": "external/malformed.srt", "source_type": "external", "source": "malformed"}
+    {"id": "external_malformed", "video": "plain", "file": "external/malformed.srt", "source_type": "external", "source": "malformed"},
+    {"id": "external_resize_red", "video": "plain", "file": "external/resize_red.ass", "source_type": "external", "source": "resize_red"},
+    {"id": "external_resize_blue", "video": "plain", "file": "external/resize_blue.ass", "source_type": "external", "source": "resize_blue"},
+    {"id": "external_resize_green", "video": "plain", "file": "external/resize_green.ass", "source_type": "external", "source": "resize_green"},
+    {"id": "external_resize_white", "video": "plain", "file": "external/resize_white.ass", "source_type": "external", "source": "resize_white"},
+    {"id": "external_resize_variants", "video": "plain", "file": "external/resize_variants.ass", "source_type": "external", "source": "resize_variants"}
   ],
   "nearby": {
     "video": "nearby/movie.mkv",
@@ -55,5 +65,6 @@
       {"file": "nearby/unrelated.srt", "source_type": "nearby", "source": "unrelated", "match": "unrelated"}
     ]
   },
+  "resize_experiments": [{"id": "red", "source": "resize_red", "file": "external/resize_red.ass", "seconds": 1.5, "region": "middle", "variable": "foreground_color"}, {"id": "blue", "source": "resize_blue", "file": "external/resize_blue.ass", "seconds": 1.5, "region": "middle", "variable": "foreground_color"}, {"id": "green", "source": "resize_green", "file": "external/resize_green.ass", "seconds": 1.5, "region": "middle", "variable": "foreground_color"}, {"id": "white", "source": "resize_white", "file": "external/resize_white.ass", "seconds": 1.5, "region": "middle", "variable": "foreground_color"}, {"id": "position", "source": "resize_variants", "file": "external/resize_variants.ass", "seconds": 1.35, "region": "middle", "variable": "position"}, {"id": "outline", "source": "resize_variants", "file": "external/resize_variants.ass", "seconds": 1.95, "region": "middle", "variable": "outline"}, {"id": "font_size", "source": "resize_variants", "file": "external/resize_variants.ass", "seconds": 2.55, "region": "middle", "variable": "font_size"}, {"id": "text", "source": "resize_variants", "file": "external/resize_variants.ass", "seconds": 3.15, "region": "middle", "variable": "text"}, {"id": "overlap", "source": "resize_variants", "file": "external/resize_variants.ass", "seconds": 3.8, "region": "middle", "variable": "overlap"}, {"id": "animated", "source": "resize_variants", "file": "external/resize_variants.ass", "seconds": 5.0, "region": "middle", "variable": "animated"}, {"id": "original_red_blue", "source": "resize_variants", "file": "external/resize_variants.ass", "seconds": 6.5, "region": "top", "variable": "original_red_blue"}],
   "source_switch": ["plain", "multilingual"]
 }

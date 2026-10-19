@@ -232,6 +232,10 @@ jobs:
         run: |
           bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --plain-name='VPFL X11 window renders subtitle fixtures through the player UI' --reporter expanded
           bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --plain-name='Home and reopen restore visible subtitles in VPFL window' --reporter expanded
+          bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --plain-name='Attached ASS stays sharp at native, resized, and fullscreen sizes' --reporter expanded
+          VPFL_TEST_FAIL_GPU_INIT=1 bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --plain-name='Attached ASS stays sharp at native, resized, and fullscreen sizes' --reporter expanded
+          bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --dart-define=VPFL_REFERENCE_VO=x11 --plain-name='ASS recovers after repeated Linux window resizes' --reporter expanded
+          VPFL_TEST_FAIL_GPU_INIT=1 bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --dart-define=VPFL_REFERENCE_VO=x11 --plain-name='ASS recovers after repeated Linux window resizes' --reporter expanded
       - uses: actions/upload-artifact@v4
         if: always()
         with:

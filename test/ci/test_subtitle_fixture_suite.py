@@ -27,14 +27,25 @@ class SubtitleFixtureSuiteTest(unittest.TestCase):
         expected = suite.expected_files(self.manifest)
         generated = self.output / suite.SUITE_DIR
         index = json.loads((generated / 'index.json').read_text())
-        self.assertEqual(len(expected), 20)
+        self.assertEqual(len(expected), 25)
         self.assertEqual({row['file'] for row in index['files']}, expected)
         self.assertEqual(index['manifest_sha256'], suite.digest(suite.DEFAULT_MANIFEST))
-        self.assertEqual(len(index['source_sha256']), 14)
+        self.assertEqual(len(index['source_sha256']), 19)
         self.assertEqual(self.manifest['source_switch'], ['plain', 'multilingual'])
         self.assertEqual(len(self.manifest['videos'][0]['tracks']), 0)
         self.assertEqual(len(self.manifest['videos'][4]['tracks']), 3)
         suite.verify_suite(suite.DEFAULT_MANIFEST, suite.DEFAULT_SOURCES, self.output)
+
+    def test_resize_color_controls_differ_only_in_foreground_color(self):
+        baseline = None
+        for name, color in [('red', '&H000000FF'), ('blue', '&H00FF0000'),
+                            ('green', '&H0000FF00'), ('white', '&H00FFFFFF')]:
+            text = (suite.DEFAULT_SOURCES / f'resize_{name}.ass').read_text()
+            # Only the primary color field varies; secondary white remains intact.
+            normalized = text.replace(f',30,{color},', ',30,PRIMARY,')
+            if baseline is None:
+                baseline = normalized
+            self.assertEqual(normalized, baseline)
 
     def test_missing_ffmpeg_and_ffprobe_report_the_tool(self):
         for missing in ('ffmpeg', 'ffprobe'):
