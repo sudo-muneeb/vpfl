@@ -1,5 +1,7 @@
 # VPFL
 
+[![OpenRepos](https://img.shields.io/endpoint?url=https://openrepos.org/status/vpfl.openrepos.org.json&style=flat-square)](https://vpfl.openrepos.org/)
+
 VPFL is a Flutter desktop video player for local media on Linux. It has a
 responsive navigation shell and one `media_kit` playback session. Home shows
 recent media, while All Videos and saved folders browse the local library.
