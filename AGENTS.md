@@ -61,30 +61,25 @@ implemented contract.
 
 ## Tests must establish behavior
 
-1. When behavior changes, add or update tests at the lowest useful layer.
-   A regression test should fail on the old behavior when practical, then pass
-   with the fix. Explain when that cannot be demonstrated.
-2. Do not write a test that merely repeats the reported input, copies the
-   implementation, mocks the function under test, or asserts only that no
-   exception occurred. Cover a representative class of inputs and the relevant
-   boundary or neighboring case. Use table driven cases when they make the
-   intended rule clearer. Keep tests independent and deterministic.
-3. Verify both the new behavior and an existing behavior that could regress.
-   For errors, source switching, playback completion, shutdown, persistence, and
-   other stateful paths, test the transition and observable outcome, including
-   failure handling. Use real Linux integration tests for claims about native
-   media playback, rendering, window behavior, or installed packages.
-4. A focused test passing is not enough. Run the existing relevant suite, then
-   the applicable checks in `CONTRIBUTING.md`. If a check fails, investigate it;
-   do not delete, skip, weaken, or rewrite a test simply to obtain a pass.
-   Do not update snapshots or generated files without checking the result.
-5. Never claim an unrun test passed. Record exact commands, exit status, and
-   relevant output. If the environment lacks Flutter, Linux display services,
-   codecs, or packaging dependencies, state the gap and the validation still
-   needed. CI success does not prove behavior outside its documented coverage.
-6. Documentation only changes need an accurate link and consistency review;
-   they do not need new Flutter tests. See `docs/06-testing.md` for detailed
-   test placement and native checks.
+1. When behavior changes, add or update tests at the lowest useful layer. A regression test should fail on the old behavior when practical, then pass with the fix. Explain when that cannot be demonstrated.
+
+2. Do not write a test that merely repeats the reported input, copies the implementation, mocks the function under test, or asserts only that no exception occurred. Cover a representative class of inputs and the relevant boundary or neighboring case. Use table driven cases when they make the intended rule clearer. Keep tests independent and deterministic.
+
+3. Verify both the new behavior and an existing behavior that could regress. For errors, source switching, playback completion, shutdown, persistence, and other stateful paths, test the transition and observable outcome, including failure handling. Use real Linux integration tests for claims about native media playback, rendering, window behavior, or installed packages.
+
+4. A focused test passing is not enough. Run the existing relevant suite, then the applicable checks in `CONTRIBUTING.md`. If a check fails, investigate it; do not delete, skip, weaken, or rewrite a test simply to obtain a pass. Do not update snapshots or generated files without checking the result.
+
+5. Never claim an unrun test passed. Record exact commands, exit status, and relevant output. If the environment lacks Flutter, Linux display services, codecs, or packaging dependencies, state the gap and the validation still needed. CI success does not prove behavior outside its documented coverage.
+
+6. Documentation only changes need an accurate link and consistency review; they do not need new Flutter tests. See `docs/06-testing.md` for detailed test placement and native checks.
+
+7. **Fix root causes, not symptoms.** Whenever an error, failing test, or unexpected behavior occurs, do not introduce hardcoded fixes, fixture specific exceptions, arbitrary delays, increased timeouts, skipped assertions, or workarounds merely to make the test pass or turn CI green. Trace the complete execution flow, reproduce the failure under controlled conditions, and identify whether the actual cause lies in application logic, architecture, asynchronous state, dependencies, test design, or the execution environment. Distinguish genuine product defects from incorrect test assumptions. Do not modify production behavior to accommodate a broken test, and do not weaken a valid test to accommodate broken production behavior. Implement the smallest correct, generalized fix that addresses the underlying cause rather than hiding its symptoms. Every permanent change must have a clear technical justification supported by evidence. If the root cause remains unknown, continue investigating or report the unresolved findings instead of applying speculative patches.
+
+8. **Test general behavior, not individual failures.** Do not create narrowly tailored tests that only reproduce the exact filename, input, error message, or sequence that previously failed. Investigate what broader class of failures the issue represents and design reusable, behavior focused tests that validate the system's contracts and invariants across representative inputs, boundary conditions, and realistic user interactions. Actively examine what the existing test suite fails to cover, including related edge cases, invalid states, concurrent operations, asynchronous races, resource failures, repeated operations, lifecycle transitions, cancellation, recovery, and interactions between components. Consider failures that have not yet occurred but could reasonably arise from the same underlying weakness. Use parameterized or table driven testing when appropriate, without multiplying redundant tests. Favor meaningful coverage of entire behavioral categories over accumulating isolated regression tests.
+
+9. **Prove that tests can detect broken behavior.** A passing test is not automatically a meaningful test. Where practical, introduce controlled negative cases or fault injection to demonstrate that the assertions reject incorrect behavior, including missing completion events, stale state, wrong source selection, failed recovery, invalid transitions, and unexpected output. Ensure that tests cannot pass merely because a convenient state eventually appears, an exception is suppressed, or a mocked dependency returns the expected value. Verify actual observable outcomes and preserve the distinction between successful requests, completed operations, and correct final behavior. Avoid tests that merely mirror the implementation and would continue passing if the implementation were fundamentally wrong.
+
+10. **Never optimize for green CI at the expense of correctness.** Do not restructure tests, change execution order, isolate cases, increase deadlines, modify fixtures, or alter CI environments solely because doing so eliminates a failure. Such changes are acceptable only when evidence establishes that the existing test setup is incorrect and the replacement more accurately verifies intended behavior. Compare behavior before and after the change, verify neighboring functionality, and check for regressions across relevant environments. Do not introduce unnecessary abstractions, defensive code, or special handling without a demonstrated need. The objective is not to make the current failure disappear; it is to improve the correctness, reliability, maintainability, and general robustness of the entire system while strengthening the test suite's ability to detect future defects.
 
 ## Review before handing off
 
