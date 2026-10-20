@@ -163,7 +163,7 @@ cached frame, then returns no image so the card shows a placeholder. It
 checks the system thumbnail's modification time and its URI when present.
 Folder scanning does not generate artwork or decode video.
 
-After a file starts playing and reaches ten seconds naturally, the history
+After a file starts playing and its position reaches ten seconds, the history
 recorder may capture one PNG frame if no thumbnail exists and history is
 enabled. VPFL stores that frame in its own cache. It never seeks the active
 player for artwork and does not write to the Freedesktop thumbnail cache.
@@ -292,19 +292,52 @@ Do not hash an entire large video merely to create a record.
 
 ## Resume policy
 
-Create history only after playback successfully begins.
+The history recorder creates a row after playback enters the playing state.
+It uses a normalized absolute file URI as the key, so a local path supplied by
+media_kit's directory queue and a `file://` URI refer to the same record.
+Renaming or moving a file gives it a new key; VPFL does not identify files by
+content. A missing file's history remains until the user removes it.
 
 Save position:
 
-* periodically while position advances
+* each time position advances at least five seconds since the last checkpoint
 * on pause
-* after a deliberate seek
+* after a seek that moves position by at least five seconds
 * before source switch
 * during controlled app shutdown
 
-Do not seek repeatedly after opening.
+The playback service reads the resume setting and saved point for every source
+open, including queue navigation. A saved point is eligible after ten seconds,
+unless the record is completed. It waits for the new media's duration, seeks
+once, and checks the resulting position. The recorder withholds new progress
+writes while the source is opening or a seek is unverified, preserving the last
+known point if loading or restoration fails. A superseded source generation
+cannot apply a late seek to the next file. Progress writes also wait for their
+own session's history-start write, so a slow database insert cannot drop the
+first checkpoint or a final save.
 
-Resume is a one-time initialization action for that media session.
+Completion requires both at least 90% watched and no more than 15 seconds
+remaining. A completed row stays visible with full progress, but its resume
+position is cleared so a new play starts at the beginning. History disabled
+stops new history and thumbnail writes while retaining existing records;
+resume can still read those records. Resume disabled starts at the beginning
+while history recording remains independent.
+
+Home displays eight Recent cards from a query of at most twenty rows. These
+limits do not delete stored rows. VPFL has no automatic age or count expiry:
+resume points remain until a user removes a Recent card or confirms Clear
+playback history in Settings. This favors reliable long-term resume with small
+SQLite rows and makes deletion explicit. No schema migration is needed; rows
+from older database versions remain readable. A position already cleared by
+the earlier completion rule cannot be reconstructed. For comparison,
+[MPC-HC 2.8.0](https://github.com/clsid2/mpc-hc/releases/tag/2.8.0) added
+optional age pruning (365 days by default),
+[mpv](https://mpv.io/manual/stable/#resuming-playback) uses per-file Watch Later
+records, [Kodi](https://kodi.wiki/view/HOW-TO:Modify_automatic_watch_and_resume_points)
+distinguishes watched status from a resume point, and
+[VLC for Android](https://docs.videolan.me/vlc-android-user/more/settings/extra_video.html)
+offers Never, Ask, and Always resume choices. These are design references, not
+claims that the players have identical retention rules.
 
 ## Native resource ownership
 

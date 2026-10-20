@@ -265,6 +265,8 @@ python3 scripts/ci/generate_fixtures.py --out build/ci-video-fixtures
 python3 scripts/ci/verify_fixtures.py --dir build/ci-video-fixtures
 ./scripts/ci/run_display.sh x11 flutter test integration_test/media_matrix_test.dart \
   -d linux --dart-define=VPFL_CI_FIXTURES="$PWD/build/ci-video-fixtures"
+./scripts/ci/run_display.sh x11 flutter test integration_test/resume_playback_test.dart \
+  -d linux --dart-define=VPFL_TEST_VIDEO="$PWD/build/ci-video-fixtures/regression.mp4"
 ```
 
 The native integration command needs Xvfb and Linux playback libraries. The

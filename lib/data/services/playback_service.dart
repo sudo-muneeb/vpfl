@@ -8,6 +8,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path/path.dart' as path;
 
 import 'lifecycle_trace.dart';
+import 'media_source_identity.dart';
 import 'media_format_policy.dart';
 import 'playback_open_coordinator.dart';
 import 'queue_progression.dart';
@@ -16,7 +17,7 @@ import 'subtitle_file_identity.dart';
 
 /// Owns the single foreground media player session.
 class PlaybackService {
-  PlaybackService()
+  PlaybackService({this.resumePositionForUri})
     : _player = Player(
         configuration: const PlayerConfiguration(libass: true, title: 'VPFL'),
       ) {
@@ -49,6 +50,7 @@ class PlaybackService {
   final int sessionId = ++_nextSessionId;
 
   final Player _player;
+  final Future<Duration?> Function(String uri)? resumePositionForUri;
   late final StreamSubscription<String> _nativeErrorSubscription;
   final StreamController<Playlist> _playlistController =
       StreamController<Playlist>.broadcast(sync: true);
@@ -79,6 +81,22 @@ class PlaybackService {
   int _requestGeneration = 0;
   int _handledCompletionGeneration = -1;
   bool _sourceReady = false;
+  bool _progressReady = false;
+  int? _previousReadyProgressGeneration;
+
+  /// Progress is held while a new source is loading or its resume seek is
+  /// unverified, so startup events cannot erase an existing resume point.
+  bool canSaveProgressFor(int generation) =>
+      (_progressReady && generation == _requestGeneration) ||
+      generation == _previousReadyProgressGeneration;
+
+  void _holdProgressForNewSource() {
+    if (_progressReady) {
+      _previousReadyProgressGeneration = _requestGeneration;
+    }
+    _progressReady = false;
+  }
+
   Future<void> _subtitleTail = Future<void>.value();
   final StreamController<int> _subtitleDelayController =
       StreamController<int>.broadcast(sync: true);
@@ -198,6 +216,7 @@ class PlaybackService {
   /// Opens and starts playing a media URI.
   Future<void> open(String uri) {
     _rejectUnsupportedLocalUri(uri);
+    _holdProgressForNewSource();
     final request = ++_requestGeneration;
     _sourceReady = false;
     return _openQueueSelection(Playlist([Media(uri)]), request);
@@ -225,6 +244,15 @@ class PlaybackService {
     // mpv retains sub-delay on this Player across media opens.
     await _writeSubtitleDelay(0);
     if (_closed || generation != _requestGeneration) return;
+    Duration? resume;
+    var lookupFailed = false;
+    try {
+      resume = await resumePositionForUri?.call(canonicalMediaUri(uri));
+    } on Object catch (error) {
+      lookupFailed = true;
+      stderr.writeln('VPFL could not read resume position: $error');
+    }
+    if (_closed || generation != _requestGeneration) return;
     final name = Uri.tryParse(uri)?.pathSegments.lastOrNull ?? 'media';
     LifecycleTrace.event(
       'player.open.begin',
@@ -232,8 +260,62 @@ class PlaybackService {
       detail: 'file=${Uri.encodeComponent(name)}',
     );
     await _player.open(media);
+    if (_closed || generation != _requestGeneration) return;
+    if (resume != null) {
+      final restored = await _restorePosition(resume, generation);
+      if (_closed || generation != _requestGeneration) return;
+      if (!restored) {
+        stderr.writeln('VPFL could not verify resume for $uri');
+      }
+      _progressReady = restored;
+    } else {
+      _progressReady = !lookupFailed;
+    }
     await _observeSubtitleDelay();
     LifecycleTrace.event('player.open.complete', session: sessionId);
+  }
+
+  Future<bool> _restorePosition(Duration target, int generation) async {
+    try {
+      if (duration <= Duration.zero) {
+        await durationStream
+            .firstWhere((value) => value > Duration.zero)
+            .timeout(const Duration(seconds: 10));
+      }
+      if (_closed || generation != _requestGeneration) return false;
+      final loadedDuration = duration;
+      if (loadedDuration <= Duration.zero || target >= loadedDuration) {
+        return false;
+      }
+      final earliest = target - const Duration(seconds: 1);
+      final observed = Completer<bool>();
+      final subscription = positionStream.listen(
+        (value) {
+          if (!observed.isCompleted &&
+              value >= earliest &&
+              value < loadedDuration) {
+            observed.complete(true);
+          }
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (!observed.isCompleted) observed.complete(false);
+        },
+      );
+      try {
+        await _player.seek(target);
+        if (_closed || generation != _requestGeneration) return false;
+        if (position >= earliest && position < loadedDuration) return true;
+        final restored = await observed.future.timeout(
+          const Duration(seconds: 5),
+        );
+        return restored && !_closed && generation == _requestGeneration;
+      } finally {
+        await subscription.cancel();
+      }
+    } on Object catch (error) {
+      stderr.writeln('VPFL resume seek failed: $error');
+      return false;
+    }
   }
 
   NativePlayer get _nativePlayer {
@@ -390,12 +472,13 @@ class PlaybackService {
   Future<void> openWithDirectory(String uri) async {
     if (_closed) throw StateError('Player is closed');
     _rejectUnsupportedLocalUri(uri);
-    final request = ++_requestGeneration;
-    _sourceReady = false;
     final source = Uri.tryParse(uri);
     if (source == null || source.scheme != 'file') {
       return open(uri);
     }
+    _holdProgressForNewSource();
+    final request = ++_requestGeneration;
+    _sourceReady = false;
     final selected = source.toFilePath();
     FileSystemEntityType selectedType;
     try {
@@ -460,6 +543,7 @@ class PlaybackService {
       uris.map(Media.new).toList(growable: false),
       index: startIndex,
     );
+    _holdProgressForNewSource();
     final request = ++_requestGeneration;
     _sourceReady = false;
     return _openQueueSelection(queue, request);
@@ -499,6 +583,7 @@ class PlaybackService {
   }
 
   Future<void> _navigate(int? Function() select) {
+    _holdProgressForNewSource();
     final request = ++_requestGeneration;
     _sourceReady = false;
     return _enqueueOpen(() async {
@@ -772,6 +857,7 @@ class PlaybackService {
   /// Stops the foreground session while retaining the one player for reuse.
   Future<void> stop() async {
     if (_closed) return;
+    _holdProgressForNewSource();
     ++_requestGeneration;
     _sourceReady = false;
     _clearDirectoryQueue();
@@ -788,6 +874,7 @@ class PlaybackService {
 
   /// Stops a failed source without discarding its directory navigation queue.
   Future<void> stopFailedMedia() {
+    _holdProgressForNewSource();
     final request = ++_requestGeneration;
     _sourceReady = false;
     return _enqueueOpen(() async {
@@ -805,6 +892,7 @@ class PlaybackService {
   Future<void> _dispose() async {
     LifecycleTrace.event('player.dispose.begin', session: sessionId);
     _closed = true;
+    _holdProgressForNewSource();
     ++_requestGeneration;
     _sourceReady = false;
     await _openCoordinator.close();
