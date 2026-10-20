@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 import subprocess
 
+from subtitle_fixture_suite import DEFAULT_MANIFEST, DEFAULT_SOURCES, verify_suite
+
 
 def run(*args):
     result = subprocess.run(args, text=True, capture_output=True)
@@ -75,5 +77,11 @@ if __name__ == '__main__':
     parser.add_argument('--manifest', type=Path,
                         default=Path(__file__).resolve().parents[2] / 'ci/media-matrix.json')
     parser.add_argument('--dir', type=Path, required=True)
+    parser.add_argument('--subtitle-suite', action='store_true',
+                        help='also verify the deterministic subtitle suite')
+    parser.add_argument('--subtitle-manifest', type=Path, default=DEFAULT_MANIFEST)
+    parser.add_argument('--subtitle-sources', type=Path, default=DEFAULT_SOURCES)
     args = parser.parse_args()
     verify(args.manifest, args.dir)
+    if args.subtitle_suite:
+        verify_suite(args.subtitle_manifest, args.subtitle_sources, args.dir)

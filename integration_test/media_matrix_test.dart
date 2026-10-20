@@ -16,6 +16,8 @@ import 'package:vpfl/data/playback_history_recorder_provider.dart';
 import 'package:vpfl/data/playback_service_provider.dart';
 import 'package:vpfl/ui/app.dart';
 
+import 'support/completion_observer.dart';
+
 const _fixturesPath = String.fromEnvironment('VPFL_CI_FIXTURES');
 
 void _stage(String stage) {
@@ -151,6 +153,7 @@ void main() {
       overrides: [appDatabaseProvider.overrideWithValue(database)],
     );
     final playback = container.read(playbackServiceProvider);
+    CompletionObserver? completionObserver;
     final nativeErrors = playback.errorStream.listen(
       (message) => _stage('native playback error: $message'),
     );
@@ -188,6 +191,7 @@ void main() {
         'native video controller',
         () => playback.videoController.platform.future,
       );
+      completionObserver = CompletionObserver(playback);
       await _until(
         tester,
         () =>
@@ -209,9 +213,9 @@ void main() {
         final id = entry['id'] as String;
         final file = File('${directory.path}/${byId[id]!['file']}');
         _stage('$id open begin');
-        // VpflApp already opened the first fixture through PlayerScreen.
-        // Opening it again here races the startup open on native mpv.
-        if (id != 'h264_mp4') {
+        // PlayerScreen opened the startup fixture through its directory queue.
+        // Later codec cases use isolated PlaybackService opens.
+        if (id != first['id']) {
           await _native(
             '$id native open',
             () => playback.open(file.uri.toString()),
@@ -281,12 +285,15 @@ void main() {
           inInclusiveRange(1900, 3100),
           reason: id,
         );
+        final hasNextQueueItem =
+            playback.playlist.index + 1 < playback.playlist.medias.length;
+        final completion = completionObserver.begin(file.absolute.path);
         await _native('$id resume', playback.playOrPause);
         await _until(tester, () => playback.isPlaying, '$id resume');
         _stage('$id natural completion begin');
         for (
           var attempt = 0;
-          attempt < 60 && !playback.isCompleted;
+          attempt < 60 && !completionObserver.reached(completion);
           attempt++
         ) {
           await tester.runAsync(
@@ -295,15 +302,24 @@ void main() {
           await tester.pump();
         }
         expect(
-          playback.isCompleted,
+          completionObserver.reached(completion),
           isTrue,
           reason:
               '$id did not naturally complete; '
               'position=${playback.position}, duration=${playback.duration}, '
               'playing=${playback.isPlaying}',
         );
+        if (!hasNextQueueItem) {
+          expect(playback.isCompleted, isTrue, reason: '$id terminal state');
+        }
         _stage('$id natural completion ready');
-        await _until(tester, () => !playback.isPlaying, '$id completion stop');
+        if (!hasNextQueueItem) {
+          await _until(
+            tester,
+            () => !playback.isPlaying,
+            '$id completion stop',
+          );
+        }
         await _native('$id stop', playback.stop);
         _stage('$id passed');
         stdout.writeln('PASS video $id');
@@ -360,6 +376,7 @@ void main() {
       stdout.writeln('PASS embedded subtitle track embed_srt_mkv');
     } finally {
       _stage('cleanup begin');
+      await completionObserver?.dispose();
       await nativeErrors.cancel();
       _stage('widget cleanup begin');
       await tester
@@ -382,4 +399,106 @@ void main() {
       _stage('cleanup complete');
     }
   }, timeout: const Timeout(Duration(minutes: 12)));
+
+  testWidgets('PlayerScreen advances its directory queue after natural EOF', (
+    tester,
+  ) async {
+    final directory = Directory(_fixturesPath);
+    expect(
+      directory.existsSync(),
+      isTrue,
+      reason: 'VPFL_CI_FIXTURES is required',
+    );
+    final index = jsonDecode(
+      File('${directory.path}/index.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final byId = {
+      for (final row
+          in (index['fixtures'] as List).cast<Map<String, dynamic>>())
+        row['id'] as String: row,
+    };
+    final first = File('${directory.path}/${byId['h264_mp4']!['file']}');
+    final next = File('${directory.path}/${byId['h264_mts']!['file']}');
+    final database = AppDatabase(NativeDatabase.memory());
+    final container = ProviderContainer(
+      overrides: [appDatabaseProvider.overrideWithValue(database)],
+    );
+    final playback = container.read(playbackServiceProvider);
+    CompletionObserver? completionObserver;
+    try {
+      await playback.useNullAudioOutput();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: VpflApp(
+            initialMediaUri: first.uri.toString(),
+            startupError: null,
+          ),
+        ),
+      );
+      await playback.videoController.platform.future;
+      completionObserver = CompletionObserver(playback);
+      await _until(
+        tester,
+        () =>
+            playback.isPlaying &&
+            playback.duration > Duration.zero &&
+            playback.playlist.medias.length > 1,
+        'directory queue start',
+      );
+      final queue = playback.playlist;
+      expect(queue.medias[queue.index].uri, first.absolute.path);
+      expect(queue.medias[queue.index + 1].uri, next.absolute.path);
+      final completion = completionObserver.begin(first.absolute.path);
+      for (
+        var attempt = 0;
+        attempt < 60 &&
+            !(completionObserver.reached(completion) &&
+                playback.playlist.index == queue.index + 1 &&
+                playback.videoController.player.state.playlist.medias.length ==
+                    1 &&
+                playback
+                        .videoController
+                        .player
+                        .state
+                        .playlist
+                        .medias
+                        .single
+                        .uri ==
+                    next.absolute.path &&
+                playback.duration > Duration.zero &&
+                playback.position < playback.duration &&
+                playback.isPlaying);
+        attempt++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 100)),
+        );
+        await tester.pump();
+      }
+      expect(
+        completionObserver.reached(completion),
+        isTrue,
+        reason: 'first source did not reach natural EOF',
+      );
+      expect(playback.playlist.index, queue.index + 1);
+      expect(
+        playback.playlist.medias[playback.playlist.index].uri,
+        next.absolute.path,
+      );
+      expect(
+        playback.videoController.player.state.playlist.medias.single.uri,
+        next.absolute.path,
+      );
+      expect(playback.isPlaying, isTrue);
+      expect(playback.position, lessThan(playback.duration));
+    } finally {
+      await completionObserver?.dispose();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await container.read(playbackHistoryRecorderProvider).dispose();
+      await playback.dispose();
+      await database.close();
+      container.dispose();
+    }
+  });
 }

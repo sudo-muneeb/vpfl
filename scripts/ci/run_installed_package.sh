@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-distro=${1:?usage: run_installed_package.sh ubuntu|fedora|arch PACKAGE FIXTURE}
+distro=${1:?usage: run_installed_package.sh ubuntu|fedora|arch PACKAGE FIXTURE [SUBTITLE_FIXTURE_ROOT]}
 package=$(realpath "${2:?package required}")
 sample=$(realpath "${3:?fixture required}")
+subtitle_root=${4:-}
+if [[ -n "$subtitle_root" ]]; then subtitle_root=$(realpath "$subtitle_root"); fi
 test -f "$package"
 test -f "$sample"
+if [[ -n "$subtitle_root" ]]; then
+  test -f "$subtitle_root/subtitle-suite/authored_ass.mkv"
+  test -f "$subtitle_root/subtitle-suite/nearby/movie.mkv"
+  test -f "$subtitle_root/subtitle-suite/nearby/movie.srt"
+fi
 
 case "$distro" in
   ubuntu)
@@ -14,7 +21,7 @@ case "$distro" in
       > /etc/apt/apt.conf.d/99-vpfl-ci
     apt-get update
     apt-get install -y --no-install-recommends xvfb xauth xdotool wmctrl \
-      openbox desktop-file-utils appstream libgl1-mesa-dri ffmpeg
+      openbox desktop-file-utils appstream libgl1-mesa-dri ffmpeg python3
     apt-get install -y --no-install-recommends "$package"
     remove=(apt-get remove -y vpfl)
     ;;
@@ -22,7 +29,7 @@ case "$distro" in
     bash scripts/ci/enable_fedora_media.sh
     dnf install -y --setopt=install_weak_deps=False \
       xorg-x11-server-Xvfb xorg-x11-xauth xdotool wmctrl \
-      openbox desktop-file-utils appstream mesa-dri-drivers ffmpeg
+      openbox desktop-file-utils appstream mesa-dri-drivers ffmpeg python3
     dnf install -y --setopt=install_weak_deps=False "$package"
     remove=(dnf remove -y vpfl)
     ;;
@@ -57,6 +64,14 @@ xdg=$(mktemp -d -t vpfl-installed-xdg.XXXXXXXX)
 trap 'rm -rf "$xdg"' EXIT
 VPFL_CI_XDG_ROOT="$xdg" ./scripts/ci/run_display.sh x11 \
   ./scripts/ci/installed_app_smoke.sh "$sample"
+if [[ -n "$subtitle_root" ]]; then
+  VPFL_CI_XDG_ROOT="$xdg" \
+    VPFL_CI_X11_SCREEN_ARGS='-screen 0 1280x1024x24' \
+    ./scripts/ci/run_display.sh x11 \
+    bash ./scripts/ci/installed_subtitle_smoke.sh \
+      "$subtitle_root/subtitle-suite/authored_ass.mkv" \
+      "$subtitle_root/subtitle-suite/nearby/movie.mkv"
+fi
 test -f "$xdg/data/vpfl/vpfl.sqlite"
 "${remove[@]}"
 test ! -e /usr/bin/vpfl

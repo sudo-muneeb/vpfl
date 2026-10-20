@@ -17,8 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get -o Acquire::Retries=5 update && sudo apt-get -o Acquire::Retries=5 install -y ffmpeg
-      - run: python3 scripts/ci/generate_fixtures.py --out build/ci-fixtures
-      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures
+      - run: python3 -m unittest discover -s test/ci -p 'test_*.py' -v
+      - run: python3 scripts/ci/generate_fixtures.py --out build/ci-fixtures --subtitle-suite
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures --subtitle-suite
       - run: bash scripts/ci/generate_regression_video.sh build/ci-fixtures/regression.mp4
       - uses: actions/upload-artifact@v4
         if: always()
@@ -83,7 +84,7 @@ jobs:
         with:
           name: media-fixtures
           path: build/ci-fixtures
-      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures --subtitle-suite
       - run: flutter pub get --enforce-lockfile
       - name: Build native package
         run: |
@@ -146,7 +147,7 @@ jobs:
         run: |
           package=$(find dist -type f -name '${{ matrix.pattern }}' -print -quit)
           test -n "$package"
-          bash scripts/ci/run_installed_package.sh '${{ matrix.distro }}' "$package" build/ci-fixtures/regression.mp4
+          bash scripts/ci/run_installed_package.sh '${{ matrix.distro }}' "$package" build/ci-fixtures/regression.mp4 build/ci-fixtures
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -182,7 +183,7 @@ jobs:
         with:
           name: media-fixtures
           path: build/ci-fixtures
-      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures --subtitle-suite
       - run: flutter pub get --enforce-lockfile
       - name: Play video matrix and assert GTK backend
         run: |
@@ -198,11 +199,57 @@ jobs:
           path: build/ci-logs/
           if-no-files-found: warn
 
+  graphical_subtitles:
+    name: ci / graphical-subtitles (ubuntu-x11)
+    runs-on: ubuntu-24.04
+    container: ubuntu:24.04
+    timeout-minutes: 90
+    needs: fixtures
+    steps:
+      - run: apt-get -o Acquire::Retries=5 update && apt-get -o Acquire::Retries=5 install -y git curl tar gzip unzip xz-utils
+      - uses: actions/checkout@v4
+      - run: bash scripts/ci/install_dependencies.sh ubuntu
+      - run: apt-get install -y --no-install-recommends mpv fonts-noto-core fonts-noto-cjk
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Trust the exact mounted Flutter SDK and checkout
+        run: |
+          git config --global --add safe.directory "$FLUTTER_ROOT"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git -C "$FLUTTER_ROOT" rev-parse --show-toplevel
+      - uses: actions/download-artifact@v4
+        with:
+          name: media-fixtures
+          path: build/ci-fixtures
+      - run: python3 scripts/ci/verify_fixtures.py --dir build/ci-fixtures --subtitle-suite
+      - run: flutter pub get --enforce-lockfile
+      - name: Check native mpv and media_kit subtitle frames
+        run: python3 scripts/ci/run_native_subtitle_checks.py --fixtures build/ci-fixtures --out build/ci-native-subtitles
+      - name: Check subtitle pixels in the VPFL X11 window
+        run: |
+          bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --plain-name='VPFL X11 window renders subtitle fixtures through the player UI' --reporter expanded
+          bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --plain-name='Home and reopen restore visible subtitles in VPFL window' --reporter expanded
+          bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --plain-name='Attached ASS stays sharp at native, resized, and fullscreen sizes' --reporter expanded
+          VPFL_TEST_FAIL_GPU_INIT=1 bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --plain-name='Attached ASS stays sharp at native, resized, and fullscreen sizes' --reporter expanded
+          bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --dart-define=VPFL_REFERENCE_VO=x11 --plain-name='ASS recovers after repeated Linux window resizes' --reporter expanded
+          VPFL_TEST_FAIL_GPU_INIT=1 bash scripts/ci/run_display.sh x11 bash scripts/ci/run_subtitle_window.sh flutter test integration_test/subtitle_window_linux_test.dart -d linux --dart-define=VPFL_SUBTITLE_FIXTURES="$PWD/build/ci-fixtures" --dart-define=VPFL_REFERENCE_VO=x11 --plain-name='ASS recovers after repeated Linux window resizes' --reporter expanded
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: graphical-subtitle-logs
+          path: |
+            build/ci-logs/
+            build/ci-native-subtitles/
+          if-no-files-found: warn
+
   required_gate:
     name: ci / required-gate
     runs-on: ubuntu-24.04
     if: always()
-    needs: [fixtures, quality, native, package, display]
+    needs: [fixtures, quality, native, package, display, graphical_subtitles]
     steps:
       - name: Reject failed, canceled, or skipped required jobs
         env:

@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:media_kit_video/media_kit_video_controls/media_kit_video_controls.dart'
+    as video_controls;
 
 import '../../data/playback_service_provider.dart';
 import '../../data/model/real_media_tracks.dart';
@@ -22,6 +24,7 @@ import '../settings/default_app_controls.dart';
 import 'player_controls.dart';
 import 'player_inspector.dart';
 import 'video_controls_overlay.dart';
+import 'video_output_size.dart';
 
 /// Minimal playback surface used for the Linux compatibility baseline.
 class PlayerScreen extends ConsumerStatefulWidget {
@@ -36,6 +39,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
     required this.resumeEnabled,
     required this.onHistoryEnabledChanged,
     required this.onResumeEnabledChanged,
+    this.subtitleFilePicker,
     super.key,
   });
 
@@ -49,6 +53,10 @@ class PlayerScreen extends ConsumerStatefulWidget {
   final bool resumeEnabled;
   final ValueChanged<bool> onHistoryEnabledChanged;
   final ValueChanged<bool> onResumeEnabledChanged;
+
+  /// Supplies a deterministic choice in UI tests; otherwise uses the desktop
+  /// picker.
+  final Future<String?> Function()? subtitleFilePicker;
 
   @override
   ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
@@ -66,6 +74,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription<int>? _sourceOpenSubscription;
   StreamSubscription<Tracks>? _tracksSubscription;
   StreamSubscription<Track>? _selectedTracksSubscription;
+  StreamSubscription<VideoParams>? _videoParamsSubscription;
   Timer? _errorProbe;
   String? _playingUri;
   int? _selectedQueueIndex;
@@ -73,8 +82,22 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   int _playGeneration = 0;
   int _openGeneration = 0;
   int _countedGeneration = 0;
+  bool _subtitlePickerBusy = false;
   ValueNotifier<String?>? _renderingModeSource;
   BoxFit _videoFit = BoxFit.contain;
+  ({int width, int height})? _pendingVideoOutputSize;
+  ({int width, int height})? _appliedVideoOutputSize;
+  ({
+    BuildContext context,
+    VideoState state,
+    Size viewport,
+    double ratio,
+    ({int width, int height}) output,
+    BoxFit fit,
+  })?
+  _pendingVideoPresentation;
+  bool _videoOutputSizeResetRequired = false;
+  bool _videoOutputSizeUpdateScheduled = false;
   final ValueNotifier<InspectorMode?> _inspectorMode = ValueNotifier(null);
 
   @override
@@ -106,13 +129,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     });
     _errorSubscription = _playback.errorStream.listen(_handlePlayerError);
     _sourceOpenSubscription = _playback.sourceOpenStream.listen((_) {
-      if (mounted) _resetMediaError();
+      if (mounted) {
+        _resetMediaError();
+        _videoOutputSizeResetRequired = true;
+        _appliedVideoOutputSize = null;
+        _scheduleVideoOutputSizeUpdate();
+      }
     });
     _tracksSubscription = _playback.tracksStream.listen((_) {
       if (mounted) setState(() {});
     });
     _selectedTracksSubscription = _playback.selectedTracksStream.listen((_) {
       if (mounted) setState(() {});
+    });
+    _videoParamsSubscription = _playback.videoParamsStream.listen((_) {
+      if (mounted) {
+        _videoOutputSizeResetRequired = true;
+        _appliedVideoOutputSize = null;
+        setState(() {});
+        _scheduleVideoOutputSizeUpdate();
+      }
     });
     ref.read(playbackHistoryRecorderProvider);
     unawaited(_readRenderingMode());
@@ -213,14 +249,69 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<void> _pickSubtitleFile() async {
+    if (_subtitlePickerBusy) return;
+    _subtitlePickerBusy = true;
+    final generation = _playback.sourceGeneration;
     try {
-      final String? path = await pickSubtitlePath();
-      if (path == null) return;
+      final String? path =
+          await (widget.subtitleFilePicker?.call() ?? pickSubtitlePath());
+      if (!mounted ||
+          generation != _playback.sourceGeneration ||
+          path == null) {
+        return;
+      }
       await _playback.loadSubtitleFile(path);
     } on Object catch (error) {
-      if (mounted) {
+      if (mounted && generation == _playback.sourceGeneration) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not load subtitles: $error')),
+          SnackBar(
+            content: Text(
+              error is SubtitleLoadException
+                  ? error.toString()
+                  : 'Could not load subtitles: $error',
+            ),
+          ),
+        );
+      }
+    } finally {
+      _subtitlePickerBusy = false;
+    }
+  }
+
+  Future<void> _setTrack(Object track, int generation) async {
+    if (!mounted || generation != _playback.sourceGeneration) return;
+    try {
+      await _playback.setTrack(track);
+    } on Object catch (error) {
+      if (mounted && generation == _playback.sourceGeneration) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not select track: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _changeSubtitleDelay(int step, int generation) async {
+    if (!mounted || generation != _playback.sourceGeneration) return;
+    try {
+      await _playback.adjustSubtitleDelay(step);
+    } on Object catch (error) {
+      if (mounted && generation == _playback.sourceGeneration) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not change subtitle timing: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _resetSubtitleDelay(int generation) async {
+    if (!mounted || generation != _playback.sourceGeneration) return;
+    try {
+      await _playback.resetSubtitleDelay();
+    } on Object catch (error) {
+      if (mounted && generation == _playback.sourceGeneration) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not reset subtitle timing: $error')),
         );
       }
     }
@@ -297,6 +388,122 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
+  void _requestVideoOutputSize(
+    Size viewport,
+    double devicePixelRatio,
+    BuildContext context,
+    VideoState state,
+  ) {
+    if (!Platform.isLinux ||
+        !viewport.width.isFinite ||
+        !viewport.height.isFinite ||
+        viewport.isEmpty) {
+      return;
+    }
+    final params = _playback.videoParams;
+    final sideways = params.rotate != 0 && params.rotate != 180;
+    final sourceWidth = sideways ? params.dh ?? 0 : params.dw ?? 0;
+    final sourceHeight = sideways ? params.dw ?? 0 : params.dh ?? 0;
+    if (sourceWidth <= 0 || sourceHeight <= 0) return;
+
+    // The Linux video texture otherwise stays at the source resolution.
+    // libass text is then enlarged with the frame by Flutter's FittedBox.
+    final target = videoOutputSize(
+      source: Size(sourceWidth.toDouble(), sourceHeight.toDouble()),
+      viewport: viewport,
+      fit: _videoFit,
+      devicePixelRatio: devicePixelRatio,
+    );
+    _pendingVideoPresentation = (
+      context: context,
+      state: state,
+      viewport: viewport,
+      ratio: devicePixelRatio,
+      output: target,
+      fit: _videoFit,
+    );
+    if (target == _appliedVideoOutputSize &&
+        !_videoOutputSizeResetRequired &&
+        !_videoOutputSizeUpdateScheduled) {
+      _scheduleVideoOutputSizeUpdate();
+      return;
+    }
+    _pendingVideoOutputSize = target;
+    _scheduleVideoOutputSizeUpdate();
+  }
+
+  void _scheduleVideoOutputSizeUpdate() {
+    if (_videoOutputSizeUpdateScheduled) return;
+    _videoOutputSizeUpdateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_applyVideoOutputSize());
+    });
+  }
+
+  Future<void> _applyVideoOutputSize() async {
+    try {
+      while (mounted &&
+          (_videoOutputSizeResetRequired ||
+              _pendingVideoOutputSize != null ||
+              _pendingVideoPresentation != null)) {
+        if (_videoOutputSizeResetRequired) {
+          _videoOutputSizeResetRequired = false;
+          // media_kit updates the native output to source dimensions on a new
+          // video's videoParams event. Reset its size cache before reapplying
+          // the viewport size, even when both videos have the same dimensions.
+          await _playback.videoController.setSize();
+          _appliedVideoOutputSize = null;
+        }
+        final target = _pendingVideoOutputSize;
+        _pendingVideoOutputSize = null;
+        if (target != null && target != _appliedVideoOutputSize) {
+          await _playback.videoController.setSize(
+            width: target.width,
+            height: target.height,
+          );
+          _appliedVideoOutputSize = target;
+        }
+        if (_pendingVideoOutputSize != null || _videoOutputSizeResetRequired) {
+          continue;
+        }
+        final presentation = _pendingVideoPresentation;
+        _pendingVideoPresentation = null;
+        if (presentation == null ||
+            !presentation.context.mounted ||
+            !presentation.state.mounted) {
+          continue;
+        }
+        if (!(ModalRoute.of(presentation.context)?.isCurrent ?? true)) continue;
+        final box = presentation.context.findRenderObject();
+        if (box is! RenderBox || !box.hasSize) continue;
+        // An odd-sized letterbox can otherwise leave the native glyph texture
+        // centered at a half pixel indefinitely after the resize has stopped.
+        presentation.state.update(
+          alignment: videoOutputAlignment(
+            viewport: presentation.viewport,
+            output: Size(
+              presentation.output.width.toDouble(),
+              presentation.output.height.toDouble(),
+            ),
+            fit: presentation.fit,
+            devicePixelRatio: presentation.ratio,
+            viewportOrigin: box.localToGlobal(Offset.zero),
+          ),
+        );
+      }
+    } on Object catch (error, stackTrace) {
+      stderr.writeln('VPFL could not resize video output: $error\n$stackTrace');
+    } finally {
+      _videoOutputSizeUpdateScheduled = false;
+      if (mounted &&
+          (_videoOutputSizeResetRequired ||
+              _pendingVideoOutputSize != null ||
+              _pendingVideoPresentation != null)) {
+        _scheduleVideoOutputSizeUpdate();
+      }
+    }
+  }
+
   @override
   void dispose() {
     ++_openGeneration;
@@ -309,6 +516,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     unawaited(_sourceOpenSubscription?.cancel());
     unawaited(_tracksSubscription?.cancel());
     unawaited(_selectedTracksSubscription?.cancel());
+    unawaited(_videoParamsSubscription?.cancel());
     _renderingModeSource?.removeListener(_updateRenderingMode);
     super.dispose();
   }
@@ -493,10 +701,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             key: _videoKey,
                             controller: _playback.videoController,
                             fit: _videoFit,
-                            controls: (VideoState state) =>
-                                VideoControlsOverlay(
+                            filterQuality: FilterQuality.none,
+                            controls: (VideoState state) => LayoutBuilder(
+                              builder: (controlsContext, constraints) {
+                                if (ModalRoute.of(controlsContext)?.isCurrent ??
+                                    true) {
+                                  _requestVideoOutputSize(
+                                    constraints.biggest,
+                                    MediaQuery.devicePixelRatioOf(
+                                      controlsContext,
+                                    ),
+                                    controlsContext,
+                                    state,
+                                  );
+                                }
+                                // Resolve fullscreen from this active subtree;
+                                // VideoState may retain a deactivated context
+                                // while its route is being removed.
+                                final fullscreen = video_controls.isFullscreen(
+                                  controlsContext,
+                                );
+                                return VideoControlsOverlay(
                                   title: _titleFor(_playingUri),
-                                  fullscreen: state.isFullscreen(),
+                                  fullscreen: fullscreen,
                                   playlist: _playback.playlist,
                                   playlistStream: _playback.playlistStream,
                                   onPrevious: _previousVideo,
@@ -517,11 +744,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                       ),
                                   controls: _buildPlayerControls(
                                     onToggleFullscreen: state.toggleFullscreen,
-                                    fullscreen: state.isFullscreen(),
+                                    fullscreen: fullscreen,
                                   ),
                                   onExit: state.exitFullscreen,
                                   bindings: _fullscreenShortcuts(state),
-                                ),
+                                );
+                              },
+                            ),
                           )
                         : _EmptyPlayer(
                             error: error,
@@ -545,43 +774,54 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   PlayerControls _buildPlayerControls({
     required Future<void> Function() onToggleFullscreen,
     required bool fullscreen,
-  }) => PlayerControls(
-    duration: _playback.duration,
-    durationStream: _playback.durationStream,
-    isPlaying: _playback.isPlaying,
-    onPlayPause: _playback.playOrPause,
-    onSeek: _playback.seek,
-    position: _playback.position,
-    positionStream: _playback.positionStream,
-    playingStream: _playback.playingStream,
-    rate: _playback.rate,
-    rateStream: _playback.rateStream,
-    onSetRate: _playback.setRate,
-    volume: _playback.volume,
-    volumeStream: _playback.volumeStream,
-    onSetVolume: _playback.setVolume,
-    playlist: _playback.playlist,
-    playlistStream: _playback.playlistStream,
-    shuffle: _playback.shuffle,
-    shuffleStream: _playback.shuffleStream,
-    onSetShuffle: _playback.setShuffle,
-    playlistMode: _playback.playlistMode,
-    playlistModeStream: _playback.playlistModeStream,
-    onSetPlaylistMode: _playback.setPlaylistMode,
-    fit: _videoFit,
-    onSetFit: (BoxFit fit) => setState(() => _videoFit = fit),
-    onScreenshot: _saveScreenshot,
-    onShowInfo: _toggleInfo,
-    tracks: _playback.tracks,
-    tracksStream: _playback.tracksStream,
-    onSetTrack: _playback.setTrack,
-    onLoadSubtitleFile: _pickSubtitleFile,
-    onSeekBy: _playback.seekBy,
-    onPrevious: _previousVideo,
-    onNext: _nextVideo,
-    onToggleFullscreen: onToggleFullscreen,
-    fullscreen: fullscreen,
-  );
+  }) {
+    final sourceGeneration = _playback.sourceGeneration;
+    return PlayerControls(
+      duration: _playback.duration,
+      durationStream: _playback.durationStream,
+      isPlaying: _playback.isPlaying,
+      onPlayPause: _playback.playOrPause,
+      onSeek: _playback.seek,
+      position: _playback.position,
+      positionStream: _playback.positionStream,
+      playingStream: _playback.playingStream,
+      rate: _playback.rate,
+      rateStream: _playback.rateStream,
+      onSetRate: _playback.setRate,
+      volume: _playback.volume,
+      volumeStream: _playback.volumeStream,
+      onSetVolume: _playback.setVolume,
+      playlist: _playback.playlist,
+      playlistStream: _playback.playlistStream,
+      shuffle: _playback.shuffle,
+      shuffleStream: _playback.shuffleStream,
+      onSetShuffle: _playback.setShuffle,
+      playlistMode: _playback.playlistMode,
+      playlistModeStream: _playback.playlistModeStream,
+      onSetPlaylistMode: _playback.setPlaylistMode,
+      fit: _videoFit,
+      onSetFit: (BoxFit fit) => setState(() => _videoFit = fit),
+      onScreenshot: _saveScreenshot,
+      onShowInfo: _toggleInfo,
+      tracks: _playback.tracks,
+      tracksStream: _playback.tracksStream,
+      selectedTracks: _playback.selectedTracks,
+      selectedTracksStream: _playback.selectedTracksStream,
+      onSetTrack: (track) => _setTrack(track, sourceGeneration),
+      onLoadSubtitleFile: _pickSubtitleFile,
+      subtitleDelayMilliseconds: () => _playback.subtitleDelayMilliseconds,
+      subtitleDelayStream: _playback.subtitleDelayStream,
+      onAdjustSubtitleDelay: (step) =>
+          _changeSubtitleDelay(step, _playback.sourceGeneration),
+      onResetSubtitleDelay: () =>
+          _resetSubtitleDelay(_playback.sourceGeneration),
+      onSeekBy: _playback.seekBy,
+      onPrevious: _previousVideo,
+      onNext: _nextVideo,
+      onToggleFullscreen: onToggleFullscreen,
+      fullscreen: fullscreen,
+    );
+  }
 
   String _titleFor(String? uri) {
     if (uri == null) {

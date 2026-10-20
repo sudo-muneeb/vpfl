@@ -360,6 +360,213 @@ void main() {
     await tester.tap(find.byTooltip('Mute'));
     expect(values.last, 0);
   });
+
+  testWidgets('CC menu labels tracks and checks the requested selection', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final english = SubtitleTrack('1', 'English', 'eng');
+    final selected = StreamController<Track>.broadcast(sync: true);
+    final available = StreamController<Tracks>.broadcast(sync: true);
+    addTearDown(selected.close);
+    addTearDown(available.close);
+    final chosen = <String>[];
+    final loaded = <String>[];
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          tracks: Tracks(
+            subtitle: [
+              SubtitleTrack.auto(),
+              SubtitleTrack.no(),
+              english,
+              const SubtitleTrack('2', null, 'urd'),
+              const SubtitleTrack('3', null, null),
+            ],
+          ),
+          tracksStream: available.stream,
+          selectedTracksStream: selected.stream,
+          onSetTrack: (track) async => chosen.add((track as SubtitleTrack).id),
+          onLoadSubtitleFile: () async => loaded.add('load'),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Subtitles'));
+    await tester.pumpAndSettle();
+    expect(find.text('English · eng'), findsOneWidget);
+    expect(find.text('urd'), findsOneWidget);
+    expect(find.text('Track 3'), findsOneWidget);
+    var items = tester.widgetList<CheckedPopupMenuItem<Object>>(
+      find.byType(CheckedPopupMenuItem<Object>),
+    );
+    expect(
+      items
+          .singleWhere((item) => (item.value as SubtitleTrack).id == 'auto')
+          .checked,
+      isTrue,
+    );
+    await tester.tap(
+      find.ancestor(
+        of: find.text('English · eng'),
+        matching: find.byType(CheckedPopupMenuItem<Object>),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(chosen, ['1']);
+
+    selected.add(Track(subtitle: english));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Subtitles'));
+    await tester.pumpAndSettle();
+    items = tester.widgetList<CheckedPopupMenuItem<Object>>(
+      find.byType(CheckedPopupMenuItem<Object>),
+    );
+    expect(
+      items
+          .singleWhere((item) => (item.value as SubtitleTrack).id == '1')
+          .checked,
+      isTrue,
+    );
+    expect(
+      items
+          .singleWhere((item) => (item.value as SubtitleTrack).id == 'auto')
+          .checked,
+      isFalse,
+    );
+    await tester.tap(find.text('Load subtitle file…'));
+    await tester.pumpAndSettle();
+    expect(loaded, ['load']);
+
+    available.add(const Tracks());
+    selected.add(const Track());
+    await tester.pump();
+    await tester.tap(find.byTooltip('Subtitles'));
+    await tester.pumpAndSettle();
+    expect(find.text('English · eng'), findsNothing);
+    expect(find.text('Auto'), findsOneWidget);
+  });
+
+  testWidgets('compact CC dialog updates tracks and selects Off', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(480, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final available = StreamController<Tracks>.broadcast(sync: true);
+    addTearDown(available.close);
+    String? selected;
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          tracksStream: available.stream,
+          onSetTrack: (track) async => selected = (track as SubtitleTrack).id,
+        ),
+      ),
+    );
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Subtitles…'));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.check), findsOneWidget);
+    available.add(
+      Tracks(
+        subtitle: [
+          SubtitleTrack.auto(),
+          SubtitleTrack.no(),
+          const SubtitleTrack('4', 'Japanese', 'jpn'),
+        ],
+      ),
+    );
+    await tester.pump();
+    expect(find.text('Japanese · jpn'), findsOneWidget);
+    await tester.tap(find.text('Off'));
+    await tester.pumpAndSettle();
+    expect(selected, 'no');
+  });
+
+  testWidgets('subtitle timing displays native updates and actions', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final changes = StreamController<int>.broadcast(sync: true);
+    addTearDown(changes.close);
+    final steps = <int>[];
+    var current = 0;
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          subtitleDelayStream: changes.stream,
+          subtitleDelayValue: () => current,
+          onAdjustSubtitleDelay: (step) async {
+            steps.add(step);
+            current += step;
+            changes.add(current);
+          },
+          onResetSubtitleDelay: () async {
+            current = 0;
+            changes.add(current);
+          },
+        ),
+      ),
+    );
+    await tester.tap(find.byTooltip('Subtitles'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Subtitle timing…'));
+    await tester.pumpAndSettle();
+    expect(find.text('0 ms'), findsOneWidget);
+    await tester.tap(find.byTooltip('Show subtitles 100 ms later'));
+    await tester.pump();
+    expect(find.text('+100 ms'), findsOneWidget);
+    await tester.tap(find.byTooltip('Show subtitles 100 ms earlier'));
+    await tester.pump();
+    expect(steps, [100, -100]);
+    current = -300;
+    changes.add(current);
+    await tester.pump();
+    expect(find.text('−300 ms'), findsOneWidget);
+    await tester.tap(find.text('Reset'));
+    await tester.pump();
+    expect(find.text('0 ms'), findsOneWidget);
+    current = 5000;
+    changes.add(current);
+    await tester.pump();
+    expect(
+      tester
+          .widget<IconButton>(find.widgetWithIcon(IconButton, Icons.add))
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Subtitles'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Subtitle timing…'));
+    await tester.pumpAndSettle();
+    expect(find.text('+5000 ms'), findsOneWidget);
+  });
+
+  testWidgets('compact CC dialog opens subtitle timing', (tester) async {
+    tester.view.physicalSize = const Size(480, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_app(_controls(subtitleDelayMilliseconds: -200)));
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Subtitles…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Subtitle timing…'));
+    await tester.pumpAndSettle();
+    expect(find.text('−200 ms'), findsOneWidget);
+  });
 }
 
 Widget _app(Widget child) => MaterialApp(
@@ -370,10 +577,19 @@ Widget _app(Widget child) => MaterialApp(
 PlayerControls _controls({
   Duration duration = const Duration(minutes: 2),
   Tracks tracks = const Tracks(),
+  Stream<Tracks> tracksStream = const Stream<Tracks>.empty(),
+  Track selectedTracks = const Track(),
+  Stream<Track> selectedTracksStream = const Stream<Track>.empty(),
   Future<void> Function()? onPlayPause,
   Future<void> Function(Duration)? onSeekBy,
   Future<void> Function(double)? onSetRate,
   Future<void> Function(Object)? onSetTrack,
+  Future<void> Function()? onLoadSubtitleFile,
+  int subtitleDelayMilliseconds = 0,
+  int Function()? subtitleDelayValue,
+  Stream<int> subtitleDelayStream = const Stream<int>.empty(),
+  Future<void> Function(int)? onAdjustSubtitleDelay,
+  Future<void> Function()? onResetSubtitleDelay,
   Future<void> Function(PlaylistMode)? onSetPlaylistMode,
   Stream<PlaylistMode> playlistModeStream = const Stream<PlaylistMode>.empty(),
   ValueChanged<BoxFit>? onSetFit,
@@ -416,9 +632,16 @@ PlayerControls _controls({
   onScreenshot: onScreenshot ?? () async {},
   onShowInfo: onShowInfo ?? () {},
   tracks: tracks,
-  tracksStream: const Stream<Tracks>.empty(),
+  tracksStream: tracksStream,
+  selectedTracks: selectedTracks,
+  selectedTracksStream: selectedTracksStream,
   onSetTrack: onSetTrack ?? (_) async {},
-  onLoadSubtitleFile: () async {},
+  onLoadSubtitleFile: onLoadSubtitleFile ?? () async {},
+  subtitleDelayMilliseconds:
+      subtitleDelayValue ?? () => subtitleDelayMilliseconds,
+  subtitleDelayStream: subtitleDelayStream,
+  onAdjustSubtitleDelay: onAdjustSubtitleDelay ?? (_) async {},
+  onResetSubtitleDelay: onResetSubtitleDelay ?? () async {},
   onPrevious: () async {},
   onNext: () async {},
   onToggleFullscreen: onToggleFullscreen ?? () async {},

@@ -437,6 +437,9 @@ void video_output_set_size(VideoOutput* self, gint64 width, gint64 height) {
   self->width = width;
   self->height = height;
   g_mutex_unlock(&self->mutex);
+  // A paused player will not deliver another mpv frame on its own. Make the
+  // resized texture available so the next Flutter frame uses the new size.
+  video_output_frame_callback(self);
 }
 
 mpv_render_context* video_output_get_render_context(VideoOutput* self) {
