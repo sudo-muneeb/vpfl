@@ -22,6 +22,9 @@ class AppShell extends ConsumerStatefulWidget {
     required this.onHistoryEnabledChanged,
     required this.onResumeEnabledChanged,
     required this.onOpenMedia,
+    this.initialDestination = AppDestination.home,
+    this.initialSelectedFolder,
+    this.onLocationChanged,
     super.key,
   });
 
@@ -32,14 +35,17 @@ class AppShell extends ConsumerStatefulWidget {
   final ValueChanged<bool> onHistoryEnabledChanged;
   final ValueChanged<bool> onResumeEnabledChanged;
   final ValueChanged<String> onOpenMedia;
+  final AppDestination initialDestination;
+  final SavedFolder? initialSelectedFolder;
+  final void Function(AppDestination, SavedFolder?)? onLocationChanged;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  AppDestination _destination = AppDestination.home;
-  SavedFolder? _selectedFolder;
+  late AppDestination _destination = widget.initialDestination;
+  late SavedFolder? _selectedFolder = widget.initialSelectedFolder;
   final Set<int> _scanningFolderIds = {};
   final Set<int> _scannedFolderIds = {};
 
@@ -80,12 +86,22 @@ class _AppShellState extends ConsumerState<AppShell> {
                         selectedFolderId: _selectedFolder?.id,
                         folders: folders.value ?? const <SavedFolder>[],
                         onAddFolder: _addFolder,
-                        onFolderSelected: (SavedFolder folder) => setState(() {
-                          _selectedFolder = folder;
-                          _destination = AppDestination.folders;
-                        }),
+                        onFolderSelected: (SavedFolder folder) {
+                          setState(() {
+                            _selectedFolder = folder;
+                            _destination = AppDestination.folders;
+                          });
+                          widget.onLocationChanged?.call(
+                            AppDestination.folders,
+                            folder,
+                          );
+                        },
                         onDestinationSelected: (AppDestination destination) {
                           setState(() => _destination = destination);
+                          widget.onLocationChanged?.call(
+                            destination,
+                            _selectedFolder,
+                          );
                         },
                       ),
                       const VerticalDivider(width: 1),
@@ -146,6 +162,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         _selectedFolder = folder;
         _destination = AppDestination.folders;
       });
+      widget.onLocationChanged?.call(AppDestination.folders, folder);
       await _scanFolder(folder, force: true);
     } on Object catch (error) {
       if (mounted) {
@@ -176,6 +193,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         _selectedFolder = null;
         _destination = AppDestination.folders;
       });
+      widget.onLocationChanged?.call(AppDestination.folders, null);
     }
   }
 }

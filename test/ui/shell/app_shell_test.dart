@@ -6,8 +6,55 @@ import 'package:vpfl/data/model/app_database.dart';
 import 'package:vpfl/data/persistence_providers.dart';
 import 'package:vpfl/data/repositories/playback_history_repository.dart';
 import 'package:vpfl/ui/app.dart';
+import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
+import 'package:vpfl/ui/shell/app_destination.dart';
+import 'package:vpfl/ui/shell/app_shell.dart';
 
 void main() {
+  testWidgets('library destination can be restored after player navigation', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    var destination = AppDestination.home;
+    Widget shell() => ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(database),
+        recentPlaybackProvider.overrideWith((ref) => Stream.value(const [])),
+      ],
+      child: MaterialApp(
+        theme: VpflTheme.light,
+        home: AppShell(
+          initialDestination: destination,
+          onLocationChanged: (selected, _) => destination = selected,
+          themeMode: ThemeMode.light,
+          onThemeModeChanged: (_) {},
+          historyEnabled: true,
+          resumeEnabled: true,
+          onHistoryEnabledChanged: (_) {},
+          onResumeEnabledChanged: (_) {},
+          onOpenMedia: (_) {},
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(shell());
+    await tester.tap(find.byTooltip('All Videos'));
+    await tester.pumpAndSettle();
+    expect(destination, AppDestination.allVideos);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(shell());
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Videos from your saved folders will appear here.'),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    // Drift closes canceled query streams on the next timer turn.
+    await tester.pump(const Duration(microseconds: 1));
+  });
+
   testWidgets('sidebar navigates between the main sections', (
     WidgetTester tester,
   ) async {

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
+import 'package:vpfl/ui/core/themes/vpfl_theme_extension.dart';
 import 'package:vpfl/ui/player/player_controls.dart';
 
 void main() {
@@ -133,6 +134,14 @@ void main() {
     expect(find.text('Playback speed…'), findsOneWidget);
     await tester.tap(find.text('Playback speed…'));
     await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<ListTile>(
+            find.ancestor(of: find.text('1×'), matching: find.byType(ListTile)),
+          )
+          .selected,
+      isTrue,
+    );
     await tester.tap(find.text('1.5×'));
     await tester.pumpAndSettle();
     expect(selectedRate, 1.5);
@@ -146,6 +155,96 @@ void main() {
 
     final Slider slider = tester.widget(find.byType(Slider).first);
     expect(slider.onChanged, isNull);
+  });
+
+  testWidgets('left time display toggles elapsed and remaining time', (
+    tester,
+  ) async {
+    final positionChanges = StreamController<Duration>.broadcast(sync: true);
+    addTearDown(positionChanges.close);
+    await tester.pumpWidget(
+      _app(_controls(positionStream: positionChanges.stream)),
+    );
+
+    final time = find.text('00:05 / 02:00');
+    expect(time, findsOneWidget);
+    expect(find.text('00:05'), findsNothing);
+    expect(find.text('02:00'), findsNothing);
+    expect(
+      tester.getRect(time).right,
+      lessThan(tester.getRect(find.byType(Slider).first).left),
+    );
+    expect(find.byTooltip('Show remaining time'), findsOneWidget);
+
+    await tester.tap(time);
+    await tester.pump();
+    expect(find.text('−01:55 / 02:00'), findsOneWidget);
+    expect(find.byTooltip('Show elapsed time'), findsOneWidget);
+
+    positionChanges.add(const Duration(minutes: 2));
+    await tester.pump();
+    expect(find.text('−00:00 / 02:00'), findsOneWidget);
+
+    await tester.tap(find.text('−00:00 / 02:00'));
+    await tester.pump();
+    expect(find.text('02:00 / 02:00'), findsOneWidget);
+  });
+
+  testWidgets('multi-day time toggle keeps seek track in place', (
+    tester,
+  ) async {
+    for (final (duration, total, remaining) in [
+      (
+        const Duration(days: 2, hours: 3, minutes: 4, seconds: 5),
+        '51:04:05',
+        '50:04:05',
+      ),
+      (
+        const Duration(days: 12, hours: 3, minutes: 4, seconds: 5),
+        '291:04:05',
+        '290:04:05',
+      ),
+    ]) {
+      final positions = StreamController<Duration>.broadcast(sync: true);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(
+        _app(
+          _controls(
+            duration: duration,
+            position: const Duration(hours: 1),
+            positionStream: positions.stream,
+          ),
+        ),
+      );
+      expect(find.text('1:00:00 / $total'), findsOneWidget);
+      final slider = find.byType(Slider).first;
+      final initialTrack = tester.getRect(slider);
+
+      await tester.tap(find.text('1:00:00 / $total'));
+      await tester.pump();
+      expect(find.text('−$remaining / $total'), findsOneWidget);
+      expect(tester.getRect(slider), initialTrack);
+
+      positions.add(duration - const Duration(seconds: 3));
+      await tester.pump();
+      expect(find.text('−00:03 / $total'), findsOneWidget);
+      expect(tester.getRect(slider), initialTrack);
+      await positions.close();
+    }
+  });
+
+  testWidgets('speed sits in the right control group at desktop width', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(_controls()));
+
+    final speed = tester.getRect(find.byTooltip('Playback speed'));
+    final forward = tester.getRect(find.byTooltip('Seek forward 10 seconds'));
+    final shuffle = tester.getRect(
+      find.byTooltip('Shuffle unavailable for one video'),
+    );
+    expect(forward.right, lessThanOrEqualTo(speed.left));
+    expect(speed.right, lessThanOrEqualTo(shuffle.left));
   });
 
   testWidgets('relative seek buttons request ten seconds', (tester) async {
@@ -168,12 +267,36 @@ void main() {
 
     await tester.tap(find.byTooltip('Playback speed'));
     await tester.pumpAndSettle();
+    expect(find.byType(BackdropFilter), findsWidgets);
+    final menuContext = tester.element(find.text('1.5×'));
+    final menuColor = PopupMenuTheme.of(menuContext).color!;
+    expect(menuColor, const Color(0xB3000000));
+    expect(PopupMenuTheme.of(menuContext).menuPadding, EdgeInsets.zero);
+    final firstBlur = find.byType(BackdropFilter).first;
+    final popupSurface = find
+        .ancestor(of: firstBlur, matching: find.byType(Material))
+        .first;
+    expect(tester.getRect(firstBlur).top, tester.getRect(popupSurface).top);
+    final popupShape =
+        PopupMenuTheme.of(menuContext).shape! as RoundedRectangleBorder;
+    expect(popupShape.side, BorderSide.none);
+    final selectedItem = tester.widget<PopupMenuItem<double>>(
+      find.byWidgetPredicate(
+        (widget) => widget is PopupMenuItem<double> && widget.value == 1,
+      ),
+    );
+    expect(
+      (selectedItem.child as Text).style?.color,
+      VpflTheme.dark.extension<VpflThemeExtension>()!.playbackProgress,
+    );
     await tester.tap(find.text('1.5×'));
 
     expect(selectedRate, 1.5);
   });
 
-  testWidgets('overflow menu exposes media tracks', (tester) async {
+  testWidgets('audio tracks open beside the main menu and select a track', (
+    tester,
+  ) async {
     Object? selectedTrack;
     const Tracks tracks = Tracks(
       audio: [
@@ -193,11 +316,57 @@ void main() {
 
     await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Audio tracks…'));
+    await tester.tap(find.text('Audio tracks'));
     await tester.pumpAndSettle();
+    expect(find.byType(BackdropFilter), findsWidgets);
+    expect(find.text('Save screenshot…'), findsOneWidget);
+    expect(
+      tester.getRect(find.text('Alternate')).left,
+      greaterThan(tester.getRect(find.text('Audio tracks')).right),
+    );
+    final submenu = tester.widget<MenuAnchor>(
+      find.ancestor(
+        of: find.text('Alternate'),
+        matching: find.byType(MenuAnchor),
+      ),
+    );
+    final submenuShape =
+        submenu.style!.shape!.resolve({})! as RoundedRectangleBorder;
+    expect(submenuShape.side, BorderSide.none);
+    expect(submenu.style!.padding!.resolve({}), EdgeInsets.zero);
+    final auto = tester.widget<MenuItemButton>(
+      find.ancestor(
+        of: find.text('Auto'),
+        matching: find.byType(MenuItemButton),
+      ),
+    );
+    expect(auto.leadingIcon, isA<Icon>());
     await tester.tap(find.text('Alternate'));
+    await tester.pumpAndSettle();
 
     expect(selectedTrack, const AudioTrack('2', 'Alternate', 'eng'));
+    expect(find.text('Save screenshot…'), findsNothing);
+  });
+
+  testWidgets('audio track menu is absent without a real audio stream', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        _controls(
+          tracks: const Tracks(
+            audio: [
+              AudioTrack('auto', null, null),
+              AudioTrack('no', null, null),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    expect(find.text('Audio tracks'), findsNothing);
   });
 
   testWidgets('overflow omits repeat while the visible button still cycles', (
@@ -243,11 +412,17 @@ void main() {
 
     await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Video fit…'));
+    await tester.tap(find.text('Video fit'));
     await tester.pumpAndSettle();
+    expect(find.text('Save screenshot…'), findsOneWidget);
+    expect(
+      tester.getRect(find.text('Fill and crop')).left,
+      greaterThan(tester.getRect(find.text('Video fit')).right),
+    );
     await tester.tap(find.text('Fill and crop'));
     await tester.pumpAndSettle();
     expect(selectedFit, BoxFit.cover);
+    expect(find.text('Save screenshot…'), findsNothing);
   });
 
   testWidgets('fullscreen icon and tooltip follow the supplied window state', (
@@ -324,6 +499,18 @@ void main() {
 
     await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
+    final frostedRows = find.byType(BackdropFilter);
+    final popupSurface = find
+        .ancestor(of: frostedRows.first, matching: find.byType(Material))
+        .first;
+    expect(
+      tester.getRect(frostedRows.first).top,
+      tester.getRect(popupSurface).top,
+    );
+    expect(
+      tester.getRect(frostedRows.last).bottom,
+      tester.getRect(popupSurface).bottom,
+    );
     await tester.tap(find.text('Save screenshot…'));
     await tester.pumpAndSettle();
     expect(screenshotRequested, isTrue);
@@ -519,6 +706,11 @@ void main() {
     );
     await tester.tap(find.byTooltip('Subtitles'));
     await tester.pumpAndSettle();
+    expect(find.text('Subtitle timing…'), findsNothing);
+    await tester.tapAt(const Offset(800, 350));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Subtitle timing…'));
     await tester.pumpAndSettle();
     expect(find.text('0 ms'), findsOneWidget);
@@ -546,14 +738,16 @@ void main() {
     );
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Subtitles'));
+    await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Subtitle timing…'));
     await tester.pumpAndSettle();
     expect(find.text('+5000 ms'), findsOneWidget);
   });
 
-  testWidgets('compact CC dialog opens subtitle timing', (tester) async {
+  testWidgets('compact overflow opens subtitle timing beside subtitles', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(480, 600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -562,6 +756,11 @@ void main() {
     await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Subtitles…'));
+    await tester.pumpAndSettle();
+    expect(find.text('Subtitle timing…'), findsNothing);
+    await tester.tapAt(const Offset(400, 300));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Subtitle timing…'));
     await tester.pumpAndSettle();
@@ -576,6 +775,8 @@ Widget _app(Widget child) => MaterialApp(
 
 PlayerControls _controls({
   Duration duration = const Duration(minutes: 2),
+  Duration position = const Duration(seconds: 5),
+  Stream<Duration> positionStream = const Stream<Duration>.empty(),
   Tracks tracks = const Tracks(),
   Stream<Tracks> tracksStream = const Stream<Tracks>.empty(),
   Track selectedTracks = const Track(),
@@ -610,8 +811,8 @@ PlayerControls _controls({
   onPlayPause: onPlayPause ?? () async {},
   onSeek: (_) async {},
   onSeekBy: onSeekBy ?? (_) async {},
-  position: const Duration(seconds: 5),
-  positionStream: const Stream<Duration>.empty(),
+  position: position,
+  positionStream: positionStream,
   playingStream: const Stream<bool>.empty(),
   rate: 1,
   rateStream: const Stream<double>.empty(),

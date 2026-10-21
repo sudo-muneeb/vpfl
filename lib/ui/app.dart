@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/themes/vpfl_theme.dart';
 import 'core/widgets/window_controls.dart';
+import '../data/model/app_database.dart';
 import '../data/persistence_providers.dart';
 import '../data/playback_service_provider.dart';
 import '../data/playback_history_recorder_provider.dart';
@@ -12,6 +13,7 @@ import '../data/thumbnail_providers.dart';
 import '../data/services/application_shutdown.dart';
 import '../data/services/lifecycle_trace.dart';
 import 'player/player_screen.dart';
+import 'shell/app_destination.dart';
 import 'shell/app_shell.dart';
 
 /// Root application widget for VPFL.
@@ -33,6 +35,8 @@ class _VpflAppState extends ConsumerState<VpflApp> {
   ThemeMode _themeMode = ThemeMode.system;
   bool _historyEnabled = true;
   bool _resumeEnabled = true;
+  AppDestination _libraryDestination = AppDestination.home;
+  SavedFolder? _libraryFolder;
   late String? _activeMediaUri = widget.initialMediaUri;
   late String? _activeStartupError = widget.startupError;
   ApplicationShutdown? _shutdown;
@@ -171,6 +175,12 @@ class _VpflAppState extends ConsumerState<VpflApp> {
               onResumeEnabledChanged: _setResumeEnabled,
             )
           : AppShell(
+              initialDestination: _libraryDestination,
+              initialSelectedFolder: _libraryFolder,
+              onLocationChanged: (destination, folder) {
+                _libraryDestination = destination;
+                _libraryFolder = folder;
+              },
               themeMode: _themeMode,
               onThemeModeChanged: _setThemeMode,
               historyEnabled: _historyEnabled,

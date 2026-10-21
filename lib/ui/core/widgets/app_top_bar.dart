@@ -44,10 +44,10 @@ class AppTopBar extends StatelessWidget {
             children: [
               if (onBack case final VoidCallback back) ...[
                 IconButton(
-                  tooltip: 'Home',
+                  tooltip: 'Back',
                   onPressed: back,
                   style: _utilityButtonStyle(scheme),
-                  icon: const Icon(Icons.home_outlined),
+                  icon: const Icon(Icons.arrow_back_rounded),
                 ),
                 const SizedBox(width: 4),
               ],
