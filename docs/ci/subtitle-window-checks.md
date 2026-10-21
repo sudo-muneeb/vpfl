@@ -53,17 +53,20 @@ done
 
 The test pauses on manifest cue times and saves paired CC On/Off PNGs under
 ignored `build/ci-logs/subtitle-window/<app-pid>/`. Each app process has its
-own capture directory. `check_subtitle_window.py` compares the same video
+own capture directory. Player controls now remain visible while paused, so the
+test harness suppresses only their Flutter render layer during subtitle
+captures. The real player, texture, and subtitle output remain in the X11
+window. `check_subtitle_window.py` compares the same video
 texture region at the same native position. A caption requires
 at least 120 changed pixels, including 80 in the expected third of the
 texture; a cue gap permits at most 20. A permanently burned caption must
 remain visible after CC Off. The check rejects a black texture, long red or
 pale playback progress lines, and changes in the surrounding window UI. A
 plain-video capture must also have no bright caption pixels. Captures are
-checked before comparison, with bounded retries if controls are
-still visible. It writes JSON metrics for every comparison and a difference
-PNG if an assertion fails. The test also checks native track counts and
-selected state, including after returning Home and reopening through the
+checked before comparison, with bounded retries if controls remain visible
+after a UI rebuild. It writes JSON metrics for every comparison and a
+difference PNG if an assertion fails. The test also checks native track counts
+and selected state, including after returning Home and reopening through the
 real app shell; those properties cannot replace window pixels. Each case
 starts a fresh Linux runner and X11 display to isolate native resources.
 
