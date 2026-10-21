@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/default_app_prompt_provider.dart';
+import '../../data/persistence_providers.dart';
 import 'default_app_controls.dart';
 
 /// Persistent preferences and application information in one desktop page.
@@ -113,6 +114,54 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                           value: resumeEnabled,
                           onChanged: onResumeEnabledChanged,
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            key: const Key('clear-history-button'),
+                            icon: const Icon(Icons.delete_outline),
+                            label: const Text('Clear playback history'),
+                            onPressed: () async {
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (dialogContext) => AlertDialog(
+                                  title: const Text('Clear playback history?'),
+                                  content: const Text(
+                                    'This removes recent videos and saved playback positions.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dialogContext, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () =>
+                                          Navigator.pop(dialogContext, true),
+                                      child: const Text('Clear history'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed != true) return;
+                              try {
+                                await ref
+                                    .read(playbackHistoryRepositoryProvider)
+                                    .clear();
+                              } on Object catch (error) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Could not clear history: $error',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          ),
                         ),
                       ],
                     ),

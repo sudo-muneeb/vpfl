@@ -14,10 +14,10 @@ import '../../data/playback_service_provider.dart';
 import '../../data/model/real_media_tracks.dart';
 import '../../data/default_app_prompt_provider.dart';
 import '../../data/playback_history_recorder_provider.dart';
-import '../../data/persistence_providers.dart';
 import '../../data/services/media_file_picker.dart';
 import '../../data/services/playback_service.dart';
 import '../../data/services/lifecycle_trace.dart';
+import '../../data/services/media_source_identity.dart';
 import '../core/widgets/app_top_bar.dart';
 import '../core/themes/vpfl_theme_extension.dart';
 import '../settings/default_app_controls.dart';
@@ -112,7 +112,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           queue.index >= queue.medias.length) {
         return;
       }
-      final String uri = queue.medias[queue.index].uri;
+      final String uri = canonicalMediaUri(queue.medias[queue.index].uri);
       if (uri != _playingUri ||
           (_selectedQueueIndex != null && queue.index != _selectedQueueIndex)) {
         ++_openGeneration;
@@ -573,32 +573,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final int openGeneration = ++_openGeneration;
     _resetMediaError();
     _playGeneration += 1;
-    Duration? resumePosition;
-    try {
-      final settings = ref.read(settingsRepositoryProvider);
-      final bool resumeEnabled = await settings.getBool(
-        'resumeEnabled',
-        defaultValue: true,
-      );
-      if (!mounted || openGeneration != _openGeneration) return;
-      resumePosition = resumeEnabled
-          ? await ref
-                .read(playbackHistoryRepositoryProvider)
-                .resumePosition(uri)
-          : null;
-    } on Object catch (_) {
-      // A storage failure must not prevent playback.
-    }
-
     try {
       await _waitForVideoRenderer();
       if (!mounted || openGeneration != _openGeneration) return;
       await _playback.openWithDirectory(uri);
       if (!mounted || openGeneration != _openGeneration) return;
       if (_playback.isPlaying) _recordPromptPlayIfNeeded();
-      if (resumePosition != null) {
-        await _playback.seek(resumePosition);
-      }
     } on Object catch (error, stackTrace) {
       stderr.writeln('VPFL could not open $uri: $error\n$stackTrace');
       if (mounted && openGeneration == _openGeneration) {

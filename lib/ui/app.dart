@@ -53,6 +53,12 @@ class _VpflAppState extends ConsumerState<VpflApp> {
       setState(() => _closing = true);
       await WidgetsBinding.instance.endOfFrame;
     }
+    // Drift waits for active query streams to close before the database can
+    // close. Dispose the library views' streams after their widgets leave.
+    ref.invalidate(recentPlaybackProvider);
+    ref.invalidate(libraryMediaProvider);
+    ref.invalidate(savedFoldersProvider);
+    ref.invalidate(folderMediaProvider);
     final shutdown = _shutdown ??= ApplicationShutdown(
       playback: ref.read(playbackServiceProvider),
       history: ref.read(playbackHistoryRecorderProvider),

@@ -4,9 +4,15 @@ import '../model/app_database.dart';
 
 /// Persistence operations for successfully started local media sessions.
 class PlaybackHistoryRepository {
-  PlaybackHistoryRepository(this._database);
+  static const Duration minimumResumePosition = Duration(seconds: 10);
+  static const Duration completionTail = Duration(seconds: 15);
+  static const int completionPercent = 90;
+
+  PlaybackHistoryRepository(this._database, {DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   final AppDatabase _database;
+  final DateTime Function() _now;
 
   Stream<List<PlaybackHistory>> watchRecent({int limit = 20}) =>
       (_database.select(_database.playbackHistories)
@@ -33,11 +39,15 @@ class PlaybackHistoryRepository {
           PlaybackHistoriesCompanion.insert(
             uri: uri,
             displayName: displayName,
-            lastOpenedAt: DateTime.now(),
+            lastOpenedAt: _now(),
             positionMs: Value(
               existing?.completed == true ? 0 : existing?.positionMs ?? 0,
             ),
-            durationMs: Value(duration.inMilliseconds),
+            durationMs: Value(
+              duration > Duration.zero
+                  ? duration.inMilliseconds
+                  : existing?.durationMs ?? 0,
+            ),
             watchCount: Value((existing?.watchCount ?? 0) + 1),
             completed: const Value(false),
           ),
@@ -52,19 +62,22 @@ class PlaybackHistoryRepository {
     final PlaybackHistory? existing = await find(uri);
     if (existing == null) return;
 
-    final int durationMs = duration.inMilliseconds;
+    final int durationMs = duration > Duration.zero
+        ? duration.inMilliseconds
+        : existing.durationMs;
+    final int positionMs = position.inMilliseconds;
     final bool completed =
         durationMs > 0 &&
-        (durationMs > 15000
-            ? position.inMilliseconds >= durationMs - 15000
-            : position.inMilliseconds * 10 >= durationMs * 9);
+        positionMs * 100 >= durationMs * completionPercent &&
+        positionMs >= durationMs - completionTail.inMilliseconds;
+    final int savedPositionMs = durationMs > 0
+        ? positionMs.clamp(0, durationMs)
+        : (positionMs < 0 ? 0 : positionMs);
     await (_database.update(
       _database.playbackHistories,
     )..where((PlaybackHistories row) => row.uri.equals(uri))).write(
       PlaybackHistoriesCompanion(
-        positionMs: Value(
-          completed ? 0 : position.inMilliseconds.clamp(0, durationMs),
-        ),
+        positionMs: Value(completed ? 0 : savedPositionMs),
         durationMs: Value(durationMs),
         completed: Value(completed),
       ),
@@ -73,13 +86,19 @@ class PlaybackHistoryRepository {
 
   Future<Duration?> resumePosition(String uri) async {
     final PlaybackHistory? history = await find(uri);
-    if (history == null || history.completed || history.positionMs < 10000) {
+    if (history == null ||
+        history.completed ||
+        history.positionMs < minimumResumePosition.inMilliseconds) {
       return null;
     }
     return Duration(milliseconds: history.positionMs);
   }
 
   Future<int> clear() => _database.delete(_database.playbackHistories).go();
+
+  Future<int> remove(String uri) => (_database.delete(
+    _database.playbackHistories,
+  )..where((row) => row.uri.equals(uri))).go();
 }
 
 /// Key/value storage for small application preferences.

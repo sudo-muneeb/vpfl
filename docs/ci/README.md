@@ -88,6 +88,11 @@ bash scripts/ci/run_regressions.sh build/ci-video-fixtures
 The fixture directory is generated and ignored by Git. The Python verifier
 must pass before the integration test. The test uses an in-memory Drift
 database; the display wrapper gives the app isolated XDG directories.
+The regression fixture generator also makes a 45-second Matroska video beside
+the 30-second MP4.
+The regression script runs the resume suite with both formats. It uses a
+temporary SQLite database to test Home, Recents, restart, and queue source
+changes without touching the user's profile.
 For distribution-specific runs, use the same scripts as the workflow inside
 the named target container. Avoid using a real VPFL user profile.
 

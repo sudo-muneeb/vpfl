@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:media_kit/media_kit.dart';
 
@@ -7,12 +6,14 @@ import '../repositories/playback_history_repository.dart';
 import 'playback_service.dart';
 import 'thumbnail_service.dart';
 import 'lifecycle_trace.dart';
+import 'media_source_identity.dart';
 
 /// Stores only sessions that reach the playing state and periodically saves
 /// their resume position.
 class PlaybackHistoryRecorder {
-  /// Seconds of natural playback before VPFL may keep a frame as artwork.
+  /// Playback position before VPFL may keep a frame as artwork.
   static const Duration thumbnailAfter = Duration(seconds: 10);
+  static const Duration saveInterval = Duration(seconds: 5);
 
   PlaybackHistoryRecorder({
     required PlaybackService playback,
@@ -44,8 +45,11 @@ class PlaybackHistoryRecorder {
   late final StreamSubscription<Duration> _durationSubscription;
   String? _uri;
   int? _queueIndex;
+  int _sessionGeneration = 0;
   String? _recordedUri;
   String? _startingUri;
+  int? _startingGeneration;
+  Future<void>? _recordedStartWrite;
   String? _capturedUri;
   int _lastSavedPositionMs = 0;
   Duration _position = Duration.zero;
@@ -64,14 +68,21 @@ class PlaybackHistoryRecorder {
   void _onPlaylist(Playlist playlist) {
     final String? nextUri = playlist.medias.isEmpty
         ? null
-        : _canonicalUri(playlist.medias[playlist.index].uri);
-    if (nextUri == _uri && playlist.index == _queueIndex) return;
+        : canonicalMediaUri(playlist.medias[playlist.index].uri);
+    final generation = _playback.sourceGeneration;
+    if (nextUri == _uri &&
+        playlist.index == _queueIndex &&
+        generation == _sessionGeneration) {
+      return;
+    }
     _queueProgressSave();
     _uri = nextUri;
     _queueIndex = playlist.index;
+    _sessionGeneration = generation;
     _recordedUri = null;
-    _position = _playback.position;
-    _duration = _playback.duration;
+    _recordedStartWrite = null;
+    _position = Duration.zero;
+    _duration = Duration.zero;
     _lastSavedPositionMs = 0;
   }
 
@@ -87,14 +98,15 @@ class PlaybackHistoryRecorder {
     _position = position;
     _maybeCaptureFrame(position);
     if (_recordedUri == null ||
-        (position.inMilliseconds - _lastSavedPositionMs).abs() < 5000) {
+        (position.inMilliseconds - _lastSavedPositionMs).abs() <
+            saveInterval.inMilliseconds) {
       return;
     }
     _lastSavedPositionMs = position.inMilliseconds;
     _queueProgressSave();
   }
 
-  /// Keeps the frame from natural playback as artwork. It never seeks, and
+  /// Keeps a frame from active playback as artwork. It never seeks, and
   /// it runs once per session for each file that has no thumbnail yet.
   void _maybeCaptureFrame(Duration position) {
     final String? uri = _recordedUri;
@@ -137,36 +149,61 @@ class PlaybackHistoryRecorder {
   Future<void> _recordStarted() async {
     if (_disposed) return;
     final String? uri = _uri;
-    if (uri == null || uri == _recordedUri || uri == _startingUri) return;
-    _startingUri = uri;
-    if (!await settings.getBool('historyEnabled', defaultValue: true) ||
-        _disposed) {
-      _startingUri = null;
+    final generation = _sessionGeneration;
+    if (uri == null ||
+        uri == _recordedUri ||
+        (uri == _startingUri && generation == _startingGeneration)) {
       return;
     }
-
-    _recordedUri = uri;
+    _startingUri = uri;
+    _startingGeneration = generation;
     try {
-      await history.recordStarted(
+      if (!await settings.getBool('historyEnabled', defaultValue: true) ||
+          _disposed ||
+          _uri != uri ||
+          _sessionGeneration != generation) {
+        return;
+      }
+      final startWrite = history.recordStarted(
         uri: uri,
         displayName: _displayName(uri),
         duration: _duration,
       );
-      _lastSavedPositionMs = _position.inMilliseconds;
+      _recordedStartWrite = startWrite;
+      _recordedUri = uri;
+      await startWrite;
+      if (_uri == uri && _sessionGeneration == generation) {
+        _lastSavedPositionMs = _position.inMilliseconds;
+      }
     } on Object {
-      _recordedUri = null;
+      if (_uri == uri && _sessionGeneration == generation) {
+        _recordedUri = null;
+      }
     } finally {
-      if (_startingUri == uri) _startingUri = null;
+      if (_startingUri == uri && _startingGeneration == generation) {
+        _startingUri = null;
+        _startingGeneration = null;
+      }
     }
   }
 
   void _queueProgressSave() {
     final String? uri = _recordedUri;
-    if (uri == null) return;
+    final startWrite = _recordedStartWrite;
+    if (uri == null ||
+        startWrite == null ||
+        !_playback.canSaveProgressFor(_sessionGeneration)) {
+      return;
+    }
     final Duration position = _position;
     final Duration duration = _duration;
     _writes = _writes
         .then((_) async {
+          try {
+            await startWrite;
+          } on Object {
+            return;
+          }
           if (!await settings.getBool('historyEnabled', defaultValue: true)) {
             return;
           }
@@ -208,16 +245,5 @@ class PlaybackHistoryRecorder {
         .toList();
     // Uri.path is already decoded; decoding again breaks Unicode names.
     return segments.isEmpty ? uri : segments.last;
-  }
-
-  static String _canonicalUri(String uri) {
-    final Uri? parsed = Uri.tryParse(uri);
-    if (parsed != null && parsed.scheme == 'file') {
-      return Uri.file(parsed.toFilePath()).normalizePath().toString();
-    }
-    if (parsed == null || parsed.scheme.isEmpty) {
-      return Uri.file(File(uri).absolute.path).normalizePath().toString();
-    }
-    return uri;
   }
 }

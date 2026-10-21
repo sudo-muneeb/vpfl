@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -148,11 +149,25 @@ Future<Map<String, dynamic>> _compare(
 Future<void> _waitForVideo(
   WidgetTester tester,
   PlaybackService playback,
-  int subtitleCount,
-) async {
+  int subtitleCount, {
+  String? expectedPath,
+  List<String?>? expectedSubtitleTitles,
+}) async {
   for (var attempt = 0; attempt < 100; attempt++) {
+    // A new request can retain the previous clip's texture and track count.
+    final playlist = playback.videoController.player.state.playlist;
+    final currentPath = playlist.medias.isNotEmpty
+        ? playlist.medias[playlist.index].uri
+        : null;
+    final subtitles = RealMediaTracks(playback.tracks).subtitle;
     if (playback.hasVideoOutput &&
-        RealMediaTracks(playback.tracks).subtitle.length == subtitleCount &&
+        subtitles.length == subtitleCount &&
+        (expectedPath == null || currentPath == expectedPath) &&
+        (expectedSubtitleTitles == null ||
+            listEquals(
+              subtitles.map((track) => track.title).toList(),
+              expectedSubtitleTitles,
+            )) &&
         find.byType(Texture).evaluate().isNotEmpty) {
       return;
     }
@@ -161,6 +176,9 @@ Future<void> _waitForVideo(
   throw TestFailure(
     'Video/texture/tracks not ready: video=${playback.hasVideoOutput}, '
     'tracks=${RealMediaTracks(playback.tracks).subtitle.length}, '
+    'titles=${RealMediaTracks(playback.tracks).subtitle.map((track) => track.title).toList()}, '
+    'source=${playback.videoController.player.state.playlist.medias.map((media) => media.uri).toList()}, '
+    'expectedSource=$expectedPath, expectedTitles=$expectedSubtitleTitles, '
     'texture=${find.byType(Texture).evaluate().length}',
   );
 }
@@ -294,7 +312,7 @@ void main() {
             ),
           );
 
-      Future<void> open(String file, int count) async {
+      Future<void> open(String file, int count, {List<String?>? titles}) async {
         final oldGeneration = playback.sourceGeneration;
         await tester.pumpWidget(screen(file));
         for (
@@ -305,7 +323,13 @@ void main() {
           await tester.pump(const Duration(milliseconds: 100));
         }
         expect(playback.sourceGeneration, greaterThan(oldGeneration));
-        await _waitForVideo(tester, playback, count);
+        await _waitForVideo(
+          tester,
+          playback,
+          count,
+          expectedPath: File('${root.path}/$file').absolute.path,
+          expectedSubtitleTitles: titles,
+        );
         if (playback.isPlaying) await playback.playOrPause();
         await playback.seek(const Duration(milliseconds: 1500));
       }
@@ -380,23 +404,33 @@ void main() {
       try {
         await playback.useNullAudioOutput();
         await tester.pumpWidget(screen('embedded_srt.mkv'));
-        await _waitForVideo(tester, playback, 1);
+        await _waitForVideo(
+          tester,
+          playback,
+          1,
+          expectedPath: File('${root.path}/embedded_srt.mkv').absolute.path,
+          expectedSubtitleTitles: ['English SRT'],
+        );
         if (playback.isPlaying) await playback.playOrPause();
         await playback.seek(const Duration(milliseconds: 1500));
         final result = await pair('embedded-srt', 'English SRT');
         expect(result['changed_pixels'] as int, greaterThan(120));
         expect(await playback.nativeSubtitleTrackCount(), 1);
 
-        for (final (file, label, count) in [
-          ('embedded_ass.mkv', 'English ASS', 1),
-          ('mov_text.mp4', 'eng', 1),
-          ('multilingual.mkv', 'English', 3),
+        for (final (file, label, titles) in [
+          ('embedded_ass.mkv', 'English ASS', <String?>['English ASS']),
+          ('mov_text.mp4', 'eng', <String?>[null]),
+          (
+            'multilingual.mkv',
+            'English',
+            <String?>['English', 'Urdu', 'Japanese'],
+          ),
         ]) {
-          await open(file, count);
+          await open(file, titles.length, titles: titles);
           final name = file.replaceAll('.', '-');
           final metrics = await pair(name, label);
           expect(metrics['changed_pixels'] as int, greaterThan(120));
-          expect(await playback.nativeSubtitleTrackCount(), count);
+          expect(await playback.nativeSubtitleTrackCount(), titles.length);
         }
         final urdu = await pair('multilingual-urdu', 'Urdu');
         final japanese = await pair('multilingual-japanese', 'Japanese');

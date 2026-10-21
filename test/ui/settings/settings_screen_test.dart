@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:vpfl/data/default_app_prompt_provider.dart';
 import 'package:vpfl/data/model/app_database.dart';
+import 'package:vpfl/data/persistence_providers.dart';
 import 'package:vpfl/data/repositories/playback_history_repository.dart';
 import 'package:vpfl/data/services/default_app_prompt_service.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
@@ -73,6 +74,36 @@ void main() {
     await tester.tap(find.byKey(const Key('resume-enabled-setting')));
     await tester.pump();
     expect(resume, isFalse);
+  });
+
+  testWidgets('clear history requires confirmation and removes resume points', (
+    tester,
+  ) async {
+    final history = PlaybackHistoryRepository(database);
+    const uri = 'file:///videos/clip.mp4';
+    await history.recordStarted(
+      uri: uri,
+      displayName: 'clip.mp4',
+      duration: const Duration(minutes: 2),
+    );
+    await history.saveProgress(
+      uri: uri,
+      position: const Duration(seconds: 30),
+      duration: const Duration(minutes: 2),
+    );
+    await tester.pumpWidget(_harness(service, history: history));
+    await tester.ensureVisible(find.byKey(const Key('clear-history-button')));
+    await tester.tap(find.byKey(const Key('clear-history-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(await history.resumePosition(uri), const Duration(seconds: 30));
+
+    await tester.tap(find.byKey(const Key('clear-history-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear history'));
+    await tester.pumpAndSettle();
+    expect(await history.find(uri), isNull);
   });
 
   testWidgets('default-player state shows exact partial count and success', (
@@ -218,8 +249,13 @@ Widget _harness(
   ValueChanged<bool>? onHistory,
   ValueChanged<bool>? onResume,
   Future<bool> Function(Uri)? openExternal,
+  PlaybackHistoryRepository? history,
 }) => ProviderScope(
-  overrides: [defaultAppPromptProvider.overrideWithValue(service)],
+  overrides: [
+    defaultAppPromptProvider.overrideWithValue(service),
+    if (history != null)
+      playbackHistoryRepositoryProvider.overrideWithValue(history),
+  ],
   child: MaterialApp(
     theme: VpflTheme.light,
     home: Scaffold(

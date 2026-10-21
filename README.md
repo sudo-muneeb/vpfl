@@ -36,6 +36,12 @@ software rendering. This is the rendering path, not the video decoder mode.
 Use the CC control over the video to select a subtitle track or load an
 external SRT, ASS, SSA, or WebVTT file.
 
+VPFL resumes an unfinished video from its saved position when Resume playback
+is enabled. Playback history and resume are separate switches in Settings.
+Recent videos show the eight latest entries; older saved positions remain
+available. Remove an individual Recent card or use **Clear playback history**
+in Settings to delete saved positions. Completed videos start from the beginning.
+
 After three successful plays, an installed VPFL may invite you to make it the
 default for its supported video formats. **Maybe later** delays another
 invitation for 21 days. You can also inspect and change defaults in Settings.

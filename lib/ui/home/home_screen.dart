@@ -100,28 +100,57 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _RecentMediaCard extends StatelessWidget {
+class _RecentMediaCard extends ConsumerWidget {
   const _RecentMediaCard({required this.entry, required this.onTap});
 
   final PlaybackHistory entry;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hasDuration = entry.durationMs > 0;
     final localPath = _localPath(entry.uri);
-    return MediaCard(
-      title: localPath == null ? entry.displayName : path.basename(localPath),
-      watchedTime: hasDuration && !entry.completed
-          ? '${_time(entry.positionMs)} / ${_time(entry.durationMs)}'
-          : null,
-      progress: entry.completed
-          ? 1
-          : hasDuration
-          ? entry.positionMs / entry.durationMs
-          : null,
-      filePath: localPath,
-      onTap: onTap,
+    return Stack(
+      children: [
+        MediaCard(
+          title: localPath == null
+              ? entry.displayName
+              : path.basename(localPath),
+          watchedTime: hasDuration && !entry.completed
+              ? '${_time(entry.positionMs)} / ${_time(entry.durationMs)}'
+              : null,
+          progress: entry.completed
+              ? 1
+              : hasDuration
+              ? entry.positionMs / entry.durationMs
+              : null,
+          filePath: localPath,
+          onTap: onTap,
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: IconButton.filledTonal(
+            tooltip: 'Remove ${entry.displayName} from Recents',
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: () async {
+              try {
+                await ref
+                    .read(playbackHistoryRepositoryProvider)
+                    .remove(entry.uri);
+              } on Object catch (error) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Could not remove recent video: $error'),
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+        ),
+      ],
     );
   }
 
