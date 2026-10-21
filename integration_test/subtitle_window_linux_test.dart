@@ -6,6 +6,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -77,6 +78,7 @@ Future<void> _capture(WidgetTester tester, File output) async {
   output.parent.createSync(recursive: true);
   final size = (await _command('xdotool', ['getdisplaygeometry'])).split(' ');
   for (var attempt = 0; attempt < 4; attempt++) {
+    await _hideControlsForCapture(tester);
     await _command('ffmpeg', [
       '-nostdin',
       '-v',
@@ -210,6 +212,20 @@ Future<void> _chooseSubtitle(WidgetTester tester, String label) async {
   await mouse.removePointer();
 }
 
+Future<void> _openSubtitleTiming(WidgetTester tester) async {
+  final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  await mouse.addPointer(location: tester.getRect(find.byType(Video)).center);
+  await mouse.moveTo(
+    tester.getRect(find.byType(Video)).bottomCenter - const Offset(0, 40),
+  );
+  await tester.pump();
+  await tester.tap(find.byTooltip('More playback options'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Subtitle timing…'));
+  await tester.pumpAndSettle();
+  await mouse.removePointer();
+}
+
 Future<void> _toggleFullscreen(WidgetTester tester, bool enter) async {
   final video = find.byType(Video);
   final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -272,6 +288,24 @@ Future<void> _quietOverlay(WidgetTester tester) async {
   await gesture.removePointer();
   await tester.pump(const Duration(seconds: 4));
   await tester.pumpAndSettle(const Duration(milliseconds: 100));
+}
+
+Future<void> _hideControlsForCapture(WidgetTester tester) async {
+  // Paused controls stay visible by design. Suppress only their render layer
+  // for pixel comparisons, keeping the real player and subtitle output.
+  final controls = find.ancestor(
+    of: find.byType(PlayerControls),
+    matching: find.byType(AnimatedOpacity),
+  );
+  expect(controls, findsOneWidget);
+  final fade = find.descendant(
+    of: controls,
+    matching: find.byType(FadeTransition),
+  );
+  expect(fade, findsOneWidget);
+  tester.renderObject<RenderAnimatedOpacity>(fade).opacity =
+      const AlwaysStoppedAnimation<double>(0);
+  await tester.pump();
 }
 
 void main() {
@@ -646,7 +680,7 @@ void main() {
         await _quietOverlay(tester);
         final original = File('${artifacts.path}/timing-original-on.png');
         await _capture(tester, original);
-        await _chooseSubtitle(tester, 'Subtitle timing');
+        await _openSubtitleTiming(tester);
         expect(find.text('0 ms'), findsOneWidget);
         await tester.tap(find.byTooltip('Show subtitles 100 ms later'));
         for (
@@ -667,7 +701,7 @@ void main() {
         await _quietOverlay(tester);
         final repeatBefore = File('${artifacts.path}/timing-repeat-on.png');
         await _capture(tester, repeatBefore);
-        await _chooseSubtitle(tester, 'Subtitle timing');
+        await _openSubtitleTiming(tester);
         await tester.tap(find.byTooltip('Show subtitles 100 ms later'));
         for (
           var attempt = 0;
@@ -683,7 +717,7 @@ void main() {
         await _capture(tester, repeatAfter);
         await _compare(tester, repeatBefore, repeatAfter);
 
-        await _chooseSubtitle(tester, 'Subtitle timing');
+        await _openSubtitleTiming(tester);
         expect(find.text('+200 ms'), findsOneWidget);
         await tester.tap(find.text('Reset'));
         for (
@@ -705,7 +739,7 @@ void main() {
         await _quietOverlay(tester);
         final beforeEarly = File('${artifacts.path}/timing-early-off.png');
         await _capture(tester, beforeEarly);
-        await _chooseSubtitle(tester, 'Subtitle timing');
+        await _openSubtitleTiming(tester);
         await tester.tap(find.byTooltip('Show subtitles 100 ms earlier'));
         for (
           var attempt = 0;
@@ -723,7 +757,7 @@ void main() {
 
         await playback.resetSubtitleDelay();
         await playback.seek(const Duration(milliseconds: 1050));
-        await _chooseSubtitle(tester, 'Subtitle timing');
+        await _openSubtitleTiming(tester);
         expect(find.text('0 ms'), findsOneWidget);
         await Future.wait(
           List.generate(50, (_) => playback.adjustSubtitleDelay(100)),
@@ -747,7 +781,7 @@ void main() {
         final maxDelay = File('${artifacts.path}/timing-max-off.png');
         await _capture(tester, maxDelay);
         await _compare(tester, original, maxDelay);
-        await _chooseSubtitle(tester, 'Subtitle timing');
+        await _openSubtitleTiming(tester);
         expect(find.text('+5000 ms'), findsOneWidget);
         await tester.tap(find.byTooltip('Show subtitles 100 ms earlier'));
         for (
@@ -776,7 +810,7 @@ void main() {
         await playback.seek(const Duration(milliseconds: 800));
         await playback.playOrPause();
         expect(playback.isPlaying, isTrue);
-        await _chooseSubtitle(tester, 'Subtitle timing');
+        await _openSubtitleTiming(tester);
         await tester.tap(find.byTooltip('Show subtitles 100 ms later'));
         for (
           var attempt = 0;
@@ -813,7 +847,7 @@ void main() {
         await pair('fullscreen-srt', 'English SRT');
         await playback.seek(const Duration(milliseconds: 4500));
         await pair('fullscreen-seek', 'English SRT');
-        await _chooseSubtitle(tester, 'Subtitle timing');
+        await _openSubtitleTiming(tester);
         expect(find.text('0 ms'), findsOneWidget);
         await tester.tap(find.text('Close'));
         await tester.pumpAndSettle();
@@ -1371,25 +1405,47 @@ void main() {
 
       Future<File> grab(String name) async {
         final path = File('${artifacts.path}/$name.png');
-        await _command('ffmpeg', [
-          '-nostdin',
-          '-v',
-          'error',
-          '-y',
-          '-f',
-          'x11grab',
-          '-draw_mouse',
-          '0',
-          '-window_id',
-          window!,
-          '-i',
-          Platform.environment['DISPLAY']!,
-          '-frames:v',
-          '1',
-          path.path,
-        ]);
-        record('window_capture', {'file': path.path});
-        return path;
+        for (var attempt = 0; attempt < 4; attempt++) {
+          await _hideControlsForCapture(tester);
+          await _command('ffmpeg', [
+            '-nostdin',
+            '-v',
+            'error',
+            '-y',
+            '-f',
+            'x11grab',
+            '-draw_mouse',
+            '0',
+            '-window_id',
+            window!,
+            '-i',
+            Platform.environment['DISPLAY']!,
+            '-frames:v',
+            '1',
+            path.path,
+          ]);
+          final texture = tester.getRect(find.byType(Texture).first);
+          final ratio = tester.view.devicePixelRatio;
+          try {
+            await _command('python3', [
+              'scripts/ci/check_subtitle_window.py',
+              path.path,
+              path.path,
+              '--rect',
+              '${(texture.left * ratio).round()}',
+              '${(texture.top * ratio).round()}',
+              '${(texture.width * ratio).round()}',
+              '${(texture.height * ratio).round()}',
+              '--expect',
+              'absent',
+            ]);
+            record('window_capture', {'file': path.path});
+            return path;
+          } on TestFailure {
+            if (attempt == 3) rethrow;
+          }
+        }
+        throw TestFailure('Could not capture video without playback controls');
       }
 
       for (var index = 0; index < cases.length; index++) {
@@ -1585,7 +1641,7 @@ void main() {
                 );
             await tester.pump(const Duration(milliseconds: 100));
             // Remounting controls for this optional experiment restarts their
-            // visibility timer. Hide them before the next resize comparison.
+            // visibility timer. Move the pointer away before the next capture.
             await _quietOverlay(tester);
           }
           if (firstLate != null && finalWidth == width && finalHeight == 800) {
