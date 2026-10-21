@@ -21,7 +21,7 @@ platform, check the [current product goals](GOALS.md) and the
 
 Use a Linux host with the Flutter SDK on `PATH`. CI uses Flutter **3.47.5**;
 using that version gives the closest match. Install the Linux build
-dependencies described in the [README](README.md#build-deb-and-rpm-packages),
+dependencies described in the [README](README.md#run-from-source),
 then, from the repository root, run:
 
 ```bash
@@ -30,7 +30,8 @@ flutter run -d linux
 ```
 
 To run the app with a separate local profile, use
-`./scripts/debug-isolated.sh`. See the [README](README.md#run) for its options.
+`./scripts/debug-isolated.sh`. See the [README](README.md#run-from-source) for
+the command, or run `./scripts/debug-isolated.sh --help` for its options.
 
 ## Make a change
 
