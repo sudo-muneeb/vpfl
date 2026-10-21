@@ -96,6 +96,31 @@ void main() {
     expect(find.text(details), findsOneWidget);
   });
 
+  testWidgets('player title bar uses Back and invokes navigation', (
+    tester,
+  ) async {
+    var backCount = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: VpflTheme.dark,
+        home: Scaffold(
+          body: AppTopBar(
+            title: 'movie.mp4',
+            themeMode: ThemeMode.dark,
+            onOpenFile: () {},
+            onThemeModeChanged: (_) {},
+            onBack: () => backCount++,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+    expect(find.byTooltip('Home'), findsNothing);
+    await tester.tap(find.byTooltip('Back'));
+    expect(backCount, 1);
+  });
+
   testWidgets('window controls keep matching targets at common scale factors', (
     tester,
   ) async {

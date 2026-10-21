@@ -704,6 +704,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                 return VideoControlsOverlay(
                                   title: _titleFor(_playingUri),
                                   fullscreen: fullscreen,
+                                  isPlaying: _playback.isPlaying,
+                                  playingStream: _playback.playingStream,
+                                  onPlayPause: _playback.playOrPause,
                                   playlist: _playback.playlist,
                                   playlistStream: _playback.playlistStream,
                                   onPrevious: _previousVideo,

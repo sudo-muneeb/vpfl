@@ -875,7 +875,7 @@ void main() {
       await playback.seek(const Duration(milliseconds: 1500));
       await visiblePair('home-before');
 
-      await tester.tap(find.byTooltip('Home'));
+      await tester.tap(find.byTooltip('Back'));
       for (
         var attempt = 0;
         attempt < 100 && find.byType(MediaCard).evaluate().isEmpty;

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 
 import '../core/themes/vpfl_theme_extension.dart';
@@ -16,6 +15,9 @@ class VideoControlsOverlay extends StatefulWidget {
     required this.controls,
     required this.onExit,
     required this.bindings,
+    required this.isPlaying,
+    required this.playingStream,
+    required this.onPlayPause,
     this.playlist,
     this.playlistStream,
     this.onPrevious,
@@ -32,6 +34,9 @@ class VideoControlsOverlay extends StatefulWidget {
   final Widget controls;
   final Future<void> Function() onExit;
   final Map<ShortcutActivator, VoidCallback> bindings;
+  final bool isPlaying;
+  final Stream<bool> playingStream;
+  final Future<void> Function() onPlayPause;
   final Playlist? playlist;
   final Stream<Playlist>? playlistStream;
   final Future<void> Function()? onPrevious;
@@ -46,23 +51,68 @@ class VideoControlsOverlay extends StatefulWidget {
 }
 
 class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
-  static const Duration _hideDelay = Duration(seconds: 3);
+  static const Duration _idleHideDelay = Duration(milliseconds: 1500);
+  static const Duration _nearControlsHideDelay = Duration(seconds: 3);
+  static const double _controlProximityHeight = 140;
   final FocusNode _shortcutFocus = FocusNode(debugLabel: 'Video shortcuts');
   Timer? _hideTimer;
+  late StreamSubscription<bool> _playingSubscription;
+  late bool _playing;
   bool _bottomVisible = true;
   bool _topVisible = false;
+  bool _edgeButtonsVisible = false;
+  bool _routeCovered = false;
+  bool _pointerNearControls = false;
 
   @override
   void initState() {
     super.initState();
+    _playing = widget.isPlaying;
+    _playingSubscription = widget.playingStream.listen(_onPlayingChanged);
     _scheduleHide();
+  }
+
+  @override
+  void didUpdateWidget(covariant VideoControlsOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.playingStream != widget.playingStream) {
+      _playingSubscription.cancel();
+      _playingSubscription = widget.playingStream.listen(_onPlayingChanged);
+    }
+    if (oldWidget.isPlaying != widget.isPlaying) {
+      _onPlayingChanged(widget.isPlaying);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final routeCovered = ModalRoute.isCurrentOf(context) == false;
+    if (routeCovered == _routeCovered) return;
+    _routeCovered = routeCovered;
+    if (routeCovered) {
+      _hideTimer?.cancel();
+      _bottomVisible = true;
+    } else {
+      _scheduleHide();
+    }
   }
 
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _playingSubscription.cancel();
     _shortcutFocus.dispose();
     super.dispose();
+  }
+
+  void _onPlayingChanged(bool playing) {
+    if (!mounted || playing == _playing) return;
+    setState(() {
+      _playing = playing;
+      _bottomVisible = true;
+    });
+    _scheduleHide();
   }
 
   void _restoreShortcutFocus() {
@@ -80,26 +130,59 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
     });
   }
 
-  void _onHover(PointerHoverEvent event) {
-    final revealTop = event.localPosition.dy <= 16;
-    if (!_bottomVisible || (revealTop && !_topVisible)) {
+  void _onPointerMovement(Offset position) {
+    _pointerNearControls = _isNearControls(position);
+    final revealTop = position.dy <= 16;
+    final size = context.size ?? MediaQuery.sizeOf(context);
+    final inEdgeBand = (position.dy - size.height / 2).abs() <= 96;
+    final nearEdge =
+        inEdgeBand && (position.dx <= 96 || position.dx >= size.width - 96);
+    if (!_bottomVisible ||
+        (revealTop && !_topVisible) ||
+        nearEdge != _edgeButtonsVisible) {
       setState(() {
         _bottomVisible = true;
         if (revealTop) _topVisible = true;
+        _edgeButtonsVisible = nearEdge;
       });
+    }
+    _scheduleHide();
+  }
+
+  void _onPointerExit() {
+    _pointerNearControls = false;
+    if (_edgeButtonsVisible) {
+      setState(() => _edgeButtonsVisible = false);
     }
     _scheduleHide();
   }
 
   void _scheduleHide() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(_hideDelay, () {
-      if (!mounted) return;
-      setState(() {
-        _bottomVisible = false;
-        _topVisible = false;
-      });
-    });
+    if (_routeCovered) return;
+    _hideTimer = Timer(
+      _pointerNearControls ? _nearControlsHideDelay : _idleHideDelay,
+      () {
+        if (!mounted) return;
+        setState(() {
+          if (_playing) _bottomVisible = false;
+          _topVisible = false;
+          _edgeButtonsVisible = false;
+        });
+      },
+    );
+  }
+
+  bool _isNearControls(Offset position) {
+    final size = context.size ?? MediaQuery.sizeOf(context);
+    return position.dy >= size.height - _controlProximityHeight;
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    _pointerNearControls = _isNearControls(event.localPosition);
+    if (!_bottomVisible) setState(() => _bottomVisible = true);
+    _scheduleHide();
+    _restoreShortcutFocus();
   }
 
   @override
@@ -112,16 +195,23 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
         autofocus: true,
         child: Listener(
           behavior: HitTestBehavior.translucent,
-          onPointerUp: (_) => _restoreShortcutFocus(),
+          onPointerUp: _onPointerUp,
           child: MouseRegion(
             cursor: !widget.fullscreen || _bottomVisible || _topVisible
                 ? MouseCursor.defer
                 : SystemMouseCursors.none,
-            onHover: _onHover,
-            onExit: (_) => _scheduleHide(),
+            onHover: (event) => _onPointerMovement(event.localPosition),
+            onEnter: (event) => _onPointerMovement(event.localPosition),
+            onExit: (_) => _onPointerExit(),
             child: Stack(
               fit: StackFit.expand,
               children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: widget.onPlayPause,
+                  ),
+                ),
                 if (widget.inspectorMode != null &&
                     widget.inspectorBuilder != null)
                   ValueListenableBuilder<InspectorMode?>(
@@ -196,35 +286,34 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
                       if (queue == null || queue.medias.length < 2) {
                         return const SizedBox.shrink();
                       }
-                      return IgnorePointer(
-                        ignoring: !_bottomVisible,
-                        child: AnimatedOpacity(
-                          opacity: _bottomVisible ? 1 : 0,
-                          duration: const Duration(milliseconds: 180),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _EdgeButton(
-                                tooltip: 'Previous video',
-                                icon: Icons.skip_previous_rounded,
-                                onPressed:
-                                    (widget.canPrevious?.call() ??
-                                        queue.index > 0)
-                                    ? widget.onPrevious
-                                    : null,
-                              ),
-                              _EdgeButton(
-                                tooltip: 'Next video',
-                                icon: Icons.skip_next_rounded,
-                                onPressed:
-                                    (widget.canNext?.call() ??
-                                        queue.index < queue.medias.length - 1)
-                                    ? widget.onNext
-                                    : null,
-                              ),
-                            ],
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _EdgeReveal(
+                            visible: _edgeButtonsVisible,
+                            child: _EdgeButton(
+                              tooltip: 'Previous video',
+                              icon: Icons.skip_previous_rounded,
+                              onPressed:
+                                  (widget.canPrevious?.call() ??
+                                      queue.index > 0)
+                                  ? widget.onPrevious
+                                  : null,
+                            ),
                           ),
-                        ),
+                          _EdgeReveal(
+                            visible: _edgeButtonsVisible,
+                            child: _EdgeButton(
+                              tooltip: 'Next video',
+                              icon: Icons.skip_next_rounded,
+                              onPressed:
+                                  (widget.canNext?.call() ??
+                                      queue.index < queue.medias.length - 1)
+                                  ? widget.onNext
+                                  : null,
+                            ),
+                          ),
+                        ],
                       );
                     },
                   ),
@@ -235,32 +324,40 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
                   bottom: 0,
                   child: IgnorePointer(
                     ignoring: !_bottomVisible,
-                    child: AnimatedOpacity(
-                      opacity: _bottomVisible ? 1 : 0,
-                      duration: const Duration(milliseconds: 180),
-                      child: SafeArea(
-                        top: false,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                colors.playerOverlayMiddle,
-                                colors.playerOverlayBottom,
-                              ],
+                    child: AnimatedSlide(
+                      offset: _bottomVisible
+                          ? Offset.zero
+                          : const Offset(0, 0.35),
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeInOutCubic,
+                      child: AnimatedOpacity(
+                        opacity: _bottomVisible ? 1 : 0,
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeInOutCubic,
+                        child: SafeArea(
+                          top: false,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  colors.playerOverlayMiddle,
+                                  colors.playerOverlayBottom,
+                                ],
+                              ),
                             ),
-                          ),
-                          child: IconTheme(
-                            data: IconThemeData(
-                              color: colors.playerOverlayForeground,
-                            ),
-                            child: DefaultTextStyle.merge(
-                              style: TextStyle(
+                            child: IconTheme(
+                              data: IconThemeData(
                                 color: colors.playerOverlayForeground,
                               ),
-                              child: widget.controls,
+                              child: DefaultTextStyle.merge(
+                                style: TextStyle(
+                                  color: colors.playerOverlayForeground,
+                                ),
+                                child: widget.controls,
+                              ),
                             ),
                           ),
                         ),
@@ -277,6 +374,26 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
   }
 }
 
+class _EdgeReveal extends StatelessWidget {
+  const _EdgeReveal({required this.visible, required this.child});
+
+  final bool visible;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ExcludeFocus(
+    excluding: !visible,
+    child: IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: const Duration(milliseconds: 180),
+        child: child,
+      ),
+    ),
+  );
+}
+
 class _EdgeButton extends StatelessWidget {
   const _EdgeButton({
     required this.tooltip,
@@ -289,23 +406,48 @@ class _EdgeButton extends StatelessWidget {
   final Future<void> Function()? onPressed;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    child: Material(
-      color: Theme.of(context)
-          .extension<VpflThemeExtension>()!
-          .playerEdgeBackground,
-      shape: const CircleBorder(),
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onPressed,
-        icon: Icon(
-          icon,
-          color: Theme.of(context)
-              .extension<VpflThemeExtension>()!
-              .playerOverlayForeground,
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<VpflThemeExtension>()!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Semantics(
+        container: true,
+        button: true,
+        enabled: onPressed != null,
+        label: tooltip,
+        onTap: onPressed == null ? null : () => onPressed!(),
+        child: ExcludeSemantics(
+          child: OutlinedButton(
+            onPressed: onPressed,
+            style:
+                OutlinedButton.styleFrom(
+                  backgroundColor: colors.playerEdgeBackground,
+                  foregroundColor: colors.playerOverlayForeground,
+                  disabledForegroundColor: colors.playerOverlayForeground
+                      .withValues(alpha: 0.45),
+                  side: BorderSide.none,
+                  fixedSize: const Size(72, 48),
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ).copyWith(
+                  foregroundColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.disabled)) {
+                      return colors.playerOverlayForeground.withValues(
+                        alpha: 0.45,
+                      );
+                    }
+                    return states.contains(WidgetState.hovered) ||
+                            states.contains(WidgetState.pressed)
+                        ? colors.playbackProgress
+                        : colors.playerOverlayForeground;
+                  }),
+                ),
+            child: Icon(icon, size: 36),
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

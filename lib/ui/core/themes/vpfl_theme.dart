@@ -25,7 +25,8 @@ abstract final class VpflTheme {
     playerOverlayTop: Color(0xC9000000),
     playerOverlayMiddle: Color(0x52000000),
     playerOverlayBottom: Color(0xD9000000),
-    playerEdgeBackground: Color(0x83000000),
+    playerEdgeBackground: Color(0xB3000000),
+    playerMenuBackground: Color(0xB3000000),
   );
 
   static const _darkTokens = VpflThemeExtension(
@@ -48,7 +49,8 @@ abstract final class VpflTheme {
     playerOverlayTop: Color(0xC9000000),
     playerOverlayMiddle: Color(0x52000000),
     playerOverlayBottom: Color(0xD9000000),
-    playerEdgeBackground: Color(0x83000000),
+    playerEdgeBackground: Color(0xB3000000),
+    playerMenuBackground: Color(0xB3000000),
   );
 
   /// The default light appearance.

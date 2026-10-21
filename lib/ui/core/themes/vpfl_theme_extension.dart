@@ -24,6 +24,7 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
     required this.playerOverlayMiddle,
     required this.playerOverlayBottom,
     required this.playerEdgeBackground,
+    required this.playerMenuBackground,
   });
 
   /// Background shown behind video frames.
@@ -47,6 +48,7 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
   final Color playerOverlayMiddle;
   final Color playerOverlayBottom;
   final Color playerEdgeBackground;
+  final Color playerMenuBackground;
 
   @override
   VpflThemeExtension copyWith({
@@ -70,6 +72,7 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
     Color? playerOverlayMiddle,
     Color? playerOverlayBottom,
     Color? playerEdgeBackground,
+    Color? playerMenuBackground,
   }) {
     return VpflThemeExtension(
       topBarBackground: topBarBackground ?? this.topBarBackground,
@@ -94,6 +97,7 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
       playerOverlayMiddle: playerOverlayMiddle ?? this.playerOverlayMiddle,
       playerOverlayBottom: playerOverlayBottom ?? this.playerOverlayBottom,
       playerEdgeBackground: playerEdgeBackground ?? this.playerEdgeBackground,
+      playerMenuBackground: playerMenuBackground ?? this.playerMenuBackground,
     );
   }
 
@@ -173,6 +177,11 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
       playerEdgeBackground: Color.lerp(
         playerEdgeBackground,
         other.playerEdgeBackground,
+        t,
+      )!,
+      playerMenuBackground: Color.lerp(
+        playerMenuBackground,
+        other.playerMenuBackground,
         t,
       )!,
     );

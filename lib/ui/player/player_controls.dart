@@ -8,6 +8,7 @@ import '../../data/services/subtitle_delay.dart';
 
 import '../core/themes/vpfl_theme_extension.dart';
 import '../core/themes/vpfl_typography.dart';
+import 'player_menu_style.dart';
 
 /// Event-driven playback controls. Each stream only rebuilds the control that
 /// displays its value, keeping position updates away from the rest of the UI.
@@ -106,60 +107,36 @@ class PlayerControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<VpflThemeExtension>()!;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 15),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _SeekBar(
-            duration: duration,
-            durationStream: durationStream,
-            position: position,
-            positionStream: positionStream,
-            onSeek: onSeek,
-          ),
-          LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final bool compact = constraints.maxWidth < 860;
-              final bool narrow = constraints.maxWidth < 600;
-              return SizedBox(
-                height: _controlHeight,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _OverflowMenu(
-                            tracks: tracks,
-                            tracksStream: tracksStream,
-                            selectedTracks: selectedTracks,
-                            selectedTracksStream: selectedTracksStream,
-                            onSetTrack: onSetTrack,
-                            onLoadSubtitleFile: onLoadSubtitleFile,
-                            subtitleDelayMilliseconds:
-                                subtitleDelayMilliseconds,
-                            subtitleDelayStream: subtitleDelayStream,
-                            onAdjustSubtitleDelay: onAdjustSubtitleDelay,
-                            onResetSubtitleDelay: onResetSubtitleDelay,
-                            onSetRate: onSetRate,
-                            rates: _rates,
-                            narrow: narrow,
-                            fit: fit,
-                            onSetFit: onSetFit,
-                            onScreenshot: onScreenshot,
-                            onShowInfo: onShowInfo,
-                          ),
-                          _VolumeControl(
-                            volume: volume,
-                            volumeStream: volumeStream,
-                            onSetVolume: onSetVolume,
-                            showSlider: !compact,
-                          ),
-                          if (!narrow) ...[
-                            _SubtitleButton(
+    return Theme(
+      data: Theme.of(context)
+          .copyWith(popupMenuTheme: PlayerMenuStyle.popupTheme(context)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 15),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _SeekBar(
+              duration: duration,
+              durationStream: durationStream,
+              position: position,
+              positionStream: positionStream,
+              onSeek: onSeek,
+            ),
+            LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final bool compact = constraints.maxWidth < 860;
+                final bool narrow = constraints.maxWidth < 600;
+                return SizedBox(
+                  height: _controlHeight,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _OverflowMenu(
                               tracks: tracks,
                               tracksStream: tracksStream,
                               selectedTracks: selectedTracks,
@@ -171,110 +148,136 @@ class PlayerControls extends StatelessWidget {
                               subtitleDelayStream: subtitleDelayStream,
                               onAdjustSubtitleDelay: onAdjustSubtitleDelay,
                               onResetSubtitleDelay: onResetSubtitleDelay,
-                            ),
-                            _RateButton(
+                              onSetRate: onSetRate,
                               rate: rate,
                               rateStream: rateStream,
                               rates: _rates,
-                              onSetRate: onSetRate,
+                              narrow: narrow,
+                              fit: fit,
+                              onSetFit: onSetFit,
+                              onScreenshot: onScreenshot,
+                              onShowInfo: onShowInfo,
                             ),
+                            _VolumeControl(
+                              volume: volume,
+                              volumeStream: volumeStream,
+                              onSetVolume: onSetVolume,
+                              showSlider: !compact,
+                            ),
+                            if (!narrow) ...[
+                              _SubtitleButton(
+                                tracks: tracks,
+                                tracksStream: tracksStream,
+                                selectedTracks: selectedTracks,
+                                selectedTracksStream: selectedTracksStream,
+                                onSetTrack: onSetTrack,
+                                onLoadSubtitleFile: onLoadSubtitleFile,
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: 'Seek backward 10 seconds',
-                          onPressed: () => onSeekBy(-_seekStep),
-                          iconSize: 23,
-                          constraints: const BoxConstraints(
-                            minWidth: 44,
-                            minHeight: 44,
-                          ),
-                          icon: const Icon(Icons.replay_10_rounded),
-                        ),
-                        StreamBuilder<bool>(
-                          stream: playingStream,
-                          initialData: isPlaying,
-                          builder: (context, snapshot) => IconButton.filled(
-                            tooltip: (snapshot.data ?? isPlaying)
-                                ? 'Pause'
-                                : 'Play',
-                            onPressed: onPlayPause,
-                            iconSize: 27,
-                            constraints: const BoxConstraints.tightFor(
-                              width: 46,
-                              height: 46,
-                            ),
-                            style: IconButton.styleFrom(
-                              backgroundColor: tokens.playerControlSurface,
-                              foregroundColor: tokens.playerControlForeground,
-                            ),
-                            icon: Icon(
-                              (snapshot.data ?? isPlaying)
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Seek forward 10 seconds',
-                          onPressed: () => onSeekBy(_seekStep),
-                          iconSize: 23,
-                          constraints: const BoxConstraints(
-                            minWidth: 44,
-                            minHeight: 44,
-                          ),
-                          icon: const Icon(Icons.forward_10_rounded),
-                        ),
-                      ],
-                    ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Row(
+                      Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _ShuffleButton(
-                            shuffle: shuffle,
-                            stream: shuffleStream,
-                            playlist: playlist,
-                            playlistStream: playlistStream,
-                            onSet: onSetShuffle,
+                          IconButton(
+                            tooltip: 'Seek backward 10 seconds',
+                            onPressed: () => onSeekBy(-_seekStep),
+                            iconSize: 23,
+                            constraints: const BoxConstraints(
+                              minWidth: 44,
+                              minHeight: 44,
+                            ),
+                            icon: const Icon(Icons.replay_10_rounded),
                           ),
-                          _RepeatButton(
-                            mode: playlistMode,
-                            stream: playlistModeStream,
-                            onSet: onSetPlaylistMode,
+                          StreamBuilder<bool>(
+                            stream: playingStream,
+                            initialData: isPlaying,
+                            builder: (context, snapshot) => IconButton.filled(
+                              tooltip: (snapshot.data ?? isPlaying)
+                                  ? 'Pause'
+                                  : 'Play',
+                              onPressed: onPlayPause,
+                              iconSize: 27,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 46,
+                                height: 46,
+                              ),
+                              style: IconButton.styleFrom(
+                                backgroundColor: tokens.playerControlSurface,
+                                foregroundColor: tokens.playerControlForeground,
+                              ),
+                              icon: Icon(
+                                (snapshot.data ?? isPlaying)
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                              ),
+                            ),
                           ),
                           IconButton(
-                            tooltip: fullscreen
-                                ? 'Exit Fullscreen'
-                                : 'Enter Fullscreen',
-                            onPressed: onToggleFullscreen,
-                            iconSize: 22,
-                            icon: Icon(
-                              fullscreen
-                                  ? Icons.close_fullscreen_rounded
-                                  : Icons.open_in_full_rounded,
+                            tooltip: 'Seek forward 10 seconds',
+                            onPressed: () => onSeekBy(_seekStep),
+                            iconSize: 23,
+                            constraints: const BoxConstraints(
+                              minWidth: 44,
+                              minHeight: 44,
                             ),
+                            icon: const Icon(Icons.forward_10_rounded),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!narrow)
+                              _RateButton(
+                                rate: rate,
+                                rateStream: rateStream,
+                                rates: _rates,
+                                onSetRate: onSetRate,
+                              ),
+                            _ShuffleButton(
+                              shuffle: shuffle,
+                              stream: shuffleStream,
+                              playlist: playlist,
+                              playlistStream: playlistStream,
+                              onSet: onSetShuffle,
+                            ),
+                            _RepeatButton(
+                              mode: playlistMode,
+                              stream: playlistModeStream,
+                              onSet: onSetPlaylistMode,
+                            ),
+                            IconButton(
+                              tooltip: fullscreen
+                                  ? 'Exit Fullscreen'
+                                  : 'Enter Fullscreen',
+                              onPressed: onToggleFullscreen,
+                              iconSize: 22,
+                              icon: Icon(
+                                fullscreen
+                                    ? Icons.close_fullscreen_rounded
+                                    : Icons.open_in_full_rounded,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SeekBar extends StatelessWidget {
+class _SeekBar extends StatefulWidget {
   const _SeekBar({
     required this.duration,
     required this.durationStream,
@@ -290,74 +293,114 @@ class _SeekBar extends StatelessWidget {
   final Future<void> Function(Duration) onSeek;
 
   @override
+  State<_SeekBar> createState() => _SeekBarState();
+}
+
+class _SeekBarState extends State<_SeekBar> {
+  bool _showRemaining = false;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<VpflThemeExtension>()!;
     return StreamBuilder<Duration>(
-      stream: durationStream,
-      initialData: duration,
+      stream: widget.durationStream,
+      initialData: widget.duration,
       builder: (BuildContext context, AsyncSnapshot<Duration> durationState) {
-        final int totalMilliseconds = durationState.data?.inMilliseconds ?? 0;
+        final durationMilliseconds = durationState.data?.inMilliseconds ?? 0;
+        final int totalMilliseconds = durationMilliseconds.isNegative
+            ? 0
+            : durationMilliseconds;
+        final timeStyle = VpflTypography.timecode.copyWith(
+          color: tokens.playerOverlayForeground,
+        );
+        final widthLayout = TextPainter(
+          text: TextSpan(
+            text:
+                '−${_formatTime(totalMilliseconds)} / ${_formatTime(totalMilliseconds)}',
+            style: timeStyle,
+          ),
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: 1,
+        )..layout();
+        final timeWidth = widthLayout.width.ceilToDouble();
+        widthLayout.dispose();
         return StreamBuilder<Duration>(
-          stream: positionStream,
-          initialData: position,
-          builder:
-              (BuildContext context, AsyncSnapshot<Duration> positionState) {
-                final int currentMilliseconds =
-                    (positionState.data?.inMilliseconds ?? 0).clamp(
-                      0,
-                      totalMilliseconds,
-                    );
-                return Row(
-                  children: [
-                    SizedBox(
-                      width: 58,
-                      child: Text(
-                        _formatTime(currentMilliseconds),
-                        style: VpflTypography.timecode.copyWith(
-                          color: tokens.playerOverlayForeground,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: tokens.playbackProgress,
-                          inactiveTrackColor: tokens.playerOverlayForeground
-                              .withValues(alpha: 0.35),
-                          thumbColor: tokens.playbackProgress,
-                          overlayColor: tokens.playbackProgress.withValues(
-                            alpha: 0.18,
-                          ),
-                          trackHeight: 3,
-                        ),
-                        child: Slider(
-                          min: 0,
-                          max: totalMilliseconds > 0
-                              ? totalMilliseconds.toDouble()
-                              : 1,
-                          value: currentMilliseconds.toDouble(),
-                          onChanged: totalMilliseconds > 0 ? (_) {} : null,
-                          onChangeEnd: totalMilliseconds > 0
-                              ? (double value) => onSeek(
-                                  Duration(milliseconds: value.round()),
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 58,
-                      child: Text(
-                        _formatTime(totalMilliseconds),
-                        textAlign: TextAlign.end,
-                        style: VpflTypography.timecode.copyWith(
-                          color: tokens.playerOverlayForeground,
-                        ),
-                      ),
-                    ),
-                  ],
+          stream: widget.positionStream,
+          initialData: widget.position,
+          builder: (BuildContext context, AsyncSnapshot<Duration> positionState) {
+            final int currentMilliseconds =
+                (positionState.data?.inMilliseconds ?? 0).clamp(
+                  0,
+                  totalMilliseconds,
                 );
-              },
+            final int remainingMilliseconds =
+                totalMilliseconds - currentMilliseconds;
+            return Row(
+              children: [
+                Tooltip(
+                  message: _showRemaining
+                      ? 'Show elapsed time'
+                      : 'Show remaining time',
+                  child: Semantics(
+                    button: true,
+                    label: _showRemaining
+                        ? 'Playback time remaining'
+                        : 'Playback time elapsed',
+                    value:
+                        '${_formatTime(_showRemaining ? remainingMilliseconds : currentMilliseconds)} '
+                        '${_showRemaining ? 'remaining' : 'elapsed'} of '
+                        '${_formatTime(totalMilliseconds)} total',
+                    child: InkWell(
+                      onTap: () =>
+                          setState(() => _showRemaining = !_showRemaining),
+                      borderRadius: BorderRadius.circular(6),
+                      child: SizedBox(
+                        width: timeWidth,
+                        height: 44,
+                        child: Center(
+                          child: Text(
+                            '${_showRemaining && totalMilliseconds > 0 ? '−' : ''}'
+                            '${_formatTime(_showRemaining ? remainingMilliseconds : currentMilliseconds)} / '
+                            '${_formatTime(totalMilliseconds)}',
+                            style: timeStyle,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: tokens.playbackProgress,
+                      inactiveTrackColor: tokens.playerOverlayForeground
+                          .withValues(alpha: 0.35),
+                      thumbColor: tokens.playbackProgress,
+                      overlayColor: tokens.playbackProgress.withValues(
+                        alpha: 0.18,
+                      ),
+                      trackHeight: 3,
+                    ),
+                    child: Slider(
+                      min: 0,
+                      max: totalMilliseconds > 0
+                          ? totalMilliseconds.toDouble()
+                          : 1,
+                      value: currentMilliseconds.toDouble(),
+                      onChanged: totalMilliseconds > 0 ? (_) {} : null,
+                      onChangeEnd: totalMilliseconds > 0
+                          ? (double value) => widget.onSeek(
+                              Duration(milliseconds: value.round()),
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -396,15 +439,26 @@ class _RateButton extends StatelessWidget {
         final double current = snapshot.data ?? rate;
         return PopupMenuButton<double>(
           tooltip: 'Playback speed',
+          clipBehavior: Clip.antiAlias,
           initialValue: current,
           onSelected: onSetRate,
-          itemBuilder: (BuildContext context) => [
-            for (final double value in rates)
-              PopupMenuItem<double>(
-                value: value,
-                child: Text('${_formatRate(value)}×'),
-              ),
-          ],
+          itemBuilder: (BuildContext context) =>
+              PlayerMenuStyle.frostedPopupItems<double>([
+                for (final double value in rates)
+                  PopupMenuItem<double>(
+                    value: value,
+                    child: Text(
+                      '${_formatRate(value)}×',
+                      style: TextStyle(
+                        color: current == value
+                            ? Theme.of(context)
+                                  .extension<VpflThemeExtension>()!
+                                  .playbackProgress
+                            : null,
+                      ),
+                    ),
+                  ),
+              ]),
           child: Tooltip(
             message: 'Playback speed: ${_formatRate(current)}×',
             child: SizedBox(
@@ -494,10 +548,6 @@ class _SubtitleButton extends StatelessWidget {
     required this.selectedTracksStream,
     required this.onSetTrack,
     required this.onLoadSubtitleFile,
-    required this.subtitleDelayMilliseconds,
-    required this.subtitleDelayStream,
-    required this.onAdjustSubtitleDelay,
-    required this.onResetSubtitleDelay,
   });
 
   final Tracks tracks;
@@ -506,10 +556,6 @@ class _SubtitleButton extends StatelessWidget {
   final Stream<Track> selectedTracksStream;
   final Future<void> Function(Object) onSetTrack;
   final Future<void> Function() onLoadSubtitleFile;
-  final int Function() subtitleDelayMilliseconds;
-  final Stream<int> subtitleDelayStream;
-  final Future<void> Function(int) onAdjustSubtitleDelay;
-  final Future<void> Function() onResetSubtitleDelay;
 
   @override
   Widget build(BuildContext context) => StreamBuilder<Track>(
@@ -523,22 +569,15 @@ class _SubtitleButton extends StatelessWidget {
         final requested = (selection.data ?? selectedTracks).subtitle;
         return PopupMenuButton<Object>(
           tooltip: 'Subtitles',
+          clipBehavior: Clip.antiAlias,
           onSelected: (choice) async {
             if (choice is SubtitleTrack) {
               await onSetTrack(choice);
-            } else if (choice == 'timing') {
-              await _showSubtitleDelayDialog(
-                context,
-                subtitleDelayMilliseconds(),
-                subtitleDelayStream,
-                onAdjustSubtitleDelay,
-                onResetSubtitleDelay,
-              );
             } else {
               await onLoadSubtitleFile();
             }
           },
-          itemBuilder: (context) => [
+          itemBuilder: (context) => PlayerMenuStyle.frostedPopupItems<Object>([
             for (final track in [
               SubtitleTrack.auto(),
               SubtitleTrack.no(),
@@ -549,18 +588,23 @@ class _SubtitleButton extends StatelessWidget {
               CheckedPopupMenuItem<Object>(
                 value: track,
                 checked: requested.id == track.id,
-                child: Text(_OverflowMenu._trackLabel(track)),
+                child: Text(
+                  _OverflowMenu._trackLabel(track),
+                  style: TextStyle(
+                    color: requested.id == track.id
+                        ? Theme.of(context)
+                              .extension<VpflThemeExtension>()!
+                              .playbackProgress
+                        : null,
+                  ),
+                ),
               ),
             const PopupMenuDivider(),
             const PopupMenuItem<Object>(
               value: 'load-file',
               child: Text('Load subtitle file…'),
             ),
-            const PopupMenuItem<Object>(
-              value: 'timing',
-              child: Text('Subtitle timing…'),
-            ),
-          ],
+          ]),
           icon: const Icon(Icons.closed_caption_outlined),
         );
       },
@@ -660,62 +704,65 @@ Future<void> _showSubtitleDelayDialog(
   Future<void> Function() reset,
 ) => showDialog<void>(
   context: context,
-  builder: (context) => AlertDialog(
-    title: const Text('Subtitle timing'),
-    content: StreamBuilder<int>(
-      stream: changes,
-      initialData: initialMilliseconds,
-      builder: (context, snapshot) {
-        final milliseconds = snapshot.data ?? initialMilliseconds;
-        return SizedBox(
-          width: 310,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Positive values show subtitles later.'),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    tooltip: 'Show subtitles 100 ms earlier',
-                    onPressed: milliseconds <= -5000
-                        ? null
-                        : () => unawaited(adjust(-100)),
-                    icon: const Icon(Icons.remove),
-                  ),
-                  SizedBox(
-                    width: 110,
-                    child: Text(
-                      subtitleDelayLabel(milliseconds),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleMedium,
+  builder: (context) => Theme(
+    data: PlayerMenuStyle.dialogTheme(context),
+    child: AlertDialog(
+      title: const Text('Subtitle timing'),
+      content: StreamBuilder<int>(
+        stream: changes,
+        initialData: initialMilliseconds,
+        builder: (context, snapshot) {
+          final milliseconds = snapshot.data ?? initialMilliseconds;
+          return SizedBox(
+            width: 310,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Positive values show subtitles later.'),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      tooltip: 'Show subtitles 100 ms earlier',
+                      onPressed: milliseconds <= -5000
+                          ? null
+                          : () => unawaited(adjust(-100)),
+                      icon: const Icon(Icons.remove),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Show subtitles 100 ms later',
-                    onPressed: milliseconds >= 5000
-                        ? null
-                        : () => unawaited(adjust(100)),
-                    icon: const Icon(Icons.add),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+                    SizedBox(
+                      width: 110,
+                      child: Text(
+                        subtitleDelayLabel(milliseconds),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Show subtitles 100 ms later',
+                      onPressed: milliseconds >= 5000
+                          ? null
+                          : () => unawaited(adjust(100)),
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => unawaited(reset()),
+          child: const Text('Reset'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
     ),
-    actions: [
-      TextButton(
-        onPressed: () => unawaited(reset()),
-        child: const Text('Reset'),
-      ),
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: const Text('Close'),
-      ),
-    ],
   ),
 );
 
@@ -732,6 +779,8 @@ class _OverflowMenu extends StatelessWidget {
     required this.onAdjustSubtitleDelay,
     required this.onResetSubtitleDelay,
     required this.onSetRate,
+    required this.rate,
+    required this.rateStream,
     required this.rates,
     required this.narrow,
     required this.fit,
@@ -751,6 +800,8 @@ class _OverflowMenu extends StatelessWidget {
   final Future<void> Function(int) onAdjustSubtitleDelay;
   final Future<void> Function() onResetSubtitleDelay;
   final Future<void> Function(double) onSetRate;
+  final double rate;
+  final Stream<double> rateStream;
   final List<double> rates;
   final bool narrow;
   final BoxFit fit;
@@ -759,175 +810,262 @@ class _OverflowMenu extends StatelessWidget {
   final VoidCallback onShowInfo;
 
   @override
-  Widget build(BuildContext context) => StreamBuilder<Tracks>(
-    stream: tracksStream,
-    initialData: tracks,
-    builder: (BuildContext context, AsyncSnapshot<Tracks> trackState) {
-      final Tracks available = trackState.data ?? tracks;
-      return PopupMenuButton<_PlayerAction>(
-        tooltip: 'More playback options',
-        onSelected: (_PlayerAction action) async {
-          switch (action.kind) {
-            case _PlayerActionKind.subtitles:
-              final Object? selected = await _chooseSubtitleSelection(context);
-              if (selected is SubtitleTrack) {
-                await onSetTrack(selected);
-              } else if (selected == 'load-file') {
-                await onLoadSubtitleFile();
-              } else if (selected == 'timing' && context.mounted) {
-                await _showSubtitleDelayDialog(
-                  context,
-                  subtitleDelayMilliseconds(),
-                  subtitleDelayStream,
-                  onAdjustSubtitleDelay,
-                  onResetSubtitleDelay,
-                );
+  Widget build(BuildContext context) => StreamBuilder<double>(
+    stream: rateStream,
+    initialData: rate,
+    builder: (context, rateState) => StreamBuilder<Track>(
+      stream: selectedTracksStream,
+      initialData: selectedTracks,
+      builder: (context, selectionState) => StreamBuilder<Tracks>(
+        stream: tracksStream,
+        initialData: tracks,
+        builder: (BuildContext context, AsyncSnapshot<Tracks> trackState) {
+          final Tracks available = trackState.data ?? tracks;
+          return PopupMenuButton<_PlayerAction>(
+            tooltip: 'More playback options',
+            clipBehavior: Clip.antiAlias,
+            onSelected: (_PlayerAction action) async {
+              switch (action.kind) {
+                case _PlayerActionKind.subtitles:
+                  final Object? selected = await _chooseSubtitleSelection(
+                    context,
+                  );
+                  if (selected is SubtitleTrack) {
+                    await onSetTrack(selected);
+                  } else if (selected == 'load-file') {
+                    await onLoadSubtitleFile();
+                  }
+                case _PlayerActionKind.subtitleTiming:
+                  await _showSubtitleDelayDialog(
+                    context,
+                    subtitleDelayMilliseconds(),
+                    subtitleDelayStream,
+                    onAdjustSubtitleDelay,
+                    onResetSubtitleDelay,
+                  );
+                case _PlayerActionKind.rate:
+                  final double? selected = await _chooseSelection<double>(
+                    context,
+                    'Playback speed',
+                    [
+                      for (final value in rates)
+                        ('${_RateButton._formatRate(value)}×', value),
+                    ],
+                    selected: rateState.data ?? rate,
+                  );
+                  if (selected != null) await onSetRate(selected);
+                case _PlayerActionKind.videoTracks:
+                  final VideoTrack? track = await _chooseSelection<VideoTrack>(
+                    context,
+                    'Video tracks',
+                    [
+                      for (final track in available.video)
+                        (_trackLabel(track), track),
+                    ],
+                    selected: (selectionState.data ?? selectedTracks).video,
+                  );
+                  if (track != null) await onSetTrack(track);
+                case _PlayerActionKind.screenshot:
+                  await onScreenshot();
+                case _PlayerActionKind.info:
+                  onShowInfo();
               }
-            case _PlayerActionKind.rate:
-              final double? selected = await _chooseSelection<double>(
-                context,
-                'Playback speed',
-                [
-                  for (final value in rates)
-                    ('${_RateButton._formatRate(value)}×', value),
-                ],
-              );
-              if (selected != null) await onSetRate(selected);
-            case _PlayerActionKind.audioTracks:
-              final AudioTrack? track = await _chooseSelection<AudioTrack>(
-                context,
-                'Audio tracks',
-                [
-                  for (final track in available.audio)
-                    (_trackLabel(track), track),
-                ],
-              );
-              if (track != null) await onSetTrack(track);
-            case _PlayerActionKind.videoTracks:
-              final VideoTrack? track = await _chooseSelection<VideoTrack>(
-                context,
-                'Video tracks',
-                [
-                  for (final track in available.video)
-                    (_trackLabel(track), track),
-                ],
-              );
-              if (track != null) await onSetTrack(track);
-            case _PlayerActionKind.fit:
-              final BoxFit? selectedFit = await _chooseSelection<BoxFit>(
-                context,
-                'Video fit',
-                [
-                  for (final option in const [
-                    BoxFit.contain,
-                    BoxFit.cover,
-                    BoxFit.fill,
-                  ])
-                    (
-                      '${fit == option ? '✓ ' : ''}${_fitLabel(option)}',
-                      option,
+            },
+            itemBuilder: (BuildContext context) =>
+                PlayerMenuStyle.frostedPopupItems<_PlayerAction>([
+                  if (narrow) ...[
+                    const PopupMenuItem<_PlayerAction>(
+                      value: _PlayerAction(_PlayerActionKind.subtitles),
+                      child: Text('Subtitles…'),
                     ),
-                ],
-              );
-              if (selectedFit != null) onSetFit(selectedFit);
-            case _PlayerActionKind.screenshot:
-              await onScreenshot();
-            case _PlayerActionKind.info:
-              onShowInfo();
-          }
+                    const PopupMenuItem<_PlayerAction>(
+                      value: _PlayerAction(_PlayerActionKind.rate),
+                      child: Text('Playback speed…'),
+                    ),
+                  ],
+                  const PopupMenuItem<_PlayerAction>(
+                    value: _PlayerAction(_PlayerActionKind.subtitleTiming),
+                    child: Text('Subtitle timing…'),
+                  ),
+                  if (RealMediaTracks(available).audio.isNotEmpty)
+                    PopupMenuItem<_PlayerAction>(
+                      enabled: false,
+                      padding: EdgeInsets.zero,
+                      child: MenuAnchor(
+                        style: PlayerMenuStyle.menu(context),
+                        alignmentOffset: const Offset(4, 0),
+                        menuChildren: PlayerMenuStyle.frostedMenuChildren([
+                          for (final track in available.audio)
+                            MenuItemButton(
+                              style: PlayerMenuStyle.item(
+                                context,
+                                selected:
+                                    track ==
+                                    (selectionState.data ?? selectedTracks)
+                                        .audio,
+                              ),
+                              leadingIcon:
+                                  track ==
+                                      (selectionState.data ?? selectedTracks)
+                                          .audio
+                                  ? const Icon(Icons.check, size: 18)
+                                  : const SizedBox(width: 18),
+                              onPressed: () async {
+                                Navigator.of(context).pop();
+                                await onSetTrack(track);
+                              },
+                              child: Text(_trackLabel(track)),
+                            ),
+                        ]),
+                        builder: (context, controller, child) => TextButton(
+                          onPressed: () => controller.isOpen
+                              ? controller.close()
+                              : controller.open(),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Theme.of(context)
+                                .extension<VpflThemeExtension>()!
+                                .playerOverlayForeground,
+                            minimumSize: const Size(190, 48),
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            textStyle: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Audio tracks'),
+                              Icon(Icons.chevron_right),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (RealMediaTracks(available).video.length > 1)
+                    const PopupMenuItem<_PlayerAction>(
+                      value: _PlayerAction(_PlayerActionKind.videoTracks),
+                      child: Text('Video tracks…'),
+                    ),
+                  PopupMenuItem<_PlayerAction>(
+                    enabled: false,
+                    padding: EdgeInsets.zero,
+                    child: MenuAnchor(
+                      style: PlayerMenuStyle.menu(context),
+                      alignmentOffset: const Offset(4, 0),
+                      menuChildren: PlayerMenuStyle.frostedMenuChildren([
+                        for (final option in const [
+                          BoxFit.contain,
+                          BoxFit.cover,
+                          BoxFit.fill,
+                        ])
+                          MenuItemButton(
+                            style: PlayerMenuStyle.item(
+                              context,
+                              selected: fit == option,
+                            ),
+                            leadingIcon: fit == option
+                                ? const Icon(Icons.check, size: 18)
+                                : const SizedBox(width: 18),
+                            onPressed: () {
+                              onSetFit(option);
+                              Navigator.of(context).pop();
+                            },
+                            child: Text(_fitLabel(option)),
+                          ),
+                      ]),
+                      builder: (context, controller, child) => TextButton(
+                        onPressed: () => controller.isOpen
+                            ? controller.close()
+                            : controller.open(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context)
+                              .extension<VpflThemeExtension>()!
+                              .playerOverlayForeground,
+                          minimumSize: const Size(190, 48),
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          textStyle: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Video fit'),
+                            Icon(Icons.chevron_right),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem<_PlayerAction>(
+                    value: _PlayerAction(_PlayerActionKind.screenshot),
+                    child: Text('Save screenshot…'),
+                  ),
+                  const PopupMenuItem<_PlayerAction>(
+                    value: _PlayerAction(_PlayerActionKind.info),
+                    child: Text('Info'),
+                  ),
+                ]),
+            icon: const Icon(Icons.more_vert),
+          );
         },
-        itemBuilder: (BuildContext context) => [
-          if (narrow) ...[
-            const PopupMenuItem<_PlayerAction>(
-              value: _PlayerAction(_PlayerActionKind.subtitles),
-              child: Text('Subtitles…'),
-            ),
-            const PopupMenuItem<_PlayerAction>(
-              value: _PlayerAction(_PlayerActionKind.rate),
-              child: Text('Playback speed…'),
-            ),
-          ],
-          if (RealMediaTracks(available).audio.isNotEmpty)
-            const PopupMenuItem<_PlayerAction>(
-              value: _PlayerAction(_PlayerActionKind.audioTracks),
-              child: Text('Audio tracks…'),
-            ),
-          if (RealMediaTracks(available).video.length > 1)
-            const PopupMenuItem<_PlayerAction>(
-              value: _PlayerAction(_PlayerActionKind.videoTracks),
-              child: Text('Video tracks…'),
-            ),
-          const PopupMenuItem<_PlayerAction>(
-            value: _PlayerAction(_PlayerActionKind.fit),
-            child: Text('Video fit…'),
-          ),
-          const PopupMenuDivider(),
-          const PopupMenuItem<_PlayerAction>(
-            value: _PlayerAction(_PlayerActionKind.screenshot),
-            child: Text('Save screenshot…'),
-          ),
-          const PopupMenuItem<_PlayerAction>(
-            value: _PlayerAction(_PlayerActionKind.info),
-            child: Text('Info'),
-          ),
-        ],
-        icon: const Icon(Icons.more_vert),
-      );
-    },
+      ),
+    ),
   );
 
   Future<Object?> _chooseSubtitleSelection(BuildContext context) =>
       showDialog<Object>(
         context: context,
-        builder: (context) => StreamBuilder<Track>(
-          stream: selectedTracksStream,
-          initialData: selectedTracks,
-          builder: (context, selectedState) => StreamBuilder<Tracks>(
-            stream: tracksStream,
-            initialData: tracks,
-            builder: (context, availableState) {
-              final requested = (selectedState.data ?? selectedTracks).subtitle;
-              final subtitles = (availableState.data ?? tracks).subtitle;
-              final options = [
-                SubtitleTrack.auto(),
-                SubtitleTrack.no(),
-                ...subtitles.where(
-                  (track) => track.id != 'auto' && track.id != 'no',
-                ),
-              ];
-              return AlertDialog(
-                title: const Text('Subtitles'),
-                content: SizedBox(
-                  width: 360,
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: options.length + 2,
-                    itemBuilder: (context, index) {
-                      if (index == options.length) {
-                        return ListTile(
-                          title: const Text('Load subtitle file…'),
-                          onTap: () => Navigator.of(context).pop('load-file'),
-                        );
-                      }
-                      if (index == options.length + 1) {
-                        return ListTile(
-                          title: const Text('Subtitle timing…'),
-                          onTap: () => Navigator.of(context).pop('timing'),
-                        );
-                      }
-                      final track = options[index];
-                      return ListTile(
-                        leading: requested.id == track.id
-                            ? const Icon(Icons.check)
-                            : const SizedBox(width: 24),
-                        title: Text(_trackLabel(track)),
-                        onTap: () => Navigator.of(context).pop(track),
-                      );
-                    },
+        builder: (context) => Theme(
+          data: PlayerMenuStyle.dialogTheme(context),
+          child: StreamBuilder<Track>(
+            stream: selectedTracksStream,
+            initialData: selectedTracks,
+            builder: (context, selectedState) => StreamBuilder<Tracks>(
+              stream: tracksStream,
+              initialData: tracks,
+              builder: (context, availableState) {
+                final requested =
+                    (selectedState.data ?? selectedTracks).subtitle;
+                final subtitles = (availableState.data ?? tracks).subtitle;
+                final options = [
+                  SubtitleTrack.auto(),
+                  SubtitleTrack.no(),
+                  ...subtitles.where(
+                    (track) => track.id != 'auto' && track.id != 'no',
                   ),
-                ),
-              );
-            },
+                ];
+                return AlertDialog(
+                  title: const Text('Subtitles'),
+                  content: SizedBox(
+                    width: 360,
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: options.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == options.length) {
+                          return ListTile(
+                            title: const Text('Load subtitle file…'),
+                            onTap: () => Navigator.of(context).pop('load-file'),
+                          );
+                        }
+                        final track = options[index];
+                        return ListTile(
+                          selected: requested.id == track.id,
+                          selectedColor: Theme.of(context)
+                              .extension<VpflThemeExtension>()!
+                              .playbackProgress,
+                          leading: requested.id == track.id
+                              ? const Icon(Icons.check)
+                              : const SizedBox(width: 24),
+                          title: Text(_trackLabel(track)),
+                          onTap: () => Navigator.of(context).pop(track),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       );
@@ -935,23 +1073,34 @@ class _OverflowMenu extends StatelessWidget {
   Future<T?> _chooseSelection<T extends Object>(
     BuildContext context,
     String title,
-    List<(String, T)> options,
-  ) => showDialog<T>(
+    List<(String, T)> options, {
+    T? selected,
+  }) => showDialog<T>(
     context: context,
-    builder: (BuildContext context) => AlertDialog(
-      title: Text(title),
-      content: SizedBox(
-        width: 360,
-        child: ListView.builder(
-          shrinkWrap: true,
-          itemCount: options.length,
-          itemBuilder: (BuildContext context, int index) {
-            final (String label, T value) = options[index];
-            return ListTile(
-              title: Text(label),
-              onTap: () => Navigator.of(context).pop(value),
-            );
-          },
+    builder: (BuildContext context) => Theme(
+      data: PlayerMenuStyle.dialogTheme(context),
+      child: AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: 360,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: options.length,
+            itemBuilder: (BuildContext context, int index) {
+              final (String label, T value) = options[index];
+              return ListTile(
+                selected: value == selected,
+                selectedColor: Theme.of(context)
+                    .extension<VpflThemeExtension>()!
+                    .playbackProgress,
+                leading: value == selected
+                    ? const Icon(Icons.check)
+                    : const SizedBox(width: 24),
+                title: Text(label),
+                onTap: () => Navigator.of(context).pop(value),
+              );
+            },
+          ),
         ),
       ),
     ),
@@ -1002,10 +1151,9 @@ class _OverflowMenu extends StatelessWidget {
 
 enum _PlayerActionKind {
   subtitles,
+  subtitleTiming,
   rate,
-  audioTracks,
   videoTracks,
-  fit,
   screenshot,
   info,
 }

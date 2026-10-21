@@ -108,7 +108,7 @@ void main() {
       await waitForPosition(tester, playback, const Duration(seconds: 11));
       expect(await history.resumePosition(uri), const Duration(seconds: 12));
       await waitForPosition(tester, playback, const Duration(seconds: 13));
-      await tester.tap(find.byTooltip('Home'));
+      await tester.tap(find.byTooltip('Back'));
       await tester.pump();
       final closing = WindowCommands.shutdownHandler!();
       await tester.pump();

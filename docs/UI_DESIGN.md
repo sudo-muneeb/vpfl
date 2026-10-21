@@ -55,7 +55,7 @@ For a Linux desktop check, hover all four sides and four corners before
 clicking, drag from both side edges, then maximize the window. The resize
 cursors should disappear while maximized and return after restoring it.
 
-Buttons use themed hover and focus. Open file, appearance, and Home use tooltips
+Buttons use themed hover and focus. Open file, appearance, and Back use tooltips
 and 6 px rounded hover geometry. The three window controls have circular hover
 and focus boundaries, accessible names, and no hover tooltips. The runner sets
 a 760 × 480 minimum window size.
@@ -69,8 +69,8 @@ maximized state changes the glyph without depending on a resize callback.
 The 40 px shared top bar shows the VPFL logo, theme-colored VPFL text at wider
 widths, the current filename while playing, understated renderer status, Open
 file, and appearance. Settings is reached from the sidebar. The player uses a
-Home navigation button. At compact widths, Open file becomes icon-only with a
-tooltip.
+Back button that returns to the library section it was opened from. At compact
+widths, Open file becomes icon-only with a tooltip.
 
 ## Sidebar
 
@@ -183,16 +183,16 @@ Normal player layout:
 │  ◀                      VIDEO                             ▶  │
 │                                                              │
 │                                                              │
-│  00:21  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  01:42:13     │
+│  00:21 / 01:42:13  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━     │
 │                                                              │
-│  ⋮  🔊  CC  speed       ↶10  ▶/❚❚  ↷10    shuffle repeat ⛶ │
+│  ⋮  🔊  CC             ↶10  ▶/❚❚  ↷10  speed shuffle repeat ⛶ │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 Core controls:
 
 * seek slider
-* current time
+* elapsed time, toggled to remaining time by clicking the time display
 * total duration
 * play/pause
 * seek backward
@@ -207,9 +207,14 @@ Core controls:
 
 Default seek step can begin at 10 seconds and later become configurable.
 
-The bottom row has three anchored groups. More options, volume, subtitles,
-and speed sit at the left. Ten-second seek and play/pause stay centered in the
-video viewport. Shuffle, Repeat, and fullscreen sit at the right edge. The seek
+The time display forms one compact cluster at the left of the seek bar. It
+shows elapsed and total time by default; clicking it switches elapsed to
+remaining time, and clicking again switches back. The time field reserves the
+width needed by the full duration, including multi-day media, so the seek bar
+does not move when the display toggles. The bottom row has three
+anchored groups. More options, volume, and subtitles sit at the left.
+Ten-second seek and play/pause stay centered in the video viewport. Speed,
+Shuffle, Repeat, and fullscreen sit at the right edge. The seek
 bar is above them. The desktop volume slider is 125 logical pixels wide and updates
 the 0–100 player volume as it moves. It hides at narrower widths while mute
 remains available. When the control row has less than 600 logical pixels,
@@ -218,12 +223,16 @@ the transport and queue controls. Speed opens a rate menu; subtitles always
 open a menu with
 Auto, Off, embedded tracks when present, and Load subtitle file. The latter
 uses the native picker for SRT, ASS, SSA, and WebVTT files, then selects the loaded
-track. The fullscreen button shows an outward icon with “Enter Fullscreen” in
+track. Subtitle timing is in the three-dot menu at all widths. The fullscreen
+button shows an outward icon with “Enter Fullscreen” in
 windowed mode and an inward icon with “Exit Fullscreen” in fullscreen. It uses
 the current video fullscreen state.
 
-Previous and next appear at the far sides, halfway down the video when a
-multi-item queue exists. Opening a local file builds a queue from video files
+Previous and Next are icon-only buttons at the far sides, halfway down the
+video when a multi-item queue exists. Both buttons appear when the pointer is
+near either side at mid-height. Their 72 × 48 frames have no outline. Moving
+the pointer elsewhere reveals just the bottom controls. Opening a local file
+builds a queue from video files
 in the same directory if folder access permits it. The end buttons disable
 at the start and end of a nonrepeating sequential queue. A single file or inaccessible parent
 folder has no edge navigation.
@@ -232,9 +241,17 @@ the retained directory queue. Keep the selected item in place until the user
 chooses another; decoder warnings that recover must not replace the video.
 
 When controls are active, a light gray translucent gradient improves their
-legibility on bright frames. Controls and edge buttons fade out after idle
-time and stop receiving pointer events while hidden. Pointer movement brings
-them back. The fullscreen top bar still requires the top activation edge.
+legibility on bright frames. The bottom controls start sliding downward and
+fading out after 1.5 seconds of idle time, or after 3 seconds when the pointer
+is near the bottom controls. Moving the pointer or clicking a control restarts
+the relevant delay. The controls slide back up and fade in on pointer movement.
+Clicking the unobstructed video toggles play and pause. Pausing, whether by
+click, button, or shortcut, reveals the bottom controls and keeps them visible;
+resuming playback restarts the idle delay.
+Edge buttons fade independently and stop receiving pointer events while hidden.
+The bottom controls remain visible while a popup menu or dialog is open; the
+idle countdown restarts when it closes.
+The fullscreen top bar still requires the top activation edge.
 
 ## Three-dot player menu
 
@@ -259,6 +276,12 @@ Video
 ```
 
 Only show capabilities that are available.
+Player pop-up menus and anchored submenus have no outline. They use a
+frosted black surface at 70% opacity with backdrop blur across the full menu,
+including its rounded corners. Text is white, and the active selection is red.
+Audio tracks and Video fit open anchored submenus while the main menu remains
+visible. Audio tracks shows the available selections; Video fit
+offers Fit, Fill and crop, and Stretch.
 
 The title bar keeps the current filename. Hover or keyboard focus on it shows
 the full path and a second line of codec, resolution, and frame rate when the
@@ -305,7 +328,8 @@ The normal playback controls may appear when:
 * the user interacts with keyboard playback controls
 * playback state needs temporary feedback
 
-Hide them again after a short idle period.
+Hide them again after a short idle period while video plays. Keep them visible
+while playback is paused.
 
 ### Fullscreen top bar
 

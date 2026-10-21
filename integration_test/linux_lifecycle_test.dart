@@ -27,7 +27,7 @@ void main() {
     defaultValue: -1,
   );
 
-  testWidgets('Home stops playback over $cycles return cycles', (tester) async {
+  testWidgets('Back stops playback over $cycles return cycles', (tester) async {
     final container = ProviderContainer();
     final uri = Uri.file(File(source).absolute.path).toString();
     await tester.pumpWidget(
@@ -57,8 +57,8 @@ void main() {
     if (subtitleTracks >= 0) await expectSubtitleCount(subtitleTracks);
     final controller = playback.videoController;
     for (var cycle = 0; cycle < cycles; cycle++) {
-      debugPrint('lifecycle cycle ${cycle + 1}/$cycles: Home');
-      await tester.tap(find.byTooltip('Home'));
+      debugPrint('lifecycle cycle ${cycle + 1}/$cycles: Back');
+      await tester.tap(find.byTooltip('Back'));
       for (var i = 0; i < 40 && playback.isPlaying; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }
