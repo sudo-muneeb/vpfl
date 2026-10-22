@@ -1,4 +1,4 @@
-import 'package:default_manager_linux/default_manager_linux.dart';
+import 'package:vpfl_desktop_linux/vpfl_desktop_linux.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/services/default_app_prompt_service.dart';

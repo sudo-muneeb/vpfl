@@ -1,11 +1,11 @@
-import 'package:default_manager_linux/default_manager_linux.dart';
+import 'package:vpfl_desktop_linux/vpfl_desktop_linux.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('default_manager_linux');
-  const manager = DefaultManagerLinux();
+  const channel = MethodChannel('vpfl_desktop_linux');
+  const manager = VpflDesktopLinux();
 
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -49,5 +49,19 @@ void main() {
     expect(result.success, isFalse);
     expect(result.results['video/mp4'], isTrue);
     expect(result.errors['video/webm'], 'Denied by desktop');
+  });
+
+  test('passes an encoded folder URI to FileManager1 bridge', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'showFolder');
+          expect(call.arguments, 'file:///home/me/a%20%25%20%C3%A9/');
+          return true;
+        });
+    expect(await manager.showFolder(Uri.directory('/home/me/a % é')), true);
+    await expectLater(
+      manager.showFolder(Uri.https('example.com', '/videos/')),
+      throwsArgumentError,
+    );
   });
 }

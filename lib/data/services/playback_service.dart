@@ -7,9 +7,11 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:path/path.dart' as path;
 
+import '../model/real_media_tracks.dart';
 import 'lifecycle_trace.dart';
 import 'media_source_identity.dart';
 import 'media_format_policy.dart';
+import 'media_metadata_service.dart';
 import 'playback_open_coordinator.dart';
 import 'queue_progression.dart';
 import 'subtitle_delay.dart';
@@ -105,6 +107,16 @@ class PlaybackService {
 
   /// Changes whenever a new media source is requested or the player stops.
   int get sourceGeneration => _requestGeneration;
+
+  /// Canonical URI of the ready foreground source, if one is loaded.
+  String? get loadedMediaUri {
+    if (_closed || !_sourceReady) return null;
+    final current = playlist;
+    if (current.index < 0 || current.index >= current.medias.length) {
+      return null;
+    }
+    return canonicalMediaUri(current.medias[current.index].uri);
+  }
 
   int get subtitleDelayMilliseconds => _subtitleDelayMilliseconds;
   Stream<int> get subtitleDelayStream => _subtitleDelayController.stream;
@@ -208,6 +220,72 @@ class PlaybackService {
     } on Object {
       return null;
     }
+  }
+
+  /// Reads one source's state without changing playback or owning its player.
+  Future<MediaBackendSnapshot?> metadataSnapshotFor(String uri) async {
+    final requested = canonicalMediaUri(uri);
+    if (loadedMediaUri != requested) return null;
+    final generation = sourceGeneration;
+    bool hasVideo() => RealMediaTracks(_player.state.tracks).video.isNotEmpty;
+    bool ready() => hasVideo() && _player.state.duration > Duration.zero;
+    if (!ready()) {
+      final changed = Completer<void>();
+      void checkReady() {
+        if ((ready() || sourceGeneration != generation) &&
+            !changed.isCompleted) {
+          changed.complete();
+        }
+      }
+
+      final trackSubscription = tracksStream.listen((_) => checkReady());
+      final durationSubscription = durationStream.listen((_) => checkReady());
+      final errorSubscription = errorStream.listen((_) {
+        if (!changed.isCompleted) changed.complete();
+      });
+      try {
+        checkReady();
+        if (!changed.isCompleted) {
+          try {
+            await changed.future.timeout(const Duration(seconds: 10));
+          } on TimeoutException {
+            // Some playable files do not provide a duration. Return their
+            // available stream facts after a bounded readiness wait.
+          }
+        }
+      } finally {
+        await trackSubscription.cancel();
+        await durationSubscription.cancel();
+        await errorSubscription.cancel();
+      }
+    }
+    if (generation != sourceGeneration || loadedMediaUri != requested) {
+      return null;
+    }
+    final tracks = _player.state.tracks;
+    final duration = _player.state.duration;
+    final videoParams = _player.state.videoParams;
+    String? container;
+    final platform = _player.platform;
+    if (platform is NativePlayer) {
+      try {
+        container = await platform
+            .getProperty('file-format')
+            .timeout(const Duration(seconds: 3));
+      } on Object {
+        // Some mpv versions do not expose a container name.
+      }
+    }
+    if (generation != sourceGeneration || loadedMediaUri != requested) {
+      return null;
+    }
+    return MediaBackendSnapshot(
+      tracks: tracks,
+      duration: duration,
+      videoParams: videoParams,
+      selectedVideoId: _player.state.track.video.id,
+      container: container,
+    );
   }
 
   /// Emits selected track changes.

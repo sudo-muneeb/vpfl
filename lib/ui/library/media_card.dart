@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/thumbnail_providers.dart';
 import '../core/themes/vpfl_theme_extension.dart';
+import 'video_context_menu.dart';
 
 /// Consistent video card for recent, library, and folder browsing.
 class MediaCard extends StatefulWidget {
@@ -12,14 +13,16 @@ class MediaCard extends StatefulWidget {
     required this.title,
     required this.onTap,
     this.filePath,
-    this.technicalMetadata,
+    this.onShowDetails,
+    this.onShowContainingFolder,
     this.progress,
     this.watchedTime,
     super.key,
   });
 
   final String title;
-  final String? technicalMetadata;
+  final VoidCallback? onShowDetails;
+  final VoidCallback? onShowContainingFolder;
   final double? progress;
   final String? watchedTime;
   final VoidCallback onTap;
@@ -34,7 +37,14 @@ class MediaCard extends StatefulWidget {
 class _MediaCardState extends State<MediaCard> {
   bool _hovered = false;
   bool _focused = false;
+  final FocusNode _focusNode = FocusNode();
   final GlobalKey<TooltipState> _tooltipKey = GlobalKey<TooltipState>();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,12 +57,11 @@ class _MediaCardState extends State<MediaCard> {
         : const Duration(milliseconds: 150);
     final radius = BorderRadius.circular(12);
 
-    return Semantics(
+    final card = Semantics(
       button: true,
       label: [
         widget.title,
         if (widget.filePath != null) widget.filePath!,
-        if (widget.technicalMetadata != null) widget.technicalMetadata!,
         if (widget.watchedTime != null) '${widget.watchedTime} watched',
       ].join(', '),
       child: Tooltip(
@@ -80,6 +89,7 @@ class _MediaCardState extends State<MediaCard> {
             borderRadius: radius,
             clipBehavior: Clip.antiAlias,
             child: InkWell(
+              focusNode: _focusNode,
               onTap: widget.onTap,
               onHover: (value) => setState(() => _hovered = value),
               onFocusChange: (value) {
@@ -149,24 +159,6 @@ class _MediaCardState extends State<MediaCard> {
                                 ),
                               ),
                             ),
-                          Positioned(
-                            right: 10,
-                            bottom: widget.progress == null ? 10 : 12,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: tokens.cardOverlay,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(5),
-                                child: Icon(
-                                  Icons.play_arrow_rounded,
-                                  size: 17,
-                                  color: tokens.playerOverlayForeground,
-                                ),
-                              ),
-                            ),
-                          ),
                           if (widget.progress case final value?)
                             Positioned(
                               left: 0,
@@ -185,29 +177,11 @@ class _MediaCardState extends State<MediaCard> {
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.titleSmall,
-                        ),
-                        if (widget.technicalMetadata
-                            case final String detail) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            detail,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.labelSmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        ],
-                      ],
+                    child: Text(
+                      widget.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleSmall,
                     ),
                   ),
                 ],
@@ -216,6 +190,18 @@ class _MediaCardState extends State<MediaCard> {
           ),
         ),
       ),
+    );
+    if (widget.filePath == null ||
+        widget.onShowDetails == null ||
+        widget.onShowContainingFolder == null) {
+      return card;
+    }
+    return VideoContextMenu(
+      onOpen: widget.onTap,
+      onShowDetails: widget.onShowDetails!,
+      onShowContainingFolder: widget.onShowContainingFolder!,
+      childFocusNode: _focusNode,
+      child: card,
     );
   }
 }

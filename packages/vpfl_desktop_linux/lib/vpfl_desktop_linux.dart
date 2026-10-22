@@ -17,11 +17,24 @@ class DefaultAppResult {
 }
 
 /// Linux desktop MIME defaults backed by GIO. The caller owns the MIME list.
-class DefaultManagerLinux {
-  const DefaultManagerLinux({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel('default_manager_linux');
+class VpflDesktopLinux {
+  const VpflDesktopLinux({MethodChannel? channel})
+    : _channel = channel ?? const MethodChannel('vpfl_desktop_linux');
 
   final MethodChannel _channel;
+
+  /// Asks the desktop's FileManager1 service to open a local folder.
+  /// Returns false when the service is unavailable or rejects the request.
+  Future<bool> showFolder(Uri folderUri) async {
+    if (folderUri.scheme != 'file') {
+      throw ArgumentError.value(folderUri, 'folderUri', 'Expected a file URI');
+    }
+    return await _channel.invokeMethod<bool>(
+          'showFolder',
+          folderUri.toString(),
+        ) ??
+        false;
+  }
 
   Future<bool> isAvailable(String desktopId) async =>
       await _channel.invokeMethod<bool>('isAvailable', desktopId) ?? false;

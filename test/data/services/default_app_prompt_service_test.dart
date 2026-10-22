@@ -1,11 +1,11 @@
-import 'package:default_manager_linux/default_manager_linux.dart';
+import 'package:vpfl_desktop_linux/vpfl_desktop_linux.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vpfl/data/model/app_database.dart';
 import 'package:vpfl/data/repositories/playback_history_repository.dart';
 import 'package:vpfl/data/services/default_app_prompt_service.dart';
 
-class FakeDefaultManager extends DefaultManagerLinux {
+class FakeDefaultManager extends VpflDesktopLinux {
   FakeDefaultManager({this.installed = true, this.defaultAll = false});
 
   bool installed;

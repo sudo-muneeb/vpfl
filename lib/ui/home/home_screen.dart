@@ -8,8 +8,15 @@ import '../library/media_card.dart';
 
 /// Home surface for recent media and the indexed video library.
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({required this.onOpenMedia, super.key});
+  const HomeScreen({
+    required this.onOpenMedia,
+    this.onShowDetails,
+    this.onShowContainingFolder,
+    super.key,
+  });
   final ValueChanged<String> onOpenMedia;
+  final ValueChanged<String>? onShowDetails;
+  final ValueChanged<String>? onShowContainingFolder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -53,6 +60,8 @@ class HomeScreen extends ConsumerWidget {
                           _RecentMediaCard(
                             entry: entry,
                             onTap: () => onOpenMedia(entry.uri),
+                            onShowDetails: onShowDetails,
+                            onShowContainingFolder: onShowContainingFolder,
                           ),
                       ],
                     ),
@@ -83,6 +92,13 @@ class HomeScreen extends ConsumerWidget {
                             title: path.basename(item.path),
                             filePath: item.path,
                             onTap: () => onOpenMedia(item.uri),
+                            onShowDetails: onShowDetails == null
+                                ? null
+                                : () => onShowDetails!(item.path),
+                            onShowContainingFolder:
+                                onShowContainingFolder == null
+                                ? null
+                                : () => onShowContainingFolder!(item.path),
                           ),
                       ],
                     ),
@@ -100,57 +116,42 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _RecentMediaCard extends ConsumerWidget {
-  const _RecentMediaCard({required this.entry, required this.onTap});
+class _RecentMediaCard extends StatelessWidget {
+  const _RecentMediaCard({
+    required this.entry,
+    required this.onTap,
+    required this.onShowDetails,
+    required this.onShowContainingFolder,
+  });
 
   final PlaybackHistory entry;
   final VoidCallback onTap;
+  final ValueChanged<String>? onShowDetails;
+  final ValueChanged<String>? onShowContainingFolder;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final hasDuration = entry.durationMs > 0;
     final localPath = _localPath(entry.uri);
-    return Stack(
-      children: [
-        MediaCard(
-          title: localPath == null
-              ? entry.displayName
-              : path.basename(localPath),
-          watchedTime: hasDuration && !entry.completed
-              ? '${_time(entry.positionMs)} / ${_time(entry.durationMs)}'
-              : null,
-          progress: entry.completed
-              ? 1
-              : hasDuration
-              ? entry.positionMs / entry.durationMs
-              : null,
-          filePath: localPath,
-          onTap: onTap,
-        ),
-        Positioned(
-          top: 8,
-          right: 8,
-          child: IconButton.filledTonal(
-            tooltip: 'Remove ${entry.displayName} from Recents',
-            icon: const Icon(Icons.close, size: 18),
-            onPressed: () async {
-              try {
-                await ref
-                    .read(playbackHistoryRepositoryProvider)
-                    .remove(entry.uri);
-              } on Object catch (error) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Could not remove recent video: $error'),
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-        ),
-      ],
+    return MediaCard(
+      title: localPath == null ? entry.displayName : path.basename(localPath),
+      watchedTime: hasDuration && !entry.completed
+          ? '${_time(entry.positionMs)} / ${_time(entry.durationMs)}'
+          : null,
+      progress: entry.completed
+          ? 1
+          : hasDuration
+          ? entry.positionMs / entry.durationMs
+          : null,
+      filePath: localPath,
+      onTap: onTap,
+      onShowDetails: localPath == null || onShowDetails == null
+          ? null
+          : () => onShowDetails!(localPath),
+      onShowContainingFolder:
+          localPath == null || onShowContainingFolder == null
+          ? null
+          : () => onShowContainingFolder!(localPath),
     );
   }
 
@@ -177,12 +178,12 @@ class _HomeCardGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      const gap = 18.0;
+      const gap = 16.0;
       final columns = ((constraints.maxWidth + gap) / 260).floor().clamp(1, 5);
       final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
       return Wrap(
         spacing: gap,
-        runSpacing: 18,
+        runSpacing: 16,
         children: [
           for (final card in cards) SizedBox(width: width, child: card),
         ],

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:default_manager_linux/default_manager_linux.dart';
+import 'package:vpfl_desktop_linux/vpfl_desktop_linux.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -35,7 +35,7 @@ Exec=/bin/true %f
 MimeType=$mime;
 ''');
 
-    const manager = DefaultManagerLinux();
+    const manager = VpflDesktopLinux();
     expect(await manager.isAvailable(desktopId), isTrue);
     final result = await manager.setDefaultForMimeTypes(desktopId, [mime]);
     expect(result.success, isTrue, reason: result.errors.toString());

@@ -1,7 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/media_file_picker.dart';
+import '../../data/services/linux_file_manager_service.dart';
+import '../../data/services/media_metadata_service.dart';
+import '../../data/playback_service_provider.dart';
 import '../../data/persistence_providers.dart';
 import '../../data/model/app_database.dart';
 import '../core/widgets/app_top_bar.dart';
@@ -9,6 +14,7 @@ import '../core/themes/vpfl_theme_extension.dart';
 import '../folders/folders_screen.dart';
 import '../home/home_screen.dart';
 import '../library/library_screen.dart';
+import '../library/video_details_panel.dart';
 import '../settings/settings_screen.dart';
 import 'app_destination.dart';
 
@@ -48,6 +54,16 @@ class _AppShellState extends ConsumerState<AppShell> {
   late SavedFolder? _selectedFolder = widget.initialSelectedFolder;
   final Set<int> _scanningFolderIds = {};
   final Set<int> _scannedFolderIds = {};
+  MediaMetadataService? _metadataService;
+  String? _detailsPath;
+  final LinuxFileManagerService _fileManagerService =
+      const LinuxFileManagerService();
+
+  MediaMetadataService get _metadata =>
+      _metadataService ??= MediaMetadataService(
+        activeUri: () => ref.read(playbackServiceProvider).loadedMediaUri,
+        activeSnapshot: ref.read(playbackServiceProvider).metadataSnapshotFor,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -78,34 +94,52 @@ class _AppShellState extends ConsumerState<AppShell> {
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
                   final bool compact = constraints.maxWidth < 900;
-                  return Row(
+                  return Stack(
                     children: [
-                      _Sidebar(
-                        compact: compact,
-                        destination: _destination,
-                        selectedFolderId: _selectedFolder?.id,
-                        folders: folders.value ?? const <SavedFolder>[],
-                        onAddFolder: _addFolder,
-                        onFolderSelected: (SavedFolder folder) {
-                          setState(() {
-                            _selectedFolder = folder;
-                            _destination = AppDestination.folders;
-                          });
-                          widget.onLocationChanged?.call(
-                            AppDestination.folders,
-                            folder,
-                          );
-                        },
-                        onDestinationSelected: (AppDestination destination) {
-                          setState(() => _destination = destination);
-                          widget.onLocationChanged?.call(
-                            destination,
-                            _selectedFolder,
-                          );
-                        },
+                      Row(
+                        children: [
+                          _Sidebar(
+                            compact: compact,
+                            destination: _destination,
+                            selectedFolderId: _selectedFolder?.id,
+                            folders: folders.value ?? const <SavedFolder>[],
+                            onAddFolder: _addFolder,
+                            onFolderSelected: (SavedFolder folder) {
+                              setState(() {
+                                _selectedFolder = folder;
+                                _destination = AppDestination.folders;
+                              });
+                              widget.onLocationChanged?.call(
+                                AppDestination.folders,
+                                folder,
+                              );
+                            },
+                            onDestinationSelected:
+                                (AppDestination destination) {
+                                  setState(() => _destination = destination);
+                                  widget.onLocationChanged?.call(
+                                    destination,
+                                    _selectedFolder,
+                                  );
+                                },
+                          ),
+                          const VerticalDivider(width: 1),
+                          Expanded(child: _buildDestination()),
+                        ],
                       ),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: _buildDestination()),
+                      if (_detailsPath case final String filePath)
+                        Positioned(
+                          top: 16,
+                          right: 16,
+                          bottom: 16,
+                          width: math.min(420, constraints.maxWidth - 32),
+                          child: VideoDetailsPanel(
+                            key: ValueKey(filePath),
+                            filePath: filePath,
+                            load: _metadata.inspect,
+                            onClose: () => setState(() => _detailsPath = null),
+                          ),
+                        ),
                     ],
                   );
                 },
@@ -118,12 +152,22 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   Widget _buildDestination() => switch (_destination) {
-    AppDestination.home => HomeScreen(onOpenMedia: widget.onOpenMedia),
-    AppDestination.allVideos => LibraryScreen(onOpenMedia: widget.onOpenMedia),
+    AppDestination.home => HomeScreen(
+      onOpenMedia: widget.onOpenMedia,
+      onShowDetails: _showDetails,
+      onShowContainingFolder: _showContainingFolder,
+    ),
+    AppDestination.allVideos => LibraryScreen(
+      onOpenMedia: widget.onOpenMedia,
+      onShowDetails: _showDetails,
+      onShowContainingFolder: _showContainingFolder,
+    ),
     AppDestination.folders => FoldersScreen(
       folder: _selectedFolder,
       onAddFolder: _addFolder,
       onOpenMedia: widget.onOpenMedia,
+      onShowDetails: _showDetails,
+      onShowContainingFolder: _showContainingFolder,
       onRemoveFolder: _removeFolder,
       onRescan: _selectedFolder == null
           ? null
@@ -138,6 +182,22 @@ class _AppShellState extends ConsumerState<AppShell> {
       onResumeEnabledChanged: widget.onResumeEnabledChanged,
     ),
   };
+
+  void _showDetails(String filePath) {
+    setState(() => _detailsPath = filePath);
+  }
+
+  Future<void> _showContainingFolder(String filePath) async {
+    try {
+      await _fileManagerService.showContainingFolder(filePath);
+    } on Object catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open containing folder: $error')),
+        );
+      }
+    }
+  }
 
   Future<void> _pickAndOpenFile() async {
     try {

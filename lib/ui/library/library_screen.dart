@@ -6,8 +6,15 @@ import '../../data/persistence_providers.dart';
 import 'media_grid.dart';
 
 class LibraryScreen extends ConsumerWidget {
-  const LibraryScreen({required this.onOpenMedia, super.key});
+  const LibraryScreen({
+    required this.onOpenMedia,
+    this.onShowDetails,
+    this.onShowContainingFolder,
+    super.key,
+  });
   final ValueChanged<String> onOpenMedia;
+  final ValueChanged<String>? onShowDetails;
+  final ValueChanged<String>? onShowContainingFolder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -47,7 +54,12 @@ class LibraryScreen extends ConsumerWidget {
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
-                  sliver: MediaGrid(items: items, onOpenMedia: onOpenMedia),
+                  sliver: MediaGrid(
+                    items: items,
+                    onOpenMedia: onOpenMedia,
+                    onShowDetails: onShowDetails,
+                    onShowContainingFolder: onShowContainingFolder,
+                  ),
                 ),
               ],
             ),

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:default_manager_linux/default_manager_linux.dart';
+import 'package:vpfl_desktop_linux/vpfl_desktop_linux.dart';
 import 'package:flutter/foundation.dart';
 
 import '../repositories/playback_history_repository.dart';
@@ -28,9 +28,9 @@ const String vpflDesktopId = 'com.app.vpfl.desktop';
 class DefaultAppPromptService extends ChangeNotifier {
   DefaultAppPromptService({
     required this.settings,
-    DefaultManagerLinux? manager,
+    VpflDesktopLinux? manager,
     DateTime Function()? now,
-  }) : _manager = manager ?? const DefaultManagerLinux(),
+  }) : _manager = manager ?? const VpflDesktopLinux(),
        _now = now ?? DateTime.now;
 
   static const int firstPromptAfterPlays = 3;
@@ -41,7 +41,7 @@ class DefaultAppPromptService extends ChangeNotifier {
   static const String _lastPromptKey = 'defaultAppLastPromptAt';
 
   final SettingsRepository settings;
-  final DefaultManagerLinux _manager;
+  final VpflDesktopLinux _manager;
   final DateTime Function() _now;
   Future<void>? _initialization;
   Future<void> _playWrites = Future<void>.value();
