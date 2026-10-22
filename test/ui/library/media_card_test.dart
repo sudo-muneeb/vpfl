@@ -23,7 +23,6 @@ void main() {
                 child: MediaCard(
                   title: '0219.mov',
                   filePath: path,
-                  technicalMetadata: 'H.264 · 1920 × 1080',
                   onTap: _noop,
                 ),
               ),
@@ -34,7 +33,8 @@ void main() {
     );
     expect(find.text('0219.mov'), findsOneWidget);
     expect(find.text(path), findsNothing);
-    expect(find.text('H.264 · 1920 × 1080'), findsOneWidget);
+    expect(find.text('H.264 · 1920 × 1080'), findsNothing);
+    expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
     expect(find.text('Ready to play'), findsNothing);
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -50,9 +50,7 @@ void main() {
     expect(find.text(path), findsOneWidget);
   });
 
-  testWidgets('unknown technical metadata leaves no placeholder line', (
-    tester,
-  ) async {
+  testWidgets('cards leave technical metadata off the surface', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(

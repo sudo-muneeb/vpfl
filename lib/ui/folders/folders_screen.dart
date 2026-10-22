@@ -10,6 +10,8 @@ class FoldersScreen extends ConsumerWidget {
     required this.folder,
     required this.onAddFolder,
     required this.onOpenMedia,
+    this.onShowDetails,
+    this.onShowContainingFolder,
     required this.onRemoveFolder,
     required this.onRescan,
     super.key,
@@ -18,6 +20,8 @@ class FoldersScreen extends ConsumerWidget {
   final SavedFolder? folder;
   final VoidCallback onAddFolder;
   final ValueChanged<String> onOpenMedia;
+  final ValueChanged<String>? onShowDetails;
+  final ValueChanged<String>? onShowContainingFolder;
   final ValueChanged<SavedFolder> onRemoveFolder;
   final VoidCallback? onRescan;
 
@@ -132,7 +136,12 @@ class FoldersScreen extends ConsumerWidget {
                 )
               : SliverPadding(
                   padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
-                  sliver: MediaGrid(items: items, onOpenMedia: onOpenMedia),
+                  sliver: MediaGrid(
+                    items: items,
+                    onOpenMedia: onOpenMedia,
+                    onShowDetails: onShowDetails,
+                    onShowContainingFolder: onShowContainingFolder,
+                  ),
                 ),
           loading: () => const SliverFillRemaining(
             child: Center(child: CircularProgressIndicator()),

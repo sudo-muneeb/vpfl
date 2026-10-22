@@ -1,5 +1,5 @@
-name: default_manager_linux
-description: Internal Flutter Linux plugin for desktop MIME defaults through GIO.
+name: vpfl_desktop_linux
+description: Internal Flutter Linux plugin for desktop MIME defaults and file manager integration.
 version: 0.1.0
 publish_to: none
 
@@ -34,7 +34,7 @@ flutter:
   plugin:
     platforms:
       linux:
-        pluginClass: DefaultManagerLinuxPlugin
+        pluginClass: VpflDesktopLinuxPlugin
 
   # To add assets to your plugin package, add an assets section, like this:
   # assets:

@@ -31,8 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-  default_manager_linux:
-    path: packages/default_manager_linux
+  vpfl_desktop_linux:
+    path: packages/vpfl_desktop_linux
 
   flutter_riverpod: ^3.0.3
   media_kit: 1.2.6

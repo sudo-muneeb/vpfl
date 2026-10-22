@@ -42,7 +42,7 @@ Both packages refresh the freedesktop desktop-entry database on install and
 removal, so GLib file managers can list VPFL in Open With. The refresh does
 not set a default application.
 
-The release bundle also includes `libdefault_manager_linux_plugin.so`. The
+The release bundle also includes `libvpfl_desktop_linux_plugin.so`. The
 plugin reads or changes per-user MIME defaults through GIO only after the
 user confirms the action in VPFL. Removing the DEB or RPM does not delete the
 user's MIME preferences. See [default application integration](../linux/default-applications.md)

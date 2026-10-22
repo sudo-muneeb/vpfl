@@ -5,7 +5,7 @@ installed `com.app.vpfl.desktop` advertises the video formats it can open. The
 user's desktop chooses the default application for each MIME type. Installing
 VPFL makes it available in Open With; installation does not set it as default.
 
-`packages/default_manager_linux` is an internal Flutter Linux plugin, version
+`packages/vpfl_desktop_linux` is an internal Flutter Linux plugin, version
 0.1.0. Its Dart API accepts a desktop-file ID and MIME types; its C++ Linux
 side uses `GDesktopAppInfo` and `GAppInfo` through GIO. It queries
 `g_app_info_get_default_for_type`, changes a default with
@@ -34,8 +34,8 @@ installed, even after the invitation limit.
 
 ```bash
 flutter test test/data/services/default_app_prompt_service_test.dart
-cd packages/default_manager_linux
-flutter test test/default_manager_linux_test.dart
+cd packages/vpfl_desktop_linux
+flutter test test/vpfl_desktop_linux_test.dart
 cd ../..
 ./packaging/scripts/check-default-manager-linux.sh
 ```

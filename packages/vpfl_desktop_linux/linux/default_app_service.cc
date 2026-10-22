@@ -1,41 +1,32 @@
 // Copyright 2026 Sheikh Muneeb Ahmed
 // SPDX-License-Identifier: Apache-2.0
 
-#include "include/default_manager_linux/default_manager_linux_plugin.h"
+#include "desktop_services.h"
 
-#include <flutter_linux/flutter_linux.h>
 #include <gio/gdesktopappinfo.h>
 #include <gio/gio.h>
-#include <gtk/gtk.h>
 
 #include <cstring>
 
-#define DEFAULT_MANAGER_LINUX_PLUGIN(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), default_manager_linux_plugin_get_type(), \
-                              DefaultManagerLinuxPlugin))
+namespace {
 
-struct _DefaultManagerLinuxPlugin {
-  GObject parent_instance;
-};
-
-G_DEFINE_TYPE(DefaultManagerLinuxPlugin, default_manager_linux_plugin,
-              g_object_get_type())
-
-static FlMethodResponse* error_response(const char* code, const char* message) {
+FlMethodResponse* error_response(const char* code, const char* message) {
   return FL_METHOD_RESPONSE(fl_method_error_response_new(code, message, nullptr));
 }
 
-static const gchar* string_argument(FlValue* value) {
+const gchar* string_argument(FlValue* value) {
   return value != nullptr && fl_value_get_type(value) == FL_VALUE_TYPE_STRING
              ? fl_value_get_string(value)
              : nullptr;
 }
 
-static FlMethodResponse* success(FlValue* value) {
+FlMethodResponse* success(FlValue* value) {
   return FL_METHOD_RESPONSE(fl_method_success_response_new(value));
 }
 
-static FlMethodResponse* handle_method_call(FlMethodCall* call) {
+}  // namespace
+
+FlMethodResponse* vpfl_handle_default_app_method(FlMethodCall* call) {
   const gchar* method = fl_method_call_get_name(call);
   FlValue* args = fl_method_call_get_args(call);
 
@@ -103,25 +94,4 @@ static FlMethodResponse* handle_method_call(FlMethodCall* call) {
   }
 
   return FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
-}
-
-static void method_call_cb(FlMethodChannel* channel, FlMethodCall* call,
-                           gpointer user_data) {
-  g_autoptr(FlMethodResponse) response = handle_method_call(call);
-  fl_method_call_respond(call, response, nullptr);
-}
-
-static void default_manager_linux_plugin_class_init(
-    DefaultManagerLinuxPluginClass* klass) {}
-
-static void default_manager_linux_plugin_init(DefaultManagerLinuxPlugin* self) {}
-
-void default_manager_linux_plugin_register_with_registrar(
-    FlPluginRegistrar* registrar) {
-  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
-  g_autoptr(FlMethodChannel) channel = fl_method_channel_new(
-      fl_plugin_registrar_get_messenger(registrar), "default_manager_linux",
-      FL_METHOD_CODEC(codec));
-  fl_method_channel_set_method_call_handler(channel, method_call_cb, nullptr,
-                                            nullptr);
 }
