@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:media_kit/media_kit.dart';
 
 import '../../data/model/real_media_tracks.dart';
@@ -8,7 +9,8 @@ import '../../data/services/subtitle_delay.dart';
 
 import '../core/themes/vpfl_theme_extension.dart';
 import '../core/themes/vpfl_typography.dart';
-import 'player_menu_style.dart';
+import '../core/themes/vpfl_popup_style.dart';
+import 'seek_ten_icon.dart';
 
 /// Event-driven playback controls. Each stream only rebuilds the control that
 /// displays its value, keeping position updates away from the rest of the UI.
@@ -102,14 +104,14 @@ class PlayerControls extends StatelessWidget {
 
   static const Duration _seekStep = Duration(seconds: 10);
   static const List<double> _rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
-  static const double _controlHeight = 48;
+  static const double _controlHeight = 52;
 
   @override
   Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<VpflThemeExtension>()!;
     return Theme(
       data: Theme.of(context)
-          .copyWith(popupMenuTheme: PlayerMenuStyle.popupTheme(context)),
+          .copyWith(popupMenuTheme: VpflPopupStyle.popupTheme(context)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 15),
         child: Column(
@@ -183,12 +185,12 @@ class PlayerControls extends StatelessWidget {
                           IconButton(
                             tooltip: 'Seek backward 10 seconds',
                             onPressed: () => onSeekBy(-_seekStep),
-                            iconSize: 23,
+                            iconSize: 24,
                             constraints: const BoxConstraints(
                               minWidth: 44,
                               minHeight: 44,
                             ),
-                            icon: const Icon(Icons.replay_10_rounded),
+                            icon: const SeekTenIcon(forward: false),
                           ),
                           StreamBuilder<bool>(
                             stream: playingStream,
@@ -198,10 +200,10 @@ class PlayerControls extends StatelessWidget {
                                   ? 'Pause'
                                   : 'Play',
                               onPressed: onPlayPause,
-                              iconSize: 27,
+                              iconSize: 32,
                               constraints: const BoxConstraints.tightFor(
-                                width: 46,
-                                height: 46,
+                                width: 52,
+                                height: 52,
                               ),
                               style: IconButton.styleFrom(
                                 backgroundColor: tokens.playerControlSurface,
@@ -217,12 +219,12 @@ class PlayerControls extends StatelessWidget {
                           IconButton(
                             tooltip: 'Seek forward 10 seconds',
                             onPressed: () => onSeekBy(_seekStep),
-                            iconSize: 23,
+                            iconSize: 24,
                             constraints: const BoxConstraints(
                               minWidth: 44,
                               minHeight: 44,
                             ),
-                            icon: const Icon(Icons.forward_10_rounded),
+                            icon: const SeekTenIcon(forward: true),
                           ),
                         ],
                       ),
@@ -255,11 +257,11 @@ class PlayerControls extends StatelessWidget {
                                   ? 'Exit Fullscreen'
                                   : 'Enter Fullscreen',
                               onPressed: onToggleFullscreen,
-                              iconSize: 22,
+                              iconSize: 24,
                               icon: Icon(
                                 fullscreen
-                                    ? Icons.close_fullscreen_rounded
-                                    : Icons.open_in_full_rounded,
+                                    ? LucideIcons.minimize
+                                    : LucideIcons.maximize,
                               ),
                             ),
                           ],
@@ -432,6 +434,9 @@ class _RateButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final overlayForeground = Theme.of(context)
+        .extension<VpflThemeExtension>()!
+        .playerOverlayForeground;
     return StreamBuilder<double>(
       stream: rateStream,
       initialData: rate,
@@ -442,23 +447,22 @@ class _RateButton extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           initialValue: current,
           onSelected: onSetRate,
-          itemBuilder: (BuildContext context) =>
-              PlayerMenuStyle.frostedPopupItems<double>([
-                for (final double value in rates)
-                  PopupMenuItem<double>(
-                    value: value,
-                    child: Text(
-                      '${_formatRate(value)}×',
-                      style: TextStyle(
-                        color: current == value
-                            ? Theme.of(context)
-                                  .extension<VpflThemeExtension>()!
-                                  .playbackProgress
-                            : null,
-                      ),
-                    ),
+          itemBuilder: (BuildContext context) => [
+            for (final double value in rates)
+              PopupMenuItem<double>(
+                value: value,
+                child: Text(
+                  '${_formatRate(value)}×',
+                  style: TextStyle(
+                    color: current == value
+                        ? Theme.of(context)
+                              .extension<VpflThemeExtension>()!
+                              .playbackProgress
+                        : null,
                   ),
-              ]),
+                ),
+              ),
+          ],
           child: Tooltip(
             message: 'Playback speed: ${_formatRate(current)}×',
             child: SizedBox(
@@ -467,11 +471,12 @@ class _RateButton extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.speed_rounded, size: 21),
+                  Icon(LucideIcons.gauge, size: 24, color: overlayForeground),
                   const SizedBox(width: 3),
                   Text(
                     '${_formatRate(current)}×',
-                    style: Theme.of(context).textTheme.labelSmall,
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: overlayForeground),
                   ),
                 ],
               ),
@@ -508,10 +513,10 @@ class _VolumeControl extends StatelessWidget {
       builder: (BuildContext context, AsyncSnapshot<double> snapshot) {
         final double value = (snapshot.data ?? volume).clamp(0, 100);
         final IconData icon = value == 0
-            ? Icons.volume_off
+            ? LucideIcons.volumeX
             : value < 50
-            ? Icons.volume_down
-            : Icons.volume_up;
+            ? LucideIcons.volume1
+            : LucideIcons.volume2;
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -523,14 +528,23 @@ class _VolumeControl extends StatelessWidget {
             if (showSlider)
               SizedBox(
                 width: 125,
-                child: Slider(
-                  min: 0,
-                  max: 100,
-                  value: value,
-                  label: '${value.round()}%',
-                  semanticFormatterCallback: (value) =>
-                      'Volume ${value.round()} percent',
-                  onChanged: (value) => unawaited(onSetVolume(value)),
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: Colors.white,
+                    inactiveTrackColor: Colors.white24,
+                    thumbColor: Colors.white,
+                    overlayColor: Colors.white12,
+                    trackHeight: 2,
+                  ),
+                  child: Slider(
+                    min: 0,
+                    max: 100,
+                    value: value,
+                    label: '${value.round()}%',
+                    semanticFormatterCallback: (value) =>
+                        'Volume ${value.round()} percent',
+                    onChanged: (value) => unawaited(onSetVolume(value)),
+                  ),
                 ),
               ),
           ],
@@ -569,6 +583,9 @@ class _SubtitleButton extends StatelessWidget {
         final requested = (selection.data ?? selectedTracks).subtitle;
         return PopupMenuButton<Object>(
           tooltip: 'Subtitles',
+          iconColor: Theme.of(context)
+              .extension<VpflThemeExtension>()!
+              .playerOverlayForeground,
           clipBehavior: Clip.antiAlias,
           onSelected: (choice) async {
             if (choice is SubtitleTrack) {
@@ -577,7 +594,7 @@ class _SubtitleButton extends StatelessWidget {
               await onLoadSubtitleFile();
             }
           },
-          itemBuilder: (context) => PlayerMenuStyle.frostedPopupItems<Object>([
+          itemBuilder: (context) => [
             for (final track in [
               SubtitleTrack.auto(),
               SubtitleTrack.no(),
@@ -604,8 +621,12 @@ class _SubtitleButton extends StatelessWidget {
               value: 'load-file',
               child: Text('Load subtitle file…'),
             ),
-          ]),
-          icon: const Icon(Icons.closed_caption_outlined),
+          ],
+          icon: Icon(
+            requested.id == 'no'
+                ? LucideIcons.captionsOff
+                : LucideIcons.captions,
+          ),
         );
       },
     ),
@@ -645,7 +666,7 @@ class _ShuffleButton extends StatelessWidget {
               : 'Shuffle off. Click to enable',
           onPressed: available ? () => onSet(!enabled) : null,
           icon: Icon(
-            Icons.shuffle_rounded,
+            LucideIcons.shuffle,
             color: enabled ? Theme.of(context).colorScheme.primary : null,
           ),
         );
@@ -685,8 +706,8 @@ class _RepeatButton extends StatelessWidget {
         onPressed: () => onSet(next),
         icon: Icon(
           current == PlaylistMode.single
-              ? Icons.repeat_one_rounded
-              : Icons.repeat_rounded,
+              ? LucideIcons.repeat1
+              : LucideIcons.repeat,
           color: current == PlaylistMode.none
               ? null
               : Theme.of(context).colorScheme.primary,
@@ -705,7 +726,7 @@ Future<void> _showSubtitleDelayDialog(
 ) => showDialog<void>(
   context: context,
   builder: (context) => Theme(
-    data: PlayerMenuStyle.dialogTheme(context),
+    data: VpflPopupStyle.dialogTheme(context),
     child: AlertDialog(
       title: const Text('Subtitle timing'),
       content: StreamBuilder<int>(
@@ -823,6 +844,9 @@ class _OverflowMenu extends StatelessWidget {
           final Tracks available = trackState.data ?? tracks;
           return PopupMenuButton<_PlayerAction>(
             tooltip: 'More playback options',
+            iconColor: Theme.of(context)
+                .extension<VpflThemeExtension>()!
+                .playerOverlayForeground,
             clipBehavior: Clip.antiAlias,
             onSelected: (_PlayerAction action) async {
               switch (action.kind) {
@@ -871,140 +895,134 @@ class _OverflowMenu extends StatelessWidget {
                   onShowInfo();
               }
             },
-            itemBuilder: (BuildContext context) =>
-                PlayerMenuStyle.frostedPopupItems<_PlayerAction>([
-                  if (narrow) ...[
-                    const PopupMenuItem<_PlayerAction>(
-                      value: _PlayerAction(_PlayerActionKind.subtitles),
-                      child: Text('Subtitles…'),
+            itemBuilder: (BuildContext context) => [
+              if (narrow) ...[
+                const PopupMenuItem<_PlayerAction>(
+                  value: _PlayerAction(_PlayerActionKind.subtitles),
+                  child: Text('Subtitles…'),
+                ),
+                const PopupMenuItem<_PlayerAction>(
+                  value: _PlayerAction(_PlayerActionKind.rate),
+                  child: Text('Playback speed…'),
+                ),
+              ],
+              const PopupMenuItem<_PlayerAction>(
+                value: _PlayerAction(_PlayerActionKind.subtitleTiming),
+                child: Text('Subtitle timing…'),
+              ),
+              if (RealMediaTracks(available).audio.isNotEmpty)
+                PopupMenuItem<_PlayerAction>(
+                  enabled: false,
+                  padding: EdgeInsets.zero,
+                  child: MenuAnchor(
+                    style: VpflPopupStyle.menu(context),
+                    alignmentOffset: const Offset(4, 0),
+                    menuChildren: [
+                      for (final track in available.audio)
+                        MenuItemButton(
+                          style: VpflPopupStyle.item(
+                            context,
+                            selected:
+                                track ==
+                                (selectionState.data ?? selectedTracks).audio,
+                          ),
+                          leadingIcon:
+                              track ==
+                                  (selectionState.data ?? selectedTracks).audio
+                              ? const Icon(Icons.check, size: 18)
+                              : const SizedBox(width: 18),
+                          onPressed: () async {
+                            Navigator.of(context).pop();
+                            await onSetTrack(track);
+                          },
+                          child: Text(_trackLabel(track)),
+                        ),
+                    ],
+                    builder: (context, controller, child) => TextButton(
+                      onPressed: () => controller.isOpen
+                          ? controller.close()
+                          : controller.open(),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context)
+                            .extension<VpflThemeExtension>()!
+                            .playerOverlayForeground,
+                        minimumSize: const Size(190, 48),
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        textStyle: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Audio tracks'),
+                          Icon(Icons.chevron_right),
+                        ],
+                      ),
                     ),
-                    const PopupMenuItem<_PlayerAction>(
-                      value: _PlayerAction(_PlayerActionKind.rate),
-                      child: Text('Playback speed…'),
-                    ),
+                  ),
+                ),
+              if (RealMediaTracks(available).video.length > 1)
+                const PopupMenuItem<_PlayerAction>(
+                  value: _PlayerAction(_PlayerActionKind.videoTracks),
+                  child: Text('Video tracks…'),
+                ),
+              PopupMenuItem<_PlayerAction>(
+                enabled: false,
+                padding: EdgeInsets.zero,
+                child: MenuAnchor(
+                  style: VpflPopupStyle.menu(context),
+                  alignmentOffset: const Offset(4, 0),
+                  menuChildren: [
+                    for (final option in const [
+                      BoxFit.contain,
+                      BoxFit.cover,
+                      BoxFit.fill,
+                    ])
+                      MenuItemButton(
+                        style: VpflPopupStyle.item(
+                          context,
+                          selected: fit == option,
+                        ),
+                        leadingIcon: fit == option
+                            ? const Icon(Icons.check, size: 18)
+                            : const SizedBox(width: 18),
+                        onPressed: () {
+                          onSetFit(option);
+                          Navigator.of(context).pop();
+                        },
+                        child: Text(_fitLabel(option)),
+                      ),
                   ],
-                  const PopupMenuItem<_PlayerAction>(
-                    value: _PlayerAction(_PlayerActionKind.subtitleTiming),
-                    child: Text('Subtitle timing…'),
-                  ),
-                  if (RealMediaTracks(available).audio.isNotEmpty)
-                    PopupMenuItem<_PlayerAction>(
-                      enabled: false,
-                      padding: EdgeInsets.zero,
-                      child: MenuAnchor(
-                        style: PlayerMenuStyle.menu(context),
-                        alignmentOffset: const Offset(4, 0),
-                        menuChildren: PlayerMenuStyle.frostedMenuChildren([
-                          for (final track in available.audio)
-                            MenuItemButton(
-                              style: PlayerMenuStyle.item(
-                                context,
-                                selected:
-                                    track ==
-                                    (selectionState.data ?? selectedTracks)
-                                        .audio,
-                              ),
-                              leadingIcon:
-                                  track ==
-                                      (selectionState.data ?? selectedTracks)
-                                          .audio
-                                  ? const Icon(Icons.check, size: 18)
-                                  : const SizedBox(width: 18),
-                              onPressed: () async {
-                                Navigator.of(context).pop();
-                                await onSetTrack(track);
-                              },
-                              child: Text(_trackLabel(track)),
-                            ),
-                        ]),
-                        builder: (context, controller, child) => TextButton(
-                          onPressed: () => controller.isOpen
-                              ? controller.close()
-                              : controller.open(),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Theme.of(context)
-                                .extension<VpflThemeExtension>()!
-                                .playerOverlayForeground,
-                            minimumSize: const Size(190, 48),
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            textStyle: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('Audio tracks'),
-                              Icon(Icons.chevron_right),
-                            ],
-                          ),
-                        ),
-                      ),
+                  builder: (context, controller, child) => TextButton(
+                    onPressed: () => controller.isOpen
+                        ? controller.close()
+                        : controller.open(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context)
+                          .extension<VpflThemeExtension>()!
+                          .playerOverlayForeground,
+                      minimumSize: const Size(190, 48),
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      textStyle: Theme.of(context).textTheme.bodyMedium,
                     ),
-                  if (RealMediaTracks(available).video.length > 1)
-                    const PopupMenuItem<_PlayerAction>(
-                      value: _PlayerAction(_PlayerActionKind.videoTracks),
-                      child: Text('Video tracks…'),
-                    ),
-                  PopupMenuItem<_PlayerAction>(
-                    enabled: false,
-                    padding: EdgeInsets.zero,
-                    child: MenuAnchor(
-                      style: PlayerMenuStyle.menu(context),
-                      alignmentOffset: const Offset(4, 0),
-                      menuChildren: PlayerMenuStyle.frostedMenuChildren([
-                        for (final option in const [
-                          BoxFit.contain,
-                          BoxFit.cover,
-                          BoxFit.fill,
-                        ])
-                          MenuItemButton(
-                            style: PlayerMenuStyle.item(
-                              context,
-                              selected: fit == option,
-                            ),
-                            leadingIcon: fit == option
-                                ? const Icon(Icons.check, size: 18)
-                                : const SizedBox(width: 18),
-                            onPressed: () {
-                              onSetFit(option);
-                              Navigator.of(context).pop();
-                            },
-                            child: Text(_fitLabel(option)),
-                          ),
-                      ]),
-                      builder: (context, controller, child) => TextButton(
-                        onPressed: () => controller.isOpen
-                            ? controller.close()
-                            : controller.open(),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context)
-                              .extension<VpflThemeExtension>()!
-                              .playerOverlayForeground,
-                          minimumSize: const Size(190, 48),
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          textStyle: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Video fit'),
-                            Icon(Icons.chevron_right),
-                          ],
-                        ),
-                      ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [Text('Video fit'), Icon(Icons.chevron_right)],
                     ),
                   ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem<_PlayerAction>(
-                    value: _PlayerAction(_PlayerActionKind.screenshot),
-                    child: Text('Save screenshot…'),
-                  ),
-                  const PopupMenuItem<_PlayerAction>(
-                    value: _PlayerAction(_PlayerActionKind.info),
-                    child: Text('Info'),
-                  ),
-                ]),
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<_PlayerAction>(
+                value: _PlayerAction(_PlayerActionKind.screenshot),
+                child: Text('Save screenshot…'),
+              ),
+              const PopupMenuItem<_PlayerAction>(
+                value: _PlayerAction(_PlayerActionKind.info),
+                child: Text('Info'),
+              ),
+            ],
             icon: const Icon(Icons.more_vert),
           );
         },
@@ -1016,7 +1034,7 @@ class _OverflowMenu extends StatelessWidget {
       showDialog<Object>(
         context: context,
         builder: (context) => Theme(
-          data: PlayerMenuStyle.dialogTheme(context),
+          data: VpflPopupStyle.dialogTheme(context),
           child: StreamBuilder<Track>(
             stream: selectedTracksStream,
             initialData: selectedTracks,
@@ -1078,7 +1096,7 @@ class _OverflowMenu extends StatelessWidget {
   }) => showDialog<T>(
     context: context,
     builder: (BuildContext context) => Theme(
-      data: PlayerMenuStyle.dialogTheme(context),
+      data: VpflPopupStyle.dialogTheme(context),
       child: AlertDialog(
         title: Text(title),
         content: SizedBox(

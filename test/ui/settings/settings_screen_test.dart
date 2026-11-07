@@ -50,6 +50,20 @@ void main() {
     expect(history.width, lessThanOrEqualTo(680));
   });
 
+  testWidgets('appearance choices fit a narrow desktop window', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(_harness(service));
+    await tester.pumpAndSettle();
+
+    final selector = tester.getRect(
+      find.byKey(const Key('theme-mode-selector')),
+    );
+    expect(selector.left, greaterThanOrEqualTo(0));
+    expect(selector.right, lessThanOrEqualTo(480));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('playback switches call their matching preference actions', (
     tester,
   ) async {

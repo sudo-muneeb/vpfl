@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../data/services/lifecycle_trace.dart';
 
@@ -159,7 +160,6 @@ class _WindowControlButtonsState extends State<WindowControlButtons> {
           label: 'Close window',
           glyph: WindowControlGlyph.close,
           onPressed: WindowCommands.close,
-          close: true,
         ),
       ],
     ),
@@ -172,14 +172,12 @@ class _WindowButton extends StatelessWidget {
     required this.label,
     required this.glyph,
     required this.onPressed,
-    this.close = false,
   });
 
   final Key controlKey;
   final String label;
   final WindowControlGlyph glyph;
   final Future<void> Function() onPressed;
-  final bool close;
 
   @override
   Widget build(BuildContext context) {
@@ -195,12 +193,8 @@ class _WindowButton extends StatelessWidget {
             key: controlKey,
             onTap: onPressed,
             borderRadius: BorderRadius.circular(16),
-            hoverColor: close
-                ? scheme.errorContainer
-                : scheme.surfaceContainerHigh,
-            focusColor: close
-                ? scheme.errorContainer
-                : scheme.secondaryContainer,
+            hoverColor: scheme.surfaceContainerHigh,
+            focusColor: scheme.secondaryContainer,
             child: SizedBox.square(
               dimension: 32,
               child: Center(
@@ -219,7 +213,7 @@ class _WindowButton extends StatelessWidget {
 
 enum WindowControlGlyph { minimize, maximize, restore, close }
 
-/// Chromium's 24-unit window-control silhouettes rendered as scalable paths.
+/// Window-control icon from the shared Lucide icon family.
 class WindowControlIcon extends StatelessWidget {
   const WindowControlIcon({
     required this.glyph,
@@ -231,62 +225,22 @@ class WindowControlIcon extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: const Size.square(14),
-    painter: _WindowGlyphPainter(glyph, color),
-  );
-}
-
-/// Geometry adapted from Chromium's window_control_*.icon files.
-/// Copyright 2016 The Chromium Authors. BSD-style license; see
-/// third_party/chromium_window_icons/LICENSE.
-class _WindowGlyphPainter extends CustomPainter {
-  const _WindowGlyphPainter(this.glyph, this.color);
-
-  final WindowControlGlyph glyph;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.scale(size.width / 24, size.height / 24);
-    final path = Path()..fillType = PathFillType.evenOdd;
-    switch (glyph) {
-      case WindowControlGlyph.minimize:
-        path.addRect(const Rect.fromLTRB(1, 19, 23, 23));
-      case WindowControlGlyph.maximize:
-        path.addRect(const Rect.fromLTRB(1, 1, 23, 23));
-        path.addRect(const Rect.fromLTRB(5, 5, 19, 19));
-      case WindowControlGlyph.restore:
-        path.addRect(const Rect.fromLTRB(8, 1, 23, 16));
-        path.addRect(const Rect.fromLTRB(12, 5, 19, 12));
-        path.moveTo(5, 8);
-        path.lineTo(1, 8);
-        path.lineTo(1, 23);
-        path.lineTo(16, 23);
-        path.lineTo(16, 19);
-        path.lineTo(5, 19);
-        path.close();
-      case WindowControlGlyph.close:
-        path.moveTo(23, 3.22);
-        path.lineTo(20.78, 1);
-        path.lineTo(12, 9.78);
-        path.lineTo(3.22, 1);
-        path.lineTo(1, 3.22);
-        path.lineTo(9.78, 12);
-        path.lineTo(1, 20.78);
-        path.lineTo(3.22, 23);
-        path.lineTo(12, 14.22);
-        path.lineTo(20.78, 23);
-        path.lineTo(23, 20.78);
-        path.lineTo(14.22, 12);
-        path.close();
-    }
-    canvas.drawPath(path, Paint()..color = color);
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _WindowGlyphPainter oldDelegate) =>
-      glyph != oldDelegate.glyph || color != oldDelegate.color;
+  Widget build(BuildContext context) => switch (glyph) {
+    WindowControlGlyph.minimize => Icon(
+      LucideIcons.minus,
+      size: 16,
+      color: color,
+    ),
+    WindowControlGlyph.maximize => Icon(
+      LucideIcons.square,
+      size: 16,
+      color: color,
+    ),
+    WindowControlGlyph.restore => Icon(
+      LucideIcons.copy,
+      size: 16,
+      color: color,
+    ),
+    WindowControlGlyph.close => Icon(LucideIcons.x, size: 16, color: color),
+  };
 }

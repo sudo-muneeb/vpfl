@@ -14,15 +14,12 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
     required this.cardBorderActive,
     required this.cardArtworkTop,
     required this.cardArtworkBottom,
-    required this.cardOverlay,
     required this.playbackProgress,
     required this.playerControlSurface,
     required this.playerControlForeground,
     required this.playerBackground,
     required this.playerOverlayForeground,
     required this.playerOverlayTop,
-    required this.playerOverlayMiddle,
-    required this.playerOverlayBottom,
     required this.playerEdgeBackground,
     required this.playerMenuBackground,
   });
@@ -38,15 +35,12 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
   final Color cardBorderActive;
   final Color cardArtworkTop;
   final Color cardArtworkBottom;
-  final Color cardOverlay;
   final Color playbackProgress;
   final Color playerControlSurface;
   final Color playerControlForeground;
   final Color playerBackground;
   final Color playerOverlayForeground;
   final Color playerOverlayTop;
-  final Color playerOverlayMiddle;
-  final Color playerOverlayBottom;
   final Color playerEdgeBackground;
   final Color playerMenuBackground;
 
@@ -62,15 +56,12 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
     Color? cardBorderActive,
     Color? cardArtworkTop,
     Color? cardArtworkBottom,
-    Color? cardOverlay,
     Color? playbackProgress,
     Color? playerControlSurface,
     Color? playerControlForeground,
     Color? playerBackground,
     Color? playerOverlayForeground,
     Color? playerOverlayTop,
-    Color? playerOverlayMiddle,
-    Color? playerOverlayBottom,
     Color? playerEdgeBackground,
     Color? playerMenuBackground,
   }) {
@@ -85,7 +76,6 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
       cardBorderActive: cardBorderActive ?? this.cardBorderActive,
       cardArtworkTop: cardArtworkTop ?? this.cardArtworkTop,
       cardArtworkBottom: cardArtworkBottom ?? this.cardArtworkBottom,
-      cardOverlay: cardOverlay ?? this.cardOverlay,
       playbackProgress: playbackProgress ?? this.playbackProgress,
       playerControlSurface: playerControlSurface ?? this.playerControlSurface,
       playerControlForeground:
@@ -94,8 +84,6 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
       playerOverlayForeground:
           playerOverlayForeground ?? this.playerOverlayForeground,
       playerOverlayTop: playerOverlayTop ?? this.playerOverlayTop,
-      playerOverlayMiddle: playerOverlayMiddle ?? this.playerOverlayMiddle,
-      playerOverlayBottom: playerOverlayBottom ?? this.playerOverlayBottom,
       playerEdgeBackground: playerEdgeBackground ?? this.playerEdgeBackground,
       playerMenuBackground: playerMenuBackground ?? this.playerMenuBackground,
     );
@@ -133,7 +121,6 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
         other.cardArtworkBottom,
         t,
       )!,
-      cardOverlay: Color.lerp(cardOverlay, other.cardOverlay, t)!,
       playbackProgress: Color.lerp(
         playbackProgress,
         other.playbackProgress,
@@ -162,16 +149,6 @@ class VpflThemeExtension extends ThemeExtension<VpflThemeExtension> {
       playerOverlayTop: Color.lerp(
         playerOverlayTop,
         other.playerOverlayTop,
-        t,
-      )!,
-      playerOverlayMiddle: Color.lerp(
-        playerOverlayMiddle,
-        other.playerOverlayMiddle,
-        t,
-      )!,
-      playerOverlayBottom: Color.lerp(
-        playerOverlayBottom,
-        other.playerOverlayBottom,
         t,
       )!,
       playerEdgeBackground: Color.lerp(

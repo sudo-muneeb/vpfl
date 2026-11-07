@@ -3,12 +3,43 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme_extension.dart';
 import 'package:vpfl/ui/player/player_controls.dart';
+import 'package:vpfl/ui/player/seek_ten_icon.dart';
 
 void main() {
+  testWidgets('light player controls retain white labels over video', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(_controls(), theme: VpflTheme.light));
+
+    final speedIcon = tester.widget<Icon>(find.byIcon(LucideIcons.gauge));
+    expect(speedIcon.color, VpflColors.darkText);
+    final subtitles = tester.widget<PopupMenuButton<Object>>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is PopupMenuButton<Object> && widget.tooltip == 'Subtitles',
+      ),
+    );
+    expect(subtitles.iconColor, VpflColors.darkText);
+    expect(find.byIcon(LucideIcons.captions), findsOneWidget);
+  });
+
+  testWidgets('light mode player menu keeps white text on black', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(_controls(), theme: VpflTheme.light));
+    await tester.tap(find.byTooltip('Playback speed'));
+    await tester.pumpAndSettle();
+
+    final menuContext = tester.element(find.text('1.5×'));
+    expect(PopupMenuTheme.of(menuContext).color, VpflColors.popupBlack);
+    expect(DefaultTextStyle.of(menuContext).style.color, VpflColors.darkText);
+  });
+
   testWidgets('play control calls the playback action', (tester) async {
     bool toggled = false;
     await tester.pumpWidget(
@@ -50,7 +81,7 @@ void main() {
     expect(find.byTooltip('Shuffle unavailable for one video'), findsOneWidget);
     final shuffleButton = tester.widget<IconButton>(
       find.ancestor(
-        of: find.byIcon(Icons.shuffle_rounded),
+        of: find.byIcon(LucideIcons.shuffle),
         matching: find.byType(IconButton),
       ),
     );
@@ -80,8 +111,8 @@ void main() {
     await tester.tap(find.byTooltip('Shuffle on. Click to disable'));
     await tester.pump();
     expect(selected, isFalse);
-    final shuffleCenter = tester.getCenter(find.byIcon(Icons.shuffle_rounded));
-    final repeatCenter = tester.getCenter(find.byIcon(Icons.repeat_rounded));
+    final shuffleCenter = tester.getCenter(find.byIcon(LucideIcons.shuffle));
+    final repeatCenter = tester.getCenter(find.byIcon(LucideIcons.repeat));
     expect(shuffleCenter.dx, lessThan(repeatCenter.dx));
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -253,10 +284,64 @@ void main() {
       _app(_controls(onSeekBy: (value) async => seeks.add(value))),
     );
 
+    expect(
+      tester
+          .widget<SeekTenIcon>(
+            find.descendant(
+              of: find.byTooltip('Seek backward 10 seconds'),
+              matching: find.byType(SeekTenIcon),
+            ),
+          )
+          .forward,
+      isFalse,
+    );
+    expect(
+      tester
+          .widget<SeekTenIcon>(
+            find.descendant(
+              of: find.byTooltip('Seek forward 10 seconds'),
+              matching: find.byType(SeekTenIcon),
+            ),
+          )
+          .forward,
+      isTrue,
+    );
+    for (var index = 0; index < 2; index++) {
+      expect(
+        tester.getSize(find.byType(SeekTenIcon).at(index)),
+        const Size.square(24),
+      );
+    }
+
     await tester.tap(find.byTooltip('Seek forward 10 seconds'));
     await tester.tap(find.byTooltip('Seek backward 10 seconds'));
 
     expect(seeks, [const Duration(seconds: 10), const Duration(seconds: -10)]);
+  });
+
+  testWidgets('transport hierarchy and utility icon sizes stay balanced', (
+    tester,
+  ) async {
+    for (final fullscreen in [false, true]) {
+      await tester.pumpWidget(_app(_controls(fullscreen: fullscreen)));
+      final play = tester.getSize(find.byTooltip('Play'));
+      expect(play, const Size.square(52));
+      final playGlyph = tester.getSize(find.byIcon(Icons.play_arrow_rounded));
+      for (final seek in [SeekTenIcon.backwardIcon, SeekTenIcon.forwardIcon]) {
+        expect(
+          tester.getSize(find.byIcon(seek)).width,
+          lessThan(playGlyph.width),
+        );
+      }
+      final shuffleSize = tester.getSize(find.byIcon(LucideIcons.shuffle));
+      for (final icon in [
+        LucideIcons.gauge,
+        fullscreen ? LucideIcons.minimize : LucideIcons.maximize,
+      ]) {
+        expect(tester.getSize(find.byIcon(icon)), shuffleSize);
+        expect(icon.fontFamily, LucideIcons.shuffle.fontFamily);
+      }
+    }
   });
 
   testWidgets('rate menu sends the selected playback rate', (tester) async {
@@ -267,19 +352,18 @@ void main() {
 
     await tester.tap(find.byTooltip('Playback speed'));
     await tester.pumpAndSettle();
-    expect(find.byType(BackdropFilter), findsWidgets);
+    expect(find.byType(BackdropFilter), findsNothing);
     final menuContext = tester.element(find.text('1.5×'));
     final menuColor = PopupMenuTheme.of(menuContext).color!;
-    expect(menuColor, const Color(0xB3000000));
+    expect(
+      menuColor,
+      VpflTheme.dark.extension<VpflThemeExtension>()!.playerMenuBackground,
+    );
     expect(PopupMenuTheme.of(menuContext).menuPadding, EdgeInsets.zero);
-    final firstBlur = find.byType(BackdropFilter).first;
-    final popupSurface = find
-        .ancestor(of: firstBlur, matching: find.byType(Material))
-        .first;
-    expect(tester.getRect(firstBlur).top, tester.getRect(popupSurface).top);
+    expect(menuColor.a, 1);
     final popupShape =
         PopupMenuTheme.of(menuContext).shape! as RoundedRectangleBorder;
-    expect(popupShape.side, BorderSide.none);
+    expect(popupShape.side.color, VpflColors.darkBorder);
     final selectedItem = tester.widget<PopupMenuItem<double>>(
       find.byWidgetPredicate(
         (widget) => widget is PopupMenuItem<double> && widget.value == 1,
@@ -318,7 +402,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Audio tracks'));
     await tester.pumpAndSettle();
-    expect(find.byType(BackdropFilter), findsWidgets);
+    expect(find.byType(BackdropFilter), findsNothing);
     expect(find.text('Save screenshot…'), findsOneWidget);
     expect(
       tester.getRect(find.text('Alternate')).left,
@@ -332,7 +416,7 @@ void main() {
     );
     final submenuShape =
         submenu.style!.shape!.resolve({})! as RoundedRectangleBorder;
-    expect(submenuShape.side, BorderSide.none);
+    expect(submenuShape.side.color, VpflColors.darkBorder);
     expect(submenu.style!.padding!.resolve({}), EdgeInsets.zero);
     final auto = tester.widget<MenuItemButton>(
       find.ancestor(
@@ -399,14 +483,17 @@ void main() {
       find.byTooltip('Repeat off. Click to repeat this video'),
       findsOneWidget,
     );
+    expect(find.byIcon(LucideIcons.repeat), findsOneWidget);
     await tester.tap(find.byTooltip('Repeat off. Click to repeat this video'));
     expect(selectedMode, PlaylistMode.single);
     await tester.pump();
+    expect(find.byIcon(LucideIcons.repeat1), findsOneWidget);
     await tester.tap(
       find.byTooltip('Repeat this video. Click to repeat queue'),
     );
     expect(selectedMode, PlaylistMode.loop);
     await tester.pump();
+    expect(find.byIcon(LucideIcons.repeat), findsOneWidget);
     await tester.tap(find.byTooltip('Repeat queue. Click to turn off'));
     expect(selectedMode, PlaylistMode.none);
 
@@ -438,13 +525,13 @@ void main() {
 
     await tester.pumpWidget(controls(false));
     expect(find.byTooltip('Enter Fullscreen'), findsOneWidget);
-    expect(find.byIcon(Icons.open_in_full_rounded), findsOneWidget);
+    expect(find.byIcon(LucideIcons.maximize), findsOneWidget);
     await tester.tap(find.byTooltip('Enter Fullscreen'));
     expect(toggles, 1);
 
     await tester.pumpWidget(controls(true));
     expect(find.byTooltip('Exit Fullscreen'), findsOneWidget);
-    expect(find.byIcon(Icons.close_fullscreen_rounded), findsOneWidget);
+    expect(find.byIcon(LucideIcons.minimize), findsOneWidget);
     await tester.tap(find.byTooltip('Exit Fullscreen'));
     expect(toggles, 2);
 
@@ -480,7 +567,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
     await tester.pump();
     expect(find.byTooltip('Exit Fullscreen'), findsOneWidget);
-    expect(find.byIcon(Icons.close_fullscreen_rounded), findsOneWidget);
+    expect(find.byIcon(LucideIcons.minimize), findsOneWidget);
   });
 
   testWidgets('overflow menu exposes screenshot and one info action', (
@@ -499,18 +586,7 @@ void main() {
 
     await tester.tap(find.byTooltip('More playback options'));
     await tester.pumpAndSettle();
-    final frostedRows = find.byType(BackdropFilter);
-    final popupSurface = find
-        .ancestor(of: frostedRows.first, matching: find.byType(Material))
-        .first;
-    expect(
-      tester.getRect(frostedRows.first).top,
-      tester.getRect(popupSurface).top,
-    );
-    expect(
-      tester.getRect(frostedRows.last).bottom,
-      tester.getRect(popupSurface).bottom,
-    );
+    expect(find.byType(BackdropFilter), findsNothing);
     await tester.tap(find.text('Save screenshot…'));
     await tester.pumpAndSettle();
     expect(screenshotRequested, isTrue);
@@ -546,6 +622,52 @@ void main() {
     expect(values.every((value) => value >= 0 && value <= 100), isTrue);
     await tester.tap(find.byTooltip('Mute'));
     expect(values.last, 0);
+  });
+
+  testWidgets('volume stays white while seek progress keeps its theme color', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    for (final theme in [VpflTheme.dark, VpflTheme.light]) {
+      await tester.pumpWidget(_app(_controls(volume: 35), theme: theme));
+      await tester.pumpAndSettle();
+      final volumeContext = tester.element(find.byType(Slider).last);
+      final volumeTheme = SliderTheme.of(volumeContext);
+      expect(volumeTheme.activeTrackColor, Colors.white);
+      expect(volumeTheme.thumbColor, Colors.white);
+      final seekContext = tester.element(find.byType(Slider).first);
+      final seekTheme = SliderTheme.of(seekContext);
+      expect(volumeTheme.trackHeight, lessThan(seekTheme.trackHeight!));
+      expect(
+        seekTheme.activeTrackColor,
+        theme.extension<VpflThemeExtension>()!.playbackProgress,
+      );
+    }
+  });
+
+  testWidgets('volume icon follows muted, low, and high levels', (
+    tester,
+  ) async {
+    final changes = StreamController<double>.broadcast(sync: true);
+    addTearDown(changes.close);
+    await tester.pumpWidget(
+      _app(_controls(volume: 0, volumeStream: changes.stream)),
+    );
+    for (final (volume, icon, tooltip) in [
+      (0.0, LucideIcons.volumeX, 'Unmute'),
+      (1.0, LucideIcons.volume1, 'Mute'),
+      (49.0, LucideIcons.volume1, 'Mute'),
+      (50.0, LucideIcons.volume2, 'Mute'),
+      (100.0, LucideIcons.volume2, 'Mute'),
+    ]) {
+      changes.add(volume);
+      await tester.pump();
+      expect(find.byIcon(icon), findsOneWidget);
+      expect(find.byTooltip(tooltip), findsOneWidget);
+    }
   });
 
   testWidgets('CC menu labels tracks and checks the requested selection', (
@@ -635,6 +757,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('English · eng'), findsNothing);
     expect(find.text('Auto'), findsOneWidget);
+  });
+
+  testWidgets('captions icon follows Off and active selections', (
+    tester,
+  ) async {
+    final selections = StreamController<Track>.broadcast(sync: true);
+    addTearDown(selections.close);
+    await tester.pumpWidget(
+      _app(_controls(selectedTracksStream: selections.stream)),
+    );
+    expect(find.byIcon(LucideIcons.captions), findsOneWidget);
+
+    selections.add(Track(subtitle: SubtitleTrack.no()));
+    await tester.pump();
+    expect(find.byIcon(LucideIcons.captionsOff), findsOneWidget);
+    expect(find.byIcon(LucideIcons.captions), findsNothing);
+
+    selections.add(Track(subtitle: SubtitleTrack.auto()));
+    await tester.pump();
+    expect(find.byIcon(LucideIcons.captions), findsOneWidget);
+    expect(find.byIcon(LucideIcons.captionsOff), findsNothing);
   });
 
   testWidgets('compact CC dialog updates tracks and selects Off', (
@@ -768,8 +911,8 @@ void main() {
   });
 }
 
-Widget _app(Widget child) => MaterialApp(
-  theme: VpflTheme.dark,
+Widget _app(Widget child, {ThemeData? theme}) => MaterialApp(
+  theme: theme ?? VpflTheme.dark,
   home: Scaffold(body: child),
 );
 
@@ -799,6 +942,7 @@ PlayerControls _controls({
   Future<void> Function()? onScreenshot,
   VoidCallback? onShowInfo,
   double volume = 100,
+  Stream<double> volumeStream = const Stream<double>.empty(),
   Future<void> Function(double)? onSetVolume,
   Playlist playlist = const Playlist([]),
   bool shuffle = false,
@@ -818,7 +962,7 @@ PlayerControls _controls({
   rateStream: const Stream<double>.empty(),
   onSetRate: onSetRate ?? (_) async {},
   volume: volume,
-  volumeStream: const Stream<double>.empty(),
+  volumeStream: volumeStream,
   onSetVolume: onSetVolume ?? (_) async {},
   playlist: playlist,
   playlistStream: const Stream<Playlist>.empty(),

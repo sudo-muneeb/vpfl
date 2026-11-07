@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:vpfl/ui/library/video_context_menu.dart';
 
 void main() {
@@ -44,6 +45,13 @@ void main() {
       expect(find.text('Open'), findsOneWidget);
       expect(find.text('Show details'), findsOneWidget);
       expect(find.text('Show containing folder'), findsOneWidget);
+      for (final icon in [
+        LucideIcons.circlePlay,
+        LucideIcons.fileText,
+        LucideIcons.folderKanban,
+      ]) {
+        expect(tester.widget<Icon>(find.byIcon(icon)).size, 19);
+      }
 
       await tester.tap(find.text('Show details'));
       await tester.pumpAndSettle();

@@ -30,7 +30,7 @@ Current desktop structure:
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│ [logo] VPFL   current title   renderer   Open file  ─ □ × │
+│ [logo] VPFL   current title   renderer   [folder] [theme] ─ □ × │
 ├──────────────┬───────────────────────────────────────────────┤
 │ Home         │                                               │
 │ All Videos   │ Recent videos                                 │
@@ -60,17 +60,16 @@ and 6 px rounded hover geometry. The three window controls have circular hover
 and focus boundaries, accessible names, and no hover tooltips. The runner sets
 a 760 × 480 minimum window size.
 
-The three 32 px window-control targets draw Chromium's 24-unit minimize,
-maximize, restore, and close silhouettes as scalable Flutter paths at 14 px.
-Minimize, maximize, and restore use slightly heavier strokes. GTK sends
+The three 32 px window-control targets use 16 px Lucide minimize, maximize,
+restore, and close icons. GTK sends
 maximized-state events to Flutter, so dragging the window into or out of a
 maximized state changes the glyph without depending on a resize callback.
 
 The 40 px shared top bar shows the VPFL logo, theme-colored VPFL text at wider
-widths, the current filename while playing, understated renderer status, Open
-file, and appearance. Settings is reached from the sidebar. The player uses a
-Back button that returns to the library section it was opened from. At compact
-widths, Open file becomes icon-only with a tooltip.
+widths, the current filename while playing, understated renderer status, and
+icon buttons for Open file and appearance. Settings is reached from the sidebar.
+The player uses a Back button that returns to the library section it was opened
+from. Open file has a tooltip at all window widths.
 
 ## Sidebar
 

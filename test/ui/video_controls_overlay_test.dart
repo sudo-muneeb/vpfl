@@ -5,10 +5,35 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:vpfl/ui/player/video_controls_overlay.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
 
 void main() {
+  testWidgets('light theme keeps playback icons legible over bright video', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _overlay(
+        fullscreen: false,
+        controls: SizedBox(
+          height: 80,
+          child: IconButton(
+            tooltip: 'Volume',
+            onPressed: () {},
+            icon: const Icon(Icons.volume_up_outlined),
+          ),
+        ),
+      ),
+    );
+
+    final context = tester.element(find.byTooltip('Volume'));
+    expect(
+      IconButtonTheme.of(context).style!.foregroundColor!.resolve({}),
+      VpflColors.darkText,
+    );
+  });
+
   testWidgets('fullscreen title bar activates only at the top edge', (
     tester,
   ) async {
@@ -28,6 +53,7 @@ void main() {
     await mouse.moveTo(const Offset(400, 8));
     await tester.pump();
     expect(find.byTooltip('Exit fullscreen'), findsOneWidget);
+    expect(find.byIcon(LucideIcons.minimize), findsOneWidget);
     expect(find.text('Video title'), findsOneWidget);
   });
 

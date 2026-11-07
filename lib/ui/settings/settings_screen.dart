@@ -57,28 +57,30 @@ class SettingsScreen extends ConsumerWidget {
                     description: 'Choose how VPFL looks on this desktop',
                   ),
                   const SizedBox(height: 18),
-                  SizedBox(
-                    width: 420,
-                    child: SegmentedButton<ThemeMode>(
-                      key: const Key('theme-mode-selector'),
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(
-                          value: ThemeMode.system,
-                          label: Text('System'),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.light,
-                          label: Text('Light'),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.dark,
-                          label: Text('Dark'),
-                        ),
-                      ],
-                      selected: {themeMode},
-                      onSelectionChanged: (selected) =>
-                          onThemeModeChanged(selected.single),
+                  LayoutBuilder(
+                    builder: (context, constraints) => SizedBox(
+                      width: constraints.maxWidth.clamp(0, 420).toDouble(),
+                      child: SegmentedButton<ThemeMode>(
+                        key: const Key('theme-mode-selector'),
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(
+                            value: ThemeMode.system,
+                            label: Text('System'),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.light,
+                            label: Text('Light'),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.dark,
+                            label: Text('Dark'),
+                          ),
+                        ],
+                        selected: {themeMode},
+                        onSelectionChanged: (selected) =>
+                            onThemeModeChanged(selected.single),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 38),

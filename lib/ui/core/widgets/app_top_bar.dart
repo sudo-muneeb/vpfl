@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../themes/vpfl_theme_extension.dart';
 import 'window_controls.dart';
@@ -29,6 +30,7 @@ class AppTopBar extends StatelessWidget {
     final TextTheme textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final tokens = Theme.of(context).extension<VpflThemeExtension>()!;
+    final utilityIconColor = IconTheme.of(context).color ?? scheme.onSurface;
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 900;
@@ -96,38 +98,25 @@ class AppTopBar extends StatelessWidget {
                   ),
                 ),
               ),
-              if (compact)
-                IconButton(
-                  key: const Key('open-file-button'),
-                  tooltip: 'Open file',
-                  onPressed: onOpenFile,
-                  style: _utilityButtonStyle(scheme),
-                  icon: const Icon(Icons.folder_open_outlined),
-                )
-              else
-                TextButton.icon(
-                  key: const Key('open-file-button'),
-                  onPressed: onOpenFile,
-                  style: TextButton.styleFrom(
-                    foregroundColor: scheme.onSurface,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    minimumSize: const Size(0, 40),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  icon: const Icon(Icons.folder_open_outlined, size: 20),
-                  label: const Text('Open file'),
-                ),
+              IconButton(
+                key: const Key('open-file-button'),
+                tooltip: 'Open file',
+                onPressed: onOpenFile,
+                iconSize: 22,
+                color: utilityIconColor,
+                style: _utilityButtonStyle(scheme),
+                icon: const Icon(LucideIcons.folderOpen),
+              ),
               const SizedBox(width: 4),
               PopupMenuButton<ThemeMode>(
                 key: const Key('quick-appearance-menu'),
                 tooltip: 'Appearance',
                 initialValue: themeMode,
                 onSelected: onThemeModeChanged,
-                iconSize: 20,
+                iconSize: 22,
+                iconColor: utilityIconColor,
                 style: _utilityButtonStyle(scheme),
-                icon: const Icon(Icons.palette_outlined),
+                icon: const Icon(LucideIcons.sunMoon),
                 itemBuilder: (BuildContext context) => const [
                   PopupMenuItem(
                     value: ThemeMode.system,

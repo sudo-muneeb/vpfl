@@ -32,15 +32,23 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('window-maximize-button')), findsOneWidget);
 
-    final windows = await Process.run('wmctrl', ['-lp']);
-    expect(windows.exitCode, 0, reason: '${windows.stderr}');
-    final ownWindow = (windows.stdout as String)
-        .split('\n')
-        .firstWhere(
-          (line) => RegExp('^0x[0-9a-fA-F]+\\s+\\S+\\s+$pid\\s').hasMatch(line),
-          orElse: () => '',
-        );
-    expect(ownWindow, isNotEmpty, reason: '${windows.stdout}');
+    String ownWindow = '';
+    String windowList = '';
+    for (var attempt = 0; attempt < 40; attempt++) {
+      final windows = await Process.run('wmctrl', ['-lp']);
+      expect(windows.exitCode, 0, reason: '${windows.stderr}');
+      windowList = windows.stdout as String;
+      ownWindow = windowList
+          .split('\n')
+          .firstWhere(
+            (line) =>
+                RegExp('^0x[0-9a-fA-F]+\\s+\\S+\\s+$pid\\s').hasMatch(line),
+            orElse: () => '',
+          );
+      if (ownWindow.isNotEmpty) break;
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(ownWindow, isNotEmpty, reason: windowList);
     final windowId = ownWindow.split(RegExp(r'\s+')).first;
 
     Future<void> setMaximized(bool value) async {

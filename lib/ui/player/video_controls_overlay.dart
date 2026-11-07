@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:media_kit/media_kit.dart';
 
 import '../core/themes/vpfl_theme_extension.dart';
@@ -258,7 +259,7 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
                               tooltip: 'Exit fullscreen',
                               onPressed: widget.onExit,
                               color: colors.playerOverlayForeground,
-                              icon: const Icon(Icons.fullscreen_exit),
+                              icon: const Icon(LucideIcons.minimize),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -336,27 +337,26 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
                         curve: Curves.easeInOutCubic,
                         child: SafeArea(
                           top: false,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.transparent,
-                                  colors.playerOverlayMiddle,
-                                  colors.playerOverlayBottom,
-                                ],
-                              ),
-                            ),
+                          child: ColoredBox(
+                            color: colors.playerEdgeBackground,
                             child: IconTheme(
                               data: IconThemeData(
                                 color: colors.playerOverlayForeground,
                               ),
-                              child: DefaultTextStyle.merge(
-                                style: TextStyle(
-                                  color: colors.playerOverlayForeground,
+                              child: IconButtonTheme(
+                                data: IconButtonThemeData(
+                                  style: ButtonStyle(
+                                    foregroundColor: WidgetStatePropertyAll(
+                                      colors.playerOverlayForeground,
+                                    ),
+                                  ),
                                 ),
-                                child: widget.controls,
+                                child: DefaultTextStyle.merge(
+                                  style: TextStyle(
+                                    color: colors.playerOverlayForeground,
+                                  ),
+                                  child: widget.controls,
+                                ),
                               ),
                             ),
                           ),
