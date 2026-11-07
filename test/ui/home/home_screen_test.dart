@@ -8,6 +8,50 @@ import 'package:vpfl/ui/home/home_screen.dart';
 import 'package:vpfl/ui/library/media_card.dart';
 
 void main() {
+  testWidgets('Home previews ten items and offers the full library', (
+    tester,
+  ) async {
+    final media = List.generate(
+      12,
+      (index) => LibraryMediaItem(
+        uri: 'file:///videos/video$index.mp4',
+        folderId: 1,
+        path: '/videos/video$index.mp4',
+        displayName: 'video$index',
+        sizeBytes: 100,
+        modifiedAt: DateTime(2026),
+        indexedAt: DateTime(2026),
+      ),
+    );
+    var showAllCalls = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          recentPlaybackProvider.overrideWith((ref) => Stream.value(const [])),
+          libraryMediaProvider.overrideWith((ref) => Stream.value(media)),
+        ],
+        child: MaterialApp(
+          theme: VpflTheme.light,
+          home: Scaffold(
+            body: HomeScreen(
+              onOpenMedia: (_) {},
+              onShowAllVideos: () => showAllCalls++,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('View all videos'), 250);
+    expect(find.text('From your library'), findsOneWidget);
+    expect(find.byType(MediaCard), findsNWidgets(10));
+    expect(find.text('video9.mp4'), findsOneWidget);
+    expect(find.text('video10.mp4'), findsNothing);
+
+    await tester.tap(find.text('View all videos'));
+    expect(showAllCalls, 1);
+  });
+
   testWidgets('completed recent videos keep progress without watched time', (
     tester,
   ) async {
@@ -41,7 +85,9 @@ void main() {
         ],
         child: MaterialApp(
           theme: VpflTheme.light,
-          home: Scaffold(body: HomeScreen(onOpenMedia: (_) {})),
+          home: Scaffold(
+            body: HomeScreen(onOpenMedia: (_) {}, onShowAllVideos: () {}),
+          ),
         ),
       ),
     );
@@ -88,7 +134,9 @@ void main() {
         ],
         child: MaterialApp(
           theme: VpflTheme.light,
-          home: Scaffold(body: HomeScreen(onOpenMedia: (_) {})),
+          home: Scaffold(
+            body: HomeScreen(onOpenMedia: (_) {}, onShowAllVideos: () {}),
+          ),
         ),
       ),
     );

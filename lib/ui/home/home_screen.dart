@@ -10,11 +10,13 @@ import '../library/media_card.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({
     required this.onOpenMedia,
+    required this.onShowAllVideos,
     this.onShowDetails,
     this.onShowContainingFolder,
     super.key,
   });
   final ValueChanged<String> onOpenMedia;
+  final VoidCallback onShowAllVideos;
   final ValueChanged<String>? onShowDetails;
   final ValueChanged<String>? onShowContainingFolder;
 
@@ -74,8 +76,18 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 42),
             _SectionHeading(
-              title: 'All videos',
-              subtitle: 'Your indexed video library.',
+              title: 'From your library',
+              action: TextButton(
+                onPressed: onShowAllVideos,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('View all videos'),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward, size: 18),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             library.when(
@@ -87,7 +99,7 @@ class HomeScreen extends ConsumerWidget {
                     )
                   : _HomeCardGrid(
                       cards: [
-                        for (final item in items.take(8))
+                        for (final item in items.take(10))
                           MediaCard(
                             title: path.basename(item.path),
                             filePath: item.path,
@@ -193,23 +205,34 @@ class _HomeCardGrid extends StatelessWidget {
 }
 
 class _SectionHeading extends StatelessWidget {
-  const _SectionHeading({required this.title, required this.subtitle});
+  const _SectionHeading({required this.title, this.subtitle, this.action});
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 5),
-        Text(
-          subtitle,
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        Row(
+          children: [
+            Expanded(
+              child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+            ),
+            ?action,
+          ],
         ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 5),
+          Text(
+            subtitle!,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ],
     );
   }

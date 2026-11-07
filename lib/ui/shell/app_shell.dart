@@ -155,6 +155,13 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget _buildDestination() => switch (_destination) {
     AppDestination.home => HomeScreen(
       onOpenMedia: widget.onOpenMedia,
+      onShowAllVideos: () {
+        setState(() => _destination = AppDestination.allVideos);
+        widget.onLocationChanged?.call(
+          AppDestination.allVideos,
+          _selectedFolder,
+        );
+      },
       onShowDetails: _showDetails,
       onShowContainingFolder: _showContainingFolder,
     ),
