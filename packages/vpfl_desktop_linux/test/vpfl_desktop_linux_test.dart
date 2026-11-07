@@ -64,4 +64,24 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('passes an encoded file URI to FileManager1 bridge', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'showItem');
+          expect(
+            call.arguments,
+            'file:///home/me/a%20%25%20%C3%A9/video%20%25.mp4',
+          );
+          return true;
+        });
+    expect(
+      await manager.showItem(Uri.file('/home/me/a % é/video %.mp4')),
+      true,
+    );
+    await expectLater(
+      manager.showItem(Uri.https('example.com', '/video.mp4')),
+      throwsArgumentError,
+    );
+  });
 }
