@@ -10,6 +10,48 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: ci / changed files
+    runs-on: ubuntu-24.04
+    outputs:
+      docs_only: ${{ steps.classify.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+      - name: Classify changed files
+        id: classify
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != pull_request ]]; then
+            echo 'docs_only=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Disable rename detection so both sides of a rename are checked.
+          git diff --name-only -z --no-renames "$BASE_SHA" "$HEAD_SHA" > "$RUNNER_TEMP/changed-files"
+          docs_only=true
+          if [[ ! -s "$RUNNER_TEMP/changed-files" ]]; then
+            docs_only=false
+          fi
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              docs/*.md|.agents/*.md|.github/PULL_REQUEST_TEMPLATE.md)
+                continue ;;
+              *.md)
+                if [[ "$path" != */* ]]; then
+                  continue
+                fi ;;
+            esac
+            docs_only=false
+            break
+          done < "$RUNNER_TEMP/changed-files"
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+
   commit-messages:
     name: ci / commit messages
     runs-on: ubuntu-24.04
@@ -30,6 +72,8 @@ jobs:
     name: ci / fixtures
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get -o Acquire::Retries=5 update && sudo apt-get -o Acquire::Retries=5 install -y ffmpeg
@@ -48,6 +92,8 @@ jobs:
     name: ci / quality
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -265,9 +311,9 @@ jobs:
     name: ci / required-gate
     runs-on: ubuntu-24.04
     if: always()
-    needs: [commit-messages, fixtures, quality, native, package, display, graphical_subtitles]
+    needs: [changes, commit-messages, fixtures, quality, native, package, display, graphical_subtitles]
     steps:
-      - name: Reject failed, canceled, or skipped required jobs
+      - name: Require successful classification and expected job results
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
@@ -276,6 +322,13 @@ jobs:
           needs = json.loads(os.environ['NEEDS_JSON'])
           for job, detail in needs.items():
               print(f"{job}: {detail['result']}")
-          if not needs or any(detail['result'] != 'success' for detail in needs.values()):
-              sys.exit('Required VPFL CI job was not successful')
+          if needs['changes']['result'] != 'success' or needs['commit-messages']['result'] != 'success':
+              sys.exit('Change detection or commit validation was not successful')
+          docs_only = needs['changes']['outputs'].get('docs_only')
+          if docs_only not in ('true', 'false'):
+              sys.exit('Change detection did not provide a valid result')
+          expected = 'skipped' if docs_only == 'true' else 'success'
+          for job in ('fixtures', 'quality', 'native', 'package', 'display', 'graphical_subtitles'):
+              if needs[job]['result'] != expected:
+                  sys.exit(f"{job} was {needs[job]['result']}; expected {expected}")
           PY
