@@ -1,7 +1,7 @@
 # Default video application on Linux
 
 VPFL uses the Freedesktop desktop-entry and MIME applications system. The
-installed `com.app.vpfl.desktop` advertises the video formats it can open. The
+installed `io.github.sudo_muneeb.vpfl.desktop` advertises the video formats it can open. The
 user's desktop chooses the default application for each MIME type. Installing
 VPFL makes it available in Open With; installation does not set it as default.
 
@@ -13,7 +13,7 @@ side uses `GDesktopAppInfo` and `GAppInfo` through GIO. It queries
 It does not invoke `xdg-mime`, write `mimeapps.list` itself, or require root.
 The plugin has no VPFL UI or reminder policy and is not published yet.
 
-VPFL supplies `com.app.vpfl.desktop` and the 13 concrete MIME types listed in
+VPFL supplies `io.github.sudo_muneeb.vpfl.desktop` and the 13 concrete MIME types listed in
 `lib/data/services/default_app_prompt_service.dart`. These match the package's
 desktop entry. Settings shows a success state without an action when all types
 use VPFL. Otherwise it shows the actual count and offers **Make VPFL default**.
@@ -29,6 +29,12 @@ reappear until 21 days later and another video plays. At most five invitations
 are shown. Once VPFL handles every listed type by default, the invitation
 stops. The Settings action remains available whenever the desktop entry is
 installed, even after the invitation limit.
+
+Development installations that previously selected `com.app.vpfl.desktop` as
+the default may retain that entry in their personal MIME settings after an
+upgrade. The new desktop entry has a different ID, so VPFL may need to be
+selected again through **Make VPFL default**. Installation does not rewrite
+user MIME preferences, and the package removal hooks do not erase them.
 
 ## Check locally
 

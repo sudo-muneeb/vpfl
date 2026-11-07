@@ -41,12 +41,12 @@ docker run --rm \
     test -x /usr/bin/vpfl
     test -x /usr/lib/vpfl/vpfl
     test -d /usr/lib/vpfl/lib && test -d /usr/lib/vpfl/data
-    test -f /usr/share/applications/com.app.vpfl.desktop
-    test -f /usr/share/metainfo/com.app.vpfl.metainfo.xml
-    test -f /usr/share/icons/hicolor/256x256/apps/com.app.vpfl.png
-    grep -q "^MimeType=.*video/mp4" /usr/share/applications/com.app.vpfl.desktop
+    test -f /usr/share/applications/io.github.sudo_muneeb.vpfl.desktop
+    test -f /usr/share/metainfo/io.github.sudo_muneeb.vpfl.metainfo.xml
+    test -f /usr/share/icons/hicolor/256x256/apps/io.github.sudo_muneeb.vpfl.png
+    grep -q "^MimeType=.*video/mp4" /usr/share/applications/io.github.sudo_muneeb.vpfl.desktop
     if command -v gio >/dev/null; then
-      gio mime video/mp4 | grep -F com.app.vpfl.desktop
+      gio mime video/mp4 | grep -F io.github.sudo_muneeb.vpfl.desktop
     fi
     set +e
     for media in /samples/sample.mp4 /samples/sample.mkv /samples/sample.webm; do
@@ -63,8 +63,8 @@ docker run --rm \
     eval "$REMOVE_CMD"
     test ! -e /usr/bin/vpfl
     test ! -e /usr/lib/vpfl
-    test ! -e /usr/share/applications/com.app.vpfl.desktop
-    test ! -e /usr/share/icons/hicolor/256x256/apps/com.app.vpfl.png
-    test ! -e /usr/share/metainfo/com.app.vpfl.metainfo.xml
+    test ! -e /usr/share/applications/io.github.sudo_muneeb.vpfl.desktop
+    test ! -e /usr/share/icons/hicolor/256x256/apps/io.github.sudo_muneeb.vpfl.png
+    test ! -e /usr/share/metainfo/io.github.sudo_muneeb.vpfl.metainfo.xml
     echo "Clean install, headless launch, and removal passed"
   '

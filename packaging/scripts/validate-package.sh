@@ -5,12 +5,14 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 mode=${1:-}
 target=${2:-}
 version=${3:-}
-app_id=com.app.vpfl
+app_id=io.github.sudo_muneeb.vpfl
 fail() { echo "Package validation failed: $*" >&2; exit 1; }
 
 case "$mode" in
   bundle)
     [[ -x "$target/vpfl" ]] || fail 'release executable missing'
+    strings "$target/vpfl" | grep -Fx "$app_id" >/dev/null \
+      || fail 'runner application ID mismatch'
     [[ -d "$target/lib" && -d "$target/data" ]] || fail 'incomplete Flutter bundle'
     [[ -f "$target/lib/libflutter_linux_gtk.so" ]] || fail 'Flutter engine missing'
     [[ -f "$target/lib/libmedia_kit_video_plugin.so" ]] || fail 'video plugin missing'
@@ -33,9 +35,13 @@ case "$mode" in
     grep -qx 'Exec=vpfl %f' "$desktop" || fail 'desktop Exec mismatch'
     grep -qx 'TryExec=vpfl' "$desktop" || fail 'desktop TryExec mismatch'
     grep -qx "Icon=$app_id" "$desktop" || fail 'desktop icon mismatch'
+    grep -qx 'StartupWMClass=Io.github.sudo_muneeb.vpfl' "$desktop" \
+      || fail 'desktop window class mismatch'
     grep -qx 'MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;video/vnd.avi;video/mpeg;video/mp2t;video/x-flv;video/x-ms-wmv;video/3gpp;video/3gpp2;video/ogg;application/mxf;' "$desktop" \
       || fail 'desktop MIME types mismatch'
     grep -q "<id>$app_id</id>" "$meta" || fail 'AppStream ID mismatch'
+    grep -q "<launchable type=\"desktop-id\">$app_id.desktop</launchable>" "$meta" \
+      || fail 'AppStream desktop ID mismatch'
     grep -q "<release version=\"$version\"" "$meta" || fail 'AppStream version mismatch'
     grep -q '<project_license>Apache-2.0</project_license>' "$meta" \
       || fail 'AppStream license mismatch'

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.app.vpfl</id>
+  <id>io.github.sudo_muneeb.vpfl</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>Apache-2.0</project_license>
   <name>VPFL</name>
@@ -13,9 +13,9 @@
     <category>Video</category>
     <category>Player</category>
   </categories>
-  <launchable type="desktop-id">com.app.vpfl.desktop</launchable>
+  <launchable type="desktop-id">io.github.sudo_muneeb.vpfl.desktop</launchable>
   <url type="homepage">https://github.com/sudo-muneeb/vpfl</url>
-  <developer id="com.app.vpfl">
+  <developer id="io.github.sudo_muneeb.vpfl">
     <name>Sheikh Muneeb Ahmed</name>
   </developer>
   <content_rating type="oars-1.1"/>

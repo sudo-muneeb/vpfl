@@ -33,12 +33,12 @@ tar -xzf %{SOURCE0} -C %{buildroot}
 %defattr(-,root,root,-)
 /usr/bin/vpfl
 /usr/lib/vpfl/
-/usr/share/applications/com.app.vpfl.desktop
-/usr/share/icons/hicolor/48x48/apps/com.app.vpfl.png
-/usr/share/icons/hicolor/64x64/apps/com.app.vpfl.png
-/usr/share/icons/hicolor/128x128/apps/com.app.vpfl.png
-/usr/share/icons/hicolor/256x256/apps/com.app.vpfl.png
-/usr/share/metainfo/com.app.vpfl.metainfo.xml
+/usr/share/applications/io.github.sudo_muneeb.vpfl.desktop
+/usr/share/icons/hicolor/48x48/apps/io.github.sudo_muneeb.vpfl.png
+/usr/share/icons/hicolor/64x64/apps/io.github.sudo_muneeb.vpfl.png
+/usr/share/icons/hicolor/128x128/apps/io.github.sudo_muneeb.vpfl.png
+/usr/share/icons/hicolor/256x256/apps/io.github.sudo_muneeb.vpfl.png
+/usr/share/metainfo/io.github.sudo_muneeb.vpfl.metainfo.xml
 /usr/share/doc/vpfl/
 
 %post

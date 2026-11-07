@@ -50,8 +50,8 @@ test -x /usr/bin/vpfl
 test -x /usr/lib/vpfl/vpfl
 test -d /usr/lib/vpfl/lib
 test -d /usr/lib/vpfl/data
-desktop-file-validate /usr/share/applications/com.app.vpfl.desktop
-appstreamcli validate --no-net /usr/share/metainfo/com.app.vpfl.metainfo.xml
+desktop-file-validate /usr/share/applications/io.github.sudo_muneeb.vpfl.desktop
+appstreamcli validate --no-net /usr/share/metainfo/io.github.sudo_muneeb.vpfl.metainfo.xml
 for binary in /usr/lib/vpfl/vpfl /usr/lib/vpfl/lib/*.so; do
   # Flutter bundles an Android JNI asset that VPFL does not load on Linux.
   [[ "$binary" == */libdartjni.so ]] && continue
@@ -75,6 +75,6 @@ fi
 test -f "$xdg/data/vpfl/vpfl.sqlite"
 "${remove[@]}"
 test ! -e /usr/bin/vpfl
-test ! -e /usr/share/applications/com.app.vpfl.desktop
+test ! -e /usr/share/applications/io.github.sudo_muneeb.vpfl.desktop
 test -f "$xdg/data/vpfl/vpfl.sqlite"
 echo "PASS $distro installed package removal"

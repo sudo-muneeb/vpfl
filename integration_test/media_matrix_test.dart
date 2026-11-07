@@ -175,7 +175,7 @@ void main() {
           .timeout(const Duration(seconds: 12));
       final expectedBackend = Platform.environment['VPFL_CI_DISPLAY_BACKEND'];
       if (expectedBackend != null) {
-        const channel = MethodChannel('com.app.vpfl/window');
+        const channel = MethodChannel('io.github.sudo_muneeb.vpfl/window');
         final actualBackend = await _native(
           'display backend',
           () => channel.invokeMethod<String>('getDisplayBackend'),

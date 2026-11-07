@@ -11,8 +11,14 @@ class FakeDefaultManager extends VpflDesktopLinux {
   bool installed;
   bool defaultAll;
 
+  final List<String> queriedIds = [];
+  final List<String> selectedIds = [];
+
   @override
-  Future<bool> isAvailable(String desktopId) async => installed;
+  Future<bool> isAvailable(String desktopId) async {
+    queriedIds.add(desktopId);
+    return installed;
+  }
 
   @override
   Future<Map<String, bool>> getDefaultStatus(
@@ -25,6 +31,7 @@ class FakeDefaultManager extends VpflDesktopLinux {
     String desktopId,
     List<String> mimeTypes,
   ) async {
+    selectedIds.add(desktopId);
     defaultAll = true;
     return DefaultAppResult(
       results: {for (final mime in mimeTypes) mime: true},
@@ -120,6 +127,8 @@ void main() {
   test('explicit action changes all supported defaults', () async {
     await service.initialize();
     final result = await service.makeDefault();
+    expect(manager.queriedIds, contains('io.github.sudo_muneeb.vpfl.desktop'));
+    expect(manager.selectedIds, ['io.github.sudo_muneeb.vpfl.desktop']);
     expect(result.success, isTrue);
     expect(service.isDefaultForAll, isTrue);
     expect(service.bannerVisible, isFalse);

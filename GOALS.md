@@ -261,9 +261,8 @@ runtime coverage.
 - The product scope and coding brief are more specific than the generic Flutter
   style notes: Riverpod is the documented state approach, and conversion stays
   out of scope.
-- The Linux manifest uses existing `com.app.vpfl` runner identity as a
-  placeholder. Choose the project-owned reverse-domain ID before public
-  packaging.
+- The Linux runner, native packages, and initial Flatpak manifest use the
+  permanent `io.github.sudo_muneeb.vpfl` application identity.
 - The Flatpak manifest targets Freedesktop 26.08; this was the selected runtime
   when the baseline was prepared.
 - The upstream hardware-render failure was caused by reading Flutter's

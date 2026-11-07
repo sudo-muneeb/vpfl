@@ -236,7 +236,7 @@ static void my_application_activate(GApplication* application) {
   g_signal_connect(window, "destroy", G_CALLBACK(window_destroy_cb), self);
   g_signal_connect(window, "window-state-event", G_CALLBACK(window_state_cb),
                    self);
-  gtk_window_set_icon_name(window, "com.app.vpfl");
+  gtk_window_set_icon_name(window, APPLICATION_ID);
   g_autofree gchar* executable_path = g_file_read_link("/proc/self/exe", nullptr);
   if (executable_path != nullptr) {
     g_autofree gchar* executable_dir = g_path_get_dirname(executable_path);
@@ -312,7 +312,7 @@ static void my_application_activate(GApplication* application) {
   g_clear_object(&self->window_channel);
   self->window_channel = fl_method_channel_new(
       fl_engine_get_binary_messenger(fl_view_get_engine(view)),
-      "com.app.vpfl/window", codec);
+      APPLICATION_ID "/window", codec);
   fl_method_channel_set_method_call_handler(
       self->window_channel, window_method_call, g_object_ref(self),
       g_object_unref);

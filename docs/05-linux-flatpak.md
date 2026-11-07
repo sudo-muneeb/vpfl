@@ -81,9 +81,9 @@ The application should later support forwarding these requests to an existing in
 
 ## Desktop identity
 
-The native app and packages use `com.app.vpfl`, defined in
+The native app and packages use `io.github.sudo_muneeb.vpfl`, defined in
 `linux/CMakeLists.txt` and the packaging metadata. The existing
-`flatpak/com.app.vpfl.yml` also uses this ID. Check identity across:
+`flatpak/io.github.sudo_muneeb.vpfl.yml` also uses this ID. Check identity across:
 
 * executable/launcher
 * Linux runner identity
@@ -94,7 +94,7 @@ The native app and packages use `com.app.vpfl`, defined in
 
 ## Desktop entry
 
-Use the [packaged desktop entry](../packaging/linux/com.app.vpfl.desktop) as
+Use the [packaged desktop entry](../packaging/linux/io.github.sudo_muneeb.vpfl.desktop) as
 the source of truth for the native launcher, icon, and MIME types. Keep it
 aligned with `lib/data/services/media_format_policy.dart`,
 `lib/data/services/default_app_prompt_service.dart`, `ci/media-matrix.json`,
@@ -106,6 +106,13 @@ Only advertise formats that have actually been tested.
 The repository has an initial manifest and build script, but Flatpak build and
 runtime behavior remain unverified. Validate them before making Flatpak
 distribution claims.
+
+Changing the Flatpak app ID gives development installations a new sandbox and
+data directory under `~/.var/app/io.github.sudo_muneeb.vpfl`. An older
+`com.app.vpfl` sandbox, if present, remains separate; this manifest does not
+silently copy its data or preferences. Native installs continue to use
+`~/.local/share/vpfl` (or `$XDG_DATA_HOME/vpfl`) for the library and playback
+history, independently of the desktop ID.
 
 The sandbox must contain the native libraries required by the packaged playback stack.
 

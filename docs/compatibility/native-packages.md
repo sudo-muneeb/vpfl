@@ -148,11 +148,11 @@ and verify that URL. The PKGBUILD names Sheikh Muneeb Ahmed as maintainer.
 makepkg --printsrcinfo > .SRCINFO       # regenerate after PKGBUILD edits
 namcap PKGBUILD                          # needs the namcap package
 namcap dist/vpfl-bin-<version>-1-x86_64.pkg.tar.zst
-desktop-file-validate /usr/share/applications/com.app.vpfl.desktop
-pacman -Ql vpfl-bin | grep -E '/usr/bin/vpfl$|com.app.vpfl'
+desktop-file-validate /usr/share/applications/io.github.sudo_muneeb.vpfl.desktop
+pacman -Ql vpfl-bin | grep -E '/usr/bin/vpfl$|io.github.sudo_muneeb.vpfl'
 ```
 
-After installation, `gio mime video/mp4` should report `com.app.vpfl.desktop`
+After installation, `gio mime video/mp4` should report `io.github.sudo_muneeb.vpfl.desktop`
 only after the user chooses **Make VPFL default** in Settings. Removing the
 package leaves the user's `~/.config/mimeapps.list` unchanged.
 

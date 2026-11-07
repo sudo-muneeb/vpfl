@@ -30,19 +30,19 @@ install -m 644 LICENSE NOTICE AUTHORS THIRD_PARTY_NOTICES.md \
 install -m 644 third_party/media_kit_video/LICENSE \
   "$stage/usr/share/doc/vpfl/LICENSE.media_kit_video"
 install -m 755 packaging/linux/vpfl-launcher "$stage/usr/bin/vpfl"
-install -m 644 packaging/linux/com.app.vpfl.desktop "$stage/usr/share/applications/"
+install -m 644 packaging/linux/io.github.sudo_muneeb.vpfl.desktop "$stage/usr/share/applications/"
 if command -v magick >/dev/null; then
   image_convert=(magick)
 else
   image_convert=(convert)
 fi
 sed -E "s/(<release version=\")[^\"]+/\1$version/" \
-  packaging/linux/com.app.vpfl.metainfo.xml \
-  > "$stage/usr/share/metainfo/com.app.vpfl.metainfo.xml"
+  packaging/linux/io.github.sudo_muneeb.vpfl.metainfo.xml \
+  > "$stage/usr/share/metainfo/io.github.sudo_muneeb.vpfl.metainfo.xml"
 for size in 48 64 128 256; do
   icon_dir="$stage/usr/share/icons/hicolor/${size}x${size}/apps"
   mkdir -p "$icon_dir"
-  "${image_convert[@]}" vpfl-logo.png -resize "${size}x${size}" "$icon_dir/com.app.vpfl.png"
+  "${image_convert[@]}" vpfl-logo.png -resize "${size}x${size}" "$icon_dir/io.github.sudo_muneeb.vpfl.png"
 done
 {
   echo "Version: $version"
