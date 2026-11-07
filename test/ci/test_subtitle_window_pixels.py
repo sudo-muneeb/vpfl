@@ -22,6 +22,7 @@ def save_png(path: Path, pixels: bytes):
 
 
 def frame(*, caption=False, controls=False, pale_controls=False,
+          opaque_controls=False, dark_edge=False,
           black=False, burned=False, outer=False, red_caption=False):
     pixels = bytearray((0, 0, 0) if black else (34, 48, 81)) * (160 * 120)
     if caption:
@@ -44,6 +45,15 @@ def frame(*, caption=False, controls=False, pale_controls=False,
             for x in range(10, 150):
                 offset = (y * 160 + x) * 3
                 pixels[offset:offset + 3] = b'\xb0\xb0\xb0'
+    if opaque_controls:
+        for y in range(110, 120):
+            for x in range(160):
+                offset = (y * 160 + x) * 3
+                pixels[offset:offset + 3] = b'\x08\x0a\x0d'
+    if dark_edge:
+        for x in range(160):
+            offset = (119 * 160 + x) * 3
+            pixels[offset:offset + 3] = b'\x00\x00\x00'
     if burned:
         for y in range(50, 59):
             for x in range(55, 105):
@@ -131,6 +141,18 @@ class SubtitleWindowPixelsTest(unittest.TestCase):
                           frame(pale_controls=True), 'absent',
                           rect=(0, 0, 160, 100))
         self.assertIn('playback controls cover', pale.stderr)
+
+    def test_opaque_control_bar_inside_texture_is_detected(self):
+        result = self.check(frame(), frame(opaque_controls=True), 'absent')
+        self.assertIn('playback controls cover', result.stderr)
+        matching = self.check(frame(opaque_controls=True),
+                              frame(opaque_controls=True), 'absent')
+        self.assertIn('playback controls cover', matching.stderr)
+
+    def test_one_dark_crop_edge_row_is_not_a_control_bar(self):
+        result = self.check(frame(dark_edge=True), frame(dark_edge=True),
+                            'absent')
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == '__main__':
