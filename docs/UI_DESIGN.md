@@ -129,6 +129,9 @@ unknown metadata leaves no placeholder line. Completed videos keep a full
 progress line and do not show a watched-time overlay.
 Home uses responsive card rows; the full library and saved-folder views use a
 lazy grid. Entering the grid does not decode video or generate thumbnails.
+Home labels its library section From your library, previews up to ten indexed
+videos, and provides a View all videos action that opens the full All Videos
+grid and selects its sidebar item.
 
 A partially watched item resumes according to the resume policy.
 

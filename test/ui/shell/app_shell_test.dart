@@ -8,6 +8,8 @@ import 'package:vpfl/data/persistence_providers.dart';
 import 'package:vpfl/data/repositories/playback_history_repository.dart';
 import 'package:vpfl/ui/app.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
+import 'package:vpfl/ui/core/themes/vpfl_theme_extension.dart';
+import 'package:vpfl/ui/home/home_screen.dart';
 import 'package:vpfl/ui/shell/app_destination.dart';
 import 'package:vpfl/ui/shell/app_shell.dart';
 
@@ -40,9 +42,28 @@ void main() {
     );
 
     await tester.pumpWidget(shell());
-    await tester.tap(find.byTooltip('All Videos'));
+    await tester.scrollUntilVisible(
+      find.text('View all videos'),
+      250,
+      scrollable: find.descendant(
+        of: find.byType(HomeScreen),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.tap(find.text('View all videos'));
     await tester.pumpAndSettle();
     expect(destination, AppDestination.allVideos);
+    final selectedColor = VpflTheme.light
+        .extension<VpflThemeExtension>()!
+        .sidebarSelected;
+    Material sidebarMaterial(String label) => tester.widget<Material>(
+      find.descendant(
+        of: find.byTooltip(label),
+        matching: find.byType(Material),
+      ),
+    );
+    expect(sidebarMaterial('All Videos').color, selectedColor);
+    expect(sidebarMaterial('Home').color, Colors.transparent);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpWidget(shell());

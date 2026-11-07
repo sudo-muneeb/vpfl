@@ -65,6 +65,7 @@ void main() {
     final views = <Widget>[
       HomeScreen(
         onOpenMedia: opened.add,
+        onShowAllVideos: () {},
         onShowDetails: details.add,
         onShowContainingFolder: containingFolders.add,
       ),
