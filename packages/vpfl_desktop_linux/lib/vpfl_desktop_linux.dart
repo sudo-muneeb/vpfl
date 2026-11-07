@@ -23,6 +23,16 @@ class VpflDesktopLinux {
 
   final MethodChannel _channel;
 
+  /// Asks FileManager1 to select a local file in its containing folder.
+  /// Returns false when the service is unavailable or rejects the request.
+  Future<bool> showItem(Uri itemUri) async {
+    if (itemUri.scheme != 'file') {
+      throw ArgumentError.value(itemUri, 'itemUri', 'Expected a file URI');
+    }
+    return await _channel.invokeMethod<bool>('showItem', itemUri.toString()) ??
+        false;
+  }
+
   /// Asks the desktop's FileManager1 service to open a local folder.
   /// Returns false when the service is unavailable or rejects the request.
   Future<bool> showFolder(Uri folderUri) async {

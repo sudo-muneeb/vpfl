@@ -10,6 +10,10 @@ INTERFACE = Gio.DBusNodeInfo.new_for_xml(
         <arg type="as" direction="in"/>
         <arg type="s" direction="in"/>
       </method>
+      <method name="ShowItems">
+        <arg type="as" direction="in"/>
+        <arg type="s" direction="in"/>
+      </method>
     </interface></node>"""
 ).interfaces[0]
 
@@ -17,11 +21,11 @@ INTERFACE = Gio.DBusNodeInfo.new_for_xml(
 def handle_call(connection, sender, object_path, interface_name, method_name,
                 parameters, invocation):
     uris, _startup_id = parameters.unpack()
-    if method_name != "ShowFolders" or len(uris) != 1:
+    if method_name not in ("ShowFolders", "ShowItems") or len(uris) != 1:
         invocation.return_dbus_error("org.freedesktop.DBus.Error.InvalidArgs",
-                                     "Expected one folder URI")
+                                     "Expected one item or folder URI")
         return
-    print(f"URI {uris[0]}", flush=True)
+    print(f"{method_name} {uris[0]}", flush=True)
     invocation.return_value(GLib.Variant("()", ()))
 
 
