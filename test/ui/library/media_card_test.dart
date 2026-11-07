@@ -1,14 +1,70 @@
 import 'dart:ui' show PointerDeviceKind;
 
+import 'package:flutter/gestures.dart' show kSecondaryButton;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
+import 'package:vpfl/ui/core/themes/vpfl_theme_extension.dart';
 import 'package:vpfl/ui/library/media_card.dart';
 
 void main() {
+  testWidgets('dismissing a context menu outside clears card focus styling', (
+    tester,
+  ) async {
+    const path = '/videos/clip.mp4';
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: VpflTheme.dark,
+          home: const Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 280,
+                child: MediaCard(
+                  title: 'clip.mp4',
+                  filePath: path,
+                  onTap: _noop,
+                  onShowDetails: _noop,
+                  onShowContainingFolder: _noop,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final mouse = await tester.createGesture(
+      kind: PointerDeviceKind.mouse,
+      buttons: kSecondaryButton,
+    );
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.down(tester.getCenter(find.byType(MediaCard)));
+    await mouse.up();
+    await tester.pumpAndSettle();
+    expect(find.text('Show details'), findsOneWidget);
+
+    await tester.tapAt(const Offset(10, 10));
+    await mouse.moveTo(Offset.zero);
+    await tester.pumpAndSettle();
+    expect(find.text('Show details'), findsNothing);
+    final card = find.descendant(
+      of: find.byType(MediaCard),
+      matching: find.byType(AnimatedContainer),
+    );
+    final decoration =
+        tester.widget<AnimatedContainer>(card).decoration! as BoxDecoration;
+    final border = decoration.border! as Border;
+    final focusColor = VpflTheme.dark
+        .extension<VpflThemeExtension>()!
+        .sidebarFocus;
+    expect(border.top.color, isNot(focusColor));
+    expect(find.text(path), findsNothing);
+  });
+
   testWidgets('filename rests on card and path appears on hover and focus', (
     tester,
   ) async {

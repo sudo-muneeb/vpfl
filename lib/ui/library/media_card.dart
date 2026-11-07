@@ -178,7 +178,6 @@ class _MediaCardState extends State<MediaCard> {
       onOpen: widget.onTap,
       onShowDetails: widget.onShowDetails!,
       onShowContainingFolder: widget.onShowContainingFolder!,
-      childFocusNode: _focusNode,
       child: card,
     );
   }
