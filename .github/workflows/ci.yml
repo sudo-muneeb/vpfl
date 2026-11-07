@@ -10,6 +10,22 @@ permissions:
   contents: read
 
 jobs:
+  commit-messages:
+    name: ci / commit messages
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Validate new commit messages
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        run: python3 scripts/ci/check_commit_messages.py --range '${{ github.event.pull_request.base.sha }}..HEAD'
+      - name: No commit validation outside main pull requests
+        if: github.event_name != 'pull_request' || github.base_ref != 'main'
+        run: echo 'Commit validation applies to pull requests targeting main.'
+
   fixtures:
     name: ci / fixtures
     runs-on: ubuntu-24.04
@@ -249,7 +265,7 @@ jobs:
     name: ci / required-gate
     runs-on: ubuntu-24.04
     if: always()
-    needs: [fixtures, quality, native, package, display, graphical_subtitles]
+    needs: [commit-messages, fixtures, quality, native, package, display, graphical_subtitles]
     steps:
       - name: Reject failed, canceled, or skipped required jobs
         env:

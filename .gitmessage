@@ -1,0 +1,4 @@
+# type(scope): concise imperative description
+# The scope and body are optional. Keep the title at most 72 characters.
+# Add a body when the reason or implementation needs lasting explanation.
+# Use a BREAKING CHANGE: footer when applicable.
