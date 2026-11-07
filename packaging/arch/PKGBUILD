@@ -34,8 +34,7 @@ package() {
 
   local doc="$srcdir/usr/share/doc/vpfl" file
   install -dm755 "$pkgdir/usr/share/licenses/$pkgname"
-  for file in LICENSE NOTICE THIRD_PARTY_NOTICES.md LICENSE.media_kit_video \
-    LICENSE.chromium_window_icons; do
+  for file in LICENSE NOTICE THIRD_PARTY_NOTICES.md LICENSE.media_kit_video; do
     install -Dm644 "$doc/$file" "$pkgdir/usr/share/licenses/$pkgname/$file"
   done
 }

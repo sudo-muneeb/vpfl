@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:vpfl/data/model/app_database.dart';
@@ -81,7 +82,7 @@ void main() {
     await mouse.moveTo(videoRect.bottomCenter - const Offset(0, 40));
     await tester.pump();
     expect(find.byTooltip('Enter Fullscreen'), findsOneWidget);
-    expect(find.byIcon(Icons.open_in_full_rounded), findsOneWidget);
+    expect(find.byIcon(LucideIcons.maximize), findsOneWidget);
     await tester.tap(find.byTooltip('Enter Fullscreen'));
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.state<VideoState>(find.byType(Video)).isFullscreen(), isTrue);
@@ -104,7 +105,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.state<VideoState>(find.byType(Video)).isFullscreen(), isTrue);
     expect(find.byTooltip('Exit Fullscreen'), findsOneWidget);
-    expect(find.byIcon(Icons.close_fullscreen_rounded), findsOneWidget);
+    expect(find.byIcon(LucideIcons.minimize), findsOneWidget);
     final resumedInFullscreen = playback.playingStream
         .firstWhere((playing) => playing)
         .timeout(eventTimeout);

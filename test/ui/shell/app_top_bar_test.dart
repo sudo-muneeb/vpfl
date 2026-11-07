@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
 import 'package:vpfl/ui/core/widgets/app_top_bar.dart';
 import 'package:vpfl/ui/core/widgets/window_controls.dart';
@@ -27,6 +28,63 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);
   });
+
+  testWidgets('appearance popup uses the opaque black menu', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: VpflTheme.dark,
+        home: Scaffold(
+          body: AppTopBar(
+            title: '',
+            themeMode: ThemeMode.dark,
+            onOpenFile: () {},
+            onThemeModeChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+    expect(find.byIcon(LucideIcons.sunMoon), findsOneWidget);
+    await tester.tap(find.byKey(const Key('quick-appearance-menu')));
+    await tester.pumpAndSettle();
+    expect(find.byType(BackdropFilter), findsNothing);
+    expect(
+      PopupMenuTheme.of(tester.element(find.text('System appearance'))).color,
+      VpflColors.popupBlack,
+    );
+    expect(find.text('System appearance'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Open file and appearance use the same icon color in both themes',
+    (tester) async {
+      for (final theme in [VpflTheme.light, VpflTheme.dark]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: AppTopBar(
+                title: '',
+                themeMode: ThemeMode.system,
+                onOpenFile: () {},
+                onThemeModeChanged: (_) {},
+              ),
+            ),
+          ),
+        );
+        final openFile = tester.widget<IconButton>(
+          find.byKey(const Key('open-file-button')),
+        );
+        final appearance = tester.widget<PopupMenuButton<ThemeMode>>(
+          find.byKey(const Key('quick-appearance-menu')),
+        );
+        expect(openFile.color, appearance.iconColor);
+        expect(
+          openFile.color,
+          IconTheme.of(tester.element(find.byType(AppTopBar))).color,
+        );
+      }
+    },
+  );
 
   testWidgets('empty title bar regions drag while buttons stay clickable', (
     tester,
@@ -145,6 +203,17 @@ void main() {
         ),
       );
       await tester.pump();
+      expect(find.byIcon(LucideIcons.folderOpen), findsOneWidget);
+      expect(find.text('Open file'), findsNothing);
+      expect(find.byTooltip('Open file'), findsOneWidget);
+      expect(
+        tester.getSize(find.byIcon(LucideIcons.folderOpen)),
+        const Size.square(22),
+      );
+      expect(
+        tester.getSize(find.byIcon(LucideIcons.sunMoon)),
+        const Size.square(22),
+      );
       for (final key in [
         'window-minimize-button',
         'window-maximize-button',
@@ -186,6 +255,7 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
     expect(tester.widget<Image>(find.byType(Image)).semanticLabel, 'VPFL logo');
     expect(find.byTooltip('Open file'), findsOneWidget);
+    expect(find.byIcon(LucideIcons.folderOpen), findsOneWidget);
     for (final key in [
       'window-minimize-button',
       'window-maximize-button',
@@ -223,6 +293,9 @@ void main() {
           .glyph,
       WindowControlGlyph.close,
     );
+    expect(find.byIcon(LucideIcons.minus), findsOneWidget);
+    expect(find.byIcon(LucideIcons.square), findsOneWidget);
+    expect(find.byIcon(LucideIcons.x), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('window-minimize-button')));
     expect(calls, contains('minimize'));
@@ -235,6 +308,7 @@ void main() {
           .glyph,
       WindowControlGlyph.restore,
     );
+    expect(find.byIcon(LucideIcons.copy), findsOneWidget);
     await tester.tap(find.byKey(const Key('window-maximize-button')));
     await tester.pump(const Duration(milliseconds: 200));
     expect(calls, contains('toggleMaximize'));
@@ -298,6 +372,15 @@ void main() {
           'window-close-button',
         ]) {
           final target = find.byKey(Key(key));
+          final scheme = Theme.of(tester.element(target)).colorScheme;
+          expect(
+            tester.widget<InkWell>(target).hoverColor,
+            scheme.surfaceContainerHigh,
+          );
+          expect(
+            tester.widget<InkWell>(target).focusColor,
+            scheme.secondaryContainer,
+          );
           expect(
             tester.widget<InkWell>(target).borderRadius,
             BorderRadius.circular(16),
@@ -314,7 +397,7 @@ void main() {
         for (var index = 0; index < 3; index++) {
           expect(
             tester.getSize(find.byType(WindowControlIcon).at(index)),
-            const Size.square(14),
+            const Size.square(16),
           );
         }
       }

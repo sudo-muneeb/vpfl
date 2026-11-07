@@ -3,54 +3,74 @@ import 'package:flutter/material.dart';
 import 'vpfl_theme_extension.dart';
 import 'vpfl_typography.dart';
 
+/// Shared Obsidian, Porcelain, and brand colors.
+abstract final class VpflColors {
+  static const brandRed = Color(0xFFF2384D);
+  static const actionRed = Color(0xFFCF2440);
+  static const subtleRed = Color(0xFFFCE8EC);
+  static const darkBackground = Color(0xFF0B0D10);
+  static const darkSidebar = Color(0xFF080A0D);
+  static const darkSurface = Color(0xFF1C2027);
+  static const darkHover = Color(0xFF292E36);
+  static const darkArtwork = Color(0xFF24282E);
+  static const darkBorder = Color(0xFF383E48);
+  static const darkText = Color(0xFFF7F8FA);
+  static const darkSecondaryText = Color(0xFFA9B0BA);
+  static const darkMutedText = Color(0xFF77818E);
+  static const lightBackground = Color(0xFFF8F9FB);
+  static const lightSidebar = Color(0xFFF0F2F5);
+  static const lightSurface = Color(0xFFFFFFFF);
+  static const lightHover = Color(0xFFE9EDF2);
+  static const lightArtwork = Color(0xFFE5E8EC);
+  static const lightBorder = Color(0xFFDCE1E7);
+  static const lightText = Color(0xFF181B20);
+  static const lightSecondaryText = Color(0xFF626C79);
+  static const lightMutedText = Color(0xFF818A96);
+  static const popupBlack = Color(0xFF080A0D);
+}
+
 /// Builds the default light and dark VPFL themes.
 abstract final class VpflTheme {
   static const _lightTokens = VpflThemeExtension(
-    topBarBackground: Color(0xFFFCFCFD),
-    sidebarBackground: Color(0xFFF0F2F4),
-    sidebarSelected: Color(0xFFE1E6EA),
-    sidebarHover: Color(0xFFE8ECEF),
-    sidebarFocus: Color(0xFFC73139),
-    cardSurface: Color(0xFFFFFFFF),
-    cardBorder: Color(0xFFE0E4E8),
-    cardBorderActive: Color(0xFFAAB4BD),
-    cardArtworkTop: Color(0xFFDCE2E6),
-    cardArtworkBottom: Color(0xFFC8D1D7),
-    cardOverlay: Color(0xA610141A),
-    playbackProgress: Color(0xFFD32832),
-    playerControlSurface: Color(0xFFF8F9FA),
-    playerControlForeground: Color(0xFF15171B),
-    playerBackground: Color(0xFF080A0E),
-    playerOverlayForeground: Color(0xFFFFFFFF),
-    playerOverlayTop: Color(0xC9000000),
-    playerOverlayMiddle: Color(0x52000000),
-    playerOverlayBottom: Color(0xD9000000),
-    playerEdgeBackground: Color(0xB3000000),
-    playerMenuBackground: Color(0xB3000000),
+    topBarBackground: VpflColors.lightSurface,
+    sidebarBackground: VpflColors.lightSidebar,
+    sidebarSelected: VpflColors.lightHover,
+    sidebarHover: VpflColors.lightHover,
+    sidebarFocus: VpflColors.actionRed,
+    cardSurface: VpflColors.lightSurface,
+    cardBorder: VpflColors.lightBorder,
+    cardBorderActive: VpflColors.lightSecondaryText,
+    cardArtworkTop: VpflColors.lightArtwork,
+    cardArtworkBottom: VpflColors.lightArtwork,
+    playbackProgress: VpflColors.actionRed,
+    playerControlSurface: VpflColors.lightSurface,
+    playerControlForeground: VpflColors.lightText,
+    playerBackground: VpflColors.darkBackground,
+    playerOverlayForeground: VpflColors.darkText,
+    playerOverlayTop: VpflColors.popupBlack,
+    playerEdgeBackground: VpflColors.popupBlack,
+    playerMenuBackground: VpflColors.popupBlack,
   );
 
   static const _darkTokens = VpflThemeExtension(
-    topBarBackground: Color(0xFF1A1D22),
-    sidebarBackground: Color(0xFF191C21),
-    sidebarSelected: Color(0xFF30353D),
-    sidebarHover: Color(0xFF272C33),
-    sidebarFocus: Color(0xFFF06369),
-    cardSurface: Color(0xFF20242A),
-    cardBorder: Color(0xFF353A42),
-    cardBorderActive: Color(0xFF65717D),
-    cardArtworkTop: Color(0xFF38414A),
-    cardArtworkBottom: Color(0xFF292F37),
-    cardOverlay: Color(0xA610141A),
-    playbackProgress: Color(0xFFF04A53),
-    playerControlSurface: Color(0xFFF8F9FA),
-    playerControlForeground: Color(0xFF15171B),
-    playerBackground: Color(0xFF080A0E),
-    playerOverlayForeground: Color(0xFFFFFFFF),
-    playerOverlayTop: Color(0xC9000000),
-    playerOverlayMiddle: Color(0x52000000),
-    playerOverlayBottom: Color(0xD9000000),
-    playerEdgeBackground: Color(0xB3000000),
-    playerMenuBackground: Color(0xB3000000),
+    topBarBackground: VpflColors.darkSidebar,
+    sidebarBackground: VpflColors.darkSidebar,
+    sidebarSelected: VpflColors.darkHover,
+    sidebarHover: VpflColors.darkHover,
+    sidebarFocus: VpflColors.brandRed,
+    cardSurface: VpflColors.darkSurface,
+    cardBorder: VpflColors.darkBorder,
+    cardBorderActive: VpflColors.darkSecondaryText,
+    cardArtworkTop: VpflColors.darkArtwork,
+    cardArtworkBottom: VpflColors.darkArtwork,
+    playbackProgress: VpflColors.brandRed,
+    playerControlSurface: VpflColors.darkSurface,
+    playerControlForeground: VpflColors.darkText,
+    playerBackground: VpflColors.darkBackground,
+    playerOverlayForeground: VpflColors.darkText,
+    playerOverlayTop: VpflColors.popupBlack,
+    playerEdgeBackground: VpflColors.popupBlack,
+    playerMenuBackground: VpflColors.popupBlack,
   );
 
   /// The default light appearance.
@@ -61,37 +81,39 @@ abstract final class VpflTheme {
 
   static ThemeData _create(Brightness brightness, VpflThemeExtension tokens) {
     final dark = brightness == Brightness.dark;
-    final surface = dark ? const Color(0xFF15171B) : const Color(0xFFF7F8F9);
-    final onSurface = dark ? const Color(0xFFF3F4F5) : const Color(0xFF20242A);
+    final surface = dark
+        ? VpflColors.darkBackground
+        : VpflColors.lightBackground;
+    final onSurface = dark ? VpflColors.darkText : VpflColors.lightText;
     final onSurfaceVariant = dark
-        ? const Color(0xFFADB5BF)
-        : const Color(0xFF606A75);
+        ? VpflColors.darkSecondaryText
+        : VpflColors.lightSecondaryText;
+    final hover = dark ? VpflColors.darkHover : VpflColors.lightHover;
+    final accent = dark ? VpflColors.brandRed : VpflColors.actionRed;
     final scheme =
         ColorScheme.fromSeed(
-          seedColor: const Color(0xFFC73139),
+          seedColor: VpflColors.brandRed,
           brightness: brightness,
           surface: surface,
         ).copyWith(
-          primary: dark ? const Color(0xFFF06369) : const Color(0xFFC73139),
+          primary: accent,
           onPrimary: const Color(0xFFFFFFFF),
+          surface: surface,
           onSurface: onSurface,
           onSurfaceVariant: onSurfaceVariant,
-          surfaceContainerLow: dark
-              ? const Color(0xFF1A1D22)
-              : const Color(0xFFFCFCFD),
-          surfaceContainer: dark
-              ? const Color(0xFF252A31)
-              : const Color(0xFFECEFF1),
-          surfaceContainerHigh: dark
-              ? const Color(0xFF30353D)
-              : const Color(0xFFE4E8EB),
-          surfaceContainerHighest: dark
-              ? const Color(0xFF3A414A)
-              : const Color(0xFFD8DEE2),
+          surfaceContainerLow: tokens.cardSurface,
+          surfaceContainer: tokens.cardSurface,
+          surfaceContainerHigh: hover,
+          surfaceContainerHighest: hover,
           secondaryContainer: tokens.sidebarSelected,
           onSecondaryContainer: onSurface,
+          outline: tokens.cardBorder,
           outlineVariant: tokens.cardBorder,
         );
+    final menuShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(color: tokens.cardBorder),
+    );
     return ThemeData(
       colorScheme: scheme,
       brightness: brightness,
@@ -109,10 +131,81 @@ abstract final class VpflTheme {
           side: BorderSide(color: tokens.cardBorder),
         ),
       ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: tokens.playerMenuBackground,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black,
+        elevation: 12,
+        shape: menuShape,
+        textStyle: VpflTypography.textTheme.bodyMedium?.copyWith(
+          color: VpflColors.darkText,
+        ),
+        labelTextStyle: WidgetStatePropertyAll(
+          VpflTypography.textTheme.bodyMedium?.copyWith(
+            color: VpflColors.darkText,
+          ),
+        ),
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(tokens.playerMenuBackground),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          elevation: const WidgetStatePropertyAll(12),
+          shape: WidgetStatePropertyAll(menuShape),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: tokens.cardSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: tokens.cardBorder),
+        ),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: tokens.playerMenuBackground,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: tokens.cardBorder),
+        ),
+        textStyle: VpflTypography.textTheme.bodySmall?.copyWith(
+          color: VpflColors.darkText,
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? onSurface
+                : onSurfaceVariant,
+          ),
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return hover;
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return hover.withValues(alpha: 0.65);
+            }
+            return tokens.cardSurface;
+          }),
+          side: WidgetStateProperty.resolveWith(
+            (states) => BorderSide(
+              color: states.contains(WidgetState.focused)
+                  ? accent
+                  : tokens.cardBorder,
+            ),
+          ),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? accent : hover,
+        ),
+      ),
       sliderTheme: SliderThemeData(
-        activeTrackColor: onSurfaceVariant,
+        activeTrackColor: accent,
         inactiveTrackColor: tokens.cardBorder,
-        thumbColor: onSurface,
+        thumbColor: accent,
         trackHeight: 3,
       ),
       extensions: [tokens],

@@ -41,15 +41,12 @@ case "$mode" in
       || fail 'AppStream license mismatch'
     doc="$target/usr/share/doc/vpfl"
     for notice in LICENSE NOTICE AUTHORS THIRD_PARTY_NOTICES.md \
-      LICENSE.media_kit_video LICENSE.chromium_window_icons; do
+      LICENSE.media_kit_video; do
       [[ -s "$doc/$notice" ]] || fail "$notice missing from package documentation"
     done
     cmp -s "$doc/LICENSE" "$root/LICENSE" || fail 'project license text changed'
     cmp -s "$doc/LICENSE.media_kit_video" "$root/third_party/media_kit_video/LICENSE" \
       || fail 'media_kit_video license text changed'
-    cmp -s "$doc/LICENSE.chromium_window_icons" \
-      "$root/third_party/chromium_window_icons/LICENSE" \
-      || fail 'Chromium window icon license text changed'
     for size in 48 64 128 256; do
       [[ -s "$target/usr/share/icons/hicolor/${size}x${size}/apps/$app_id.png" ]] \
         || fail "${size}px icon missing"
@@ -69,8 +66,6 @@ case "$mode" in
     dpkg-deb -c "$target" | grep './usr/bin/vpfl$' >/dev/null || fail 'DEB launcher missing'
     dpkg-deb -c "$target" | grep './usr/share/doc/vpfl/THIRD_PARTY_NOTICES.md$' >/dev/null \
       || fail 'DEB third-party notices missing'
-    dpkg-deb -c "$target" | grep './usr/share/doc/vpfl/LICENSE.chromium_window_icons$' >/dev/null \
-      || fail 'DEB Chromium icon license missing'
     ;;
   rpm)
     [[ -f "$target" ]] || fail 'RPM artifact missing'
@@ -81,8 +76,6 @@ case "$mode" in
       rpm -qpl "$target" | grep -x /usr/bin/vpfl >/dev/null || fail 'RPM launcher missing'
       rpm -qpl "$target" | grep -x /usr/share/doc/vpfl/THIRD_PARTY_NOTICES.md >/dev/null \
         || fail 'RPM third-party notices missing'
-      rpm -qpl "$target" | grep -x /usr/share/doc/vpfl/LICENSE.chromium_window_icons >/dev/null \
-        || fail 'RPM Chromium icon license missing'
       rpm -qpR "$target" | grep 'libmpv.so.2' >/dev/null || fail 'RPM lacks libmpv dependency'
       rpm -qpR "$target" | grep -x libglvnd-gles >/dev/null || fail 'RPM lacks GLES dependency'
       rpm -qpR "$target" | grep -x desktop-file-utils >/dev/null || fail 'RPM lacks desktop database tool'
@@ -92,7 +85,6 @@ case "$mode" in
         test "$(rpm -qp --qf "%{LICENSE}" /vpfl.rpm)" = "$2"
         rpm -qpl /vpfl.rpm | grep -x /usr/bin/vpfl >/dev/null
         rpm -qpl /vpfl.rpm | grep -x /usr/share/doc/vpfl/THIRD_PARTY_NOTICES.md >/dev/null
-        rpm -qpl /vpfl.rpm | grep -x /usr/share/doc/vpfl/LICENSE.chromium_window_icons >/dev/null
         rpm -qpR /vpfl.rpm | grep "libmpv.so.2" >/dev/null
         rpm -qpR /vpfl.rpm | grep -x libglvnd-gles >/dev/null
         rpm -qpR /vpfl.rpm | grep -x desktop-file-utils >/dev/null

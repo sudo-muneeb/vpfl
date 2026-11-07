@@ -13,6 +13,7 @@ import 'package:media_kit_video/media_kit_video_controls/media_kit_video_control
 import '../../data/playback_service_provider.dart';
 import '../../data/model/real_media_tracks.dart';
 import '../../data/default_app_prompt_provider.dart';
+import '../../data/services/default_app_prompt_service.dart';
 import '../../data/playback_history_recorder_provider.dart';
 import '../../data/services/media_file_picker.dart';
 import '../../data/services/playback_service.dart';
@@ -66,6 +67,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   final GlobalKey<VideoState> _videoKey = GlobalKey<VideoState>();
   final FocusNode _shortcutFocus = FocusNode(debugLabel: 'Player shortcuts');
   late final PlaybackService _playback;
+  late final DefaultAppPromptService _defaultAppPrompt;
   String? _mediaError;
   String? _renderingMode;
   StreamSubscription<dynamic>? _playlistSubscription;
@@ -104,6 +106,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void initState() {
     super.initState();
     _playback = ref.read(playbackServiceProvider);
+    _defaultAppPrompt = ref.read(defaultAppPromptProvider);
     _playingUri = widget.initialMediaUri;
     _playlistSubscription = _playback.playlistStream.listen((queue) {
       if (!mounted ||
@@ -594,7 +597,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void _recordPromptPlayIfNeeded() {
     if (!mounted || _playGeneration == _countedGeneration) return;
     _countedGeneration = _playGeneration;
-    unawaited(ref.read(defaultAppPromptProvider).recordPlay());
+    unawaited(_defaultAppPrompt.recordPlay());
   }
 
   Future<void> _waitForVideoRenderer() async {
@@ -666,9 +669,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ? null
                       : _renderingMode,
                 ),
-                DefaultAppPromptBanner(
-                  service: ref.read(defaultAppPromptProvider),
-                ),
+                DefaultAppPromptBanner(service: _defaultAppPrompt),
                 Expanded(
                   child: Container(
                     width: double.infinity,

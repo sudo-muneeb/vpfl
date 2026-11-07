@@ -9,16 +9,15 @@ files shipped with the exact versions you redistribute.
 
 ## Included in the repository or Linux application bundle
 
-- **Chromium window-control vector icons** —
-  [minimize](https://chromium.googlesource.com/chromium/src/+/7e21fa1d122ce05b3d121d8a520f8b5e9bc66dae/ui/gfx/vector_icons/window_control_minimize.icon),
-  [maximize](https://chromium.googlesource.com/chromium/src/+/7e21fa1d122ce05b3d121d8a520f8b5e9bc66dae/ui/gfx/vector_icons/window_control_maximize.icon),
-  [restore](https://chromium.googlesource.com/chromium/src/+/7e21fa1d122ce05b3d121d8a520f8b5e9bc66dae/ui/gfx/vector_icons/window_control_restore.icon), and
-  [close](https://chromium.googlesource.com/chromium/src/+/7e21fa1d122ce05b3d121d8a520f8b5e9bc66dae/ui/gfx/vector_icons/window_control_close.icon)
-  at revision `7e21fa1d122ce05b3d121d8a520f8b5e9bc66dae` — BSD-3-Clause;
-  copyright © 2016 The Chromium Authors. Their 24-unit filled outlines are
-  adapted to Flutter `Path` drawing in `lib/ui/core/widgets/window_controls.dart`.
-  The original copyright and full license are preserved in
-  `third_party/chromium_window_icons/LICENSE` and shipped with Linux packages.
+- **Tabler rewind-10 vector icons** — [upstream](https://github.com/tabler/tabler-icons/tree/main/icons/outline),
+  MIT; copyright © 2020–2026 Paweł Kuna. The seek SVG sources use Tabler's
+  `rewind-backward-10` and `rewind-forward-10` paths with a tighter viewBox and
+  adjusted stroke width. `assets/fonts/VpflSeek.ttf` contains the same artwork
+  converted to glyph outlines by `scripts/generate-seek-font.py`. The full
+  license is in `assets/icons/LICENSE.tabler` and is bundled with the app.
+- **lucide_icons_flutter 4.0.2** — [package source](https://github.com/vqh2602/lucide-flutter-main),
+  MIT; copyright © 2024 vqhapp. Supplies the icon font used across the UI.
+  Its package license is included in Flutter's generated `NOTICES.Z`.
 - **media_kit_video 2.0.1** — [upstream](https://github.com/media-kit/media-kit),
   MIT; copyright © 2021 and onward Hitesh Kumar Saini. Its source is vendored
   in `third_party/media_kit_video/`, with its original `LICENSE` and source
@@ -55,9 +54,6 @@ files shipped with the exact versions you redistribute.
 - **drift 2.35.1 and drift_flutter 0.3.1** —
   [upstream](https://github.com/simolus3/drift), MIT; copyright © Simon Binder.
   Bundled Dart dependencies.
-- **cupertino_icons 1.0.9** —
-  [upstream](https://github.com/flutter/packages/tree/main/third_party/packages/cupertino_icons),
-  MIT; copyright © Vladimir Kharlampidi. Bundled font asset.
 - **Noto Sans Display** — [upstream](https://github.com/notofonts/latin-greek-cyrillic),
   SIL Open Font License 1.1; copyright © 2010, 2012–2020 Google Inc. and
   © 2015–2020 Google LLC. VPFL bundles the Regular and Bold font files for its

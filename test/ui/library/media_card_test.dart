@@ -2,8 +2,9 @@ import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
 import 'package:vpfl/ui/library/media_card.dart';
 
@@ -34,7 +35,7 @@ void main() {
     expect(find.text('0219.mov'), findsOneWidget);
     expect(find.text(path), findsNothing);
     expect(find.text('H.264 · 1920 × 1080'), findsNothing);
-    expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
+    expect(find.byIcon(LucideIcons.clapperboard), findsOneWidget);
     expect(find.text('Ready to play'), findsNothing);
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -66,7 +67,7 @@ void main() {
     expect(find.text('Ready to play'), findsNothing);
   });
 
-  testWidgets('watched time appears over the thumbnail on hover and focus', (
+  testWidgets('progress and watched time stay readable without hover', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -92,13 +93,17 @@ void main() {
       ),
     );
 
-    final overlay = find.descendant(
-      of: find.byType(MediaCard),
-      matching: find.byType(AnimatedOpacity),
-    );
-    expect(tester.widget<AnimatedOpacity>(overlay).opacity, 0);
-    expect(find.text('Ready to play'), findsNothing);
     expect(find.text('00:07 / 00:22'), findsOneWidget);
+    expect(find.byIcon(Icons.schedule_rounded), findsNothing);
+    expect(find.byIcon(LucideIcons.clapperboard), findsOneWidget);
+    expect(tester.widget<Icon>(find.byIcon(LucideIcons.clapperboard)).size, 46);
+    expect(find.text('No preview'), findsNothing);
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
+          .value,
+      closeTo(7 / 22, 0.001),
+    );
     final initialSize = tester.getSize(find.byType(MediaCard));
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -106,16 +111,16 @@ void main() {
     await mouse.addPointer(location: Offset.zero);
     await mouse.moveTo(tester.getCenter(find.byType(MediaCard)));
     await tester.pumpAndSettle();
-    expect(tester.widget<AnimatedOpacity>(overlay).opacity, 1);
+    expect(find.text('00:07 / 00:22'), findsOneWidget);
     expect(tester.getSize(find.byType(MediaCard)), initialSize);
 
     await mouse.moveTo(Offset.zero);
     await tester.pumpAndSettle();
-    expect(tester.widget<AnimatedOpacity>(overlay).opacity, 0);
+    expect(find.text('00:07 / 00:22'), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pumpAndSettle();
-    expect(tester.widget<AnimatedOpacity>(overlay).opacity, 1);
+    expect(find.text('00:07 / 00:22'), findsOneWidget);
     expect(tester.getSize(find.byType(MediaCard)), initialSize);
   });
 }

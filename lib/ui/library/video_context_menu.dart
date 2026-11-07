@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../core/themes/vpfl_popup_style.dart';
 
 /// The three actions available on every local video card.
 class VideoContextMenu extends StatefulWidget {
@@ -34,6 +37,7 @@ class _VideoContextMenuState extends State<VideoContextMenu> {
   @override
   Widget build(BuildContext context) => MenuAnchor(
     controller: _controller,
+    style: VpflPopupStyle.menu(context),
     childFocusNode: widget.childFocusNode,
     consumeOutsideTap: true,
     onClose: () {
@@ -43,18 +47,21 @@ class _VideoContextMenuState extends State<VideoContextMenu> {
     },
     menuChildren: [
       MenuItemButton(
+        style: VpflPopupStyle.item(context),
         focusNode: _firstItemFocusNode,
-        leadingIcon: const Icon(Icons.play_arrow_outlined),
+        leadingIcon: const Icon(LucideIcons.circlePlay, size: 19),
         onPressed: widget.onOpen,
         child: const Text('Open'),
       ),
       MenuItemButton(
-        leadingIcon: const Icon(Icons.info_outline),
+        style: VpflPopupStyle.item(context),
+        leadingIcon: const Icon(LucideIcons.fileText, size: 19),
         onPressed: widget.onShowDetails,
         child: const Text('Show details'),
       ),
       MenuItemButton(
-        leadingIcon: const Icon(Icons.folder_open_outlined),
+        style: VpflPopupStyle.item(context),
+        leadingIcon: const Icon(LucideIcons.folderKanban, size: 19),
         onPressed: widget.onShowContainingFolder,
         child: const Text('Show containing folder'),
       ),

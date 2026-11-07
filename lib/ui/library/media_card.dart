@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../data/thumbnail_providers.dart';
 import '../core/themes/vpfl_theme_extension.dart';
@@ -51,7 +52,6 @@ class _MediaCardState extends State<MediaCard> {
     final tokens = Theme.of(context).extension<VpflThemeExtension>()!;
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final active = _hovered || _focused;
     final duration = MediaQuery.maybeOf(context)?.disableAnimations == true
         ? Duration.zero
         : const Duration(milliseconds: 150);
@@ -113,16 +113,7 @@ class _MediaCardState extends State<MediaCard> {
                   AspectRatio(
                     aspectRatio: 16 / 9,
                     child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            tokens.cardArtworkTop,
-                            tokens.cardArtworkBottom,
-                          ],
-                        ),
-                      ),
+                      decoration: BoxDecoration(color: tokens.cardArtworkTop),
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
@@ -130,35 +121,6 @@ class _MediaCardState extends State<MediaCard> {
                             filePath: widget.filePath,
                             placeholderColor: scheme.onSurfaceVariant,
                           ),
-                          if (widget.watchedTime case final String watched)
-                            Positioned(
-                              left: 10,
-                              bottom: widget.progress == null ? 10 : 12,
-                              child: IgnorePointer(
-                                child: AnimatedOpacity(
-                                  opacity: active ? 1 : 0,
-                                  duration: duration,
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: tokens.cardOverlay,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 4,
-                                      ),
-                                      child: Text(
-                                        watched,
-                                        style: textTheme.labelSmall?.copyWith(
-                                          color: tokens.playerOverlayForeground,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
                           if (widget.progress case final value?)
                             Positioned(
                               left: 0,
@@ -176,12 +138,28 @@ class _MediaCardState extends State<MediaCard> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
-                    child: Text(
-                      widget.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleSmall,
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleSmall,
+                        ),
+                        if (widget.watchedTime case final String watched) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            watched,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
@@ -206,7 +184,7 @@ class _MediaCardState extends State<MediaCard> {
   }
 }
 
-/// Thumbnail artwork that fills the card, or a movie icon when none exists.
+/// Thumbnail artwork that fills the card, or a clapperboard when absent.
 class _Artwork extends ConsumerWidget {
   const _Artwork({required this.filePath, required this.placeholderColor});
 
@@ -217,7 +195,7 @@ class _Artwork extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final String? path = filePath;
     final placeholder = Center(
-      child: Icon(Icons.movie_outlined, size: 40, color: placeholderColor),
+      child: Icon(LucideIcons.clapperboard, size: 46, color: placeholderColor),
     );
     final File? file = path == null
         ? null

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:drift/native.dart';
 import 'package:vpfl/data/model/app_database.dart';
 import 'package:vpfl/data/persistence_providers.dart';
@@ -251,6 +252,23 @@ void main() {
     ];
     await tester.pumpWidget(_testApp(folders: folders));
     await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byTooltip('Add Folder'),
+        matching: find.byIcon(LucideIcons.folderPlus),
+      ),
+      findsOneWidget,
+    );
+    for (final folder in folders) {
+      expect(
+        find.descendant(
+          of: find.byTooltip(folder.displayName),
+          matching: find.byIcon(LucideIcons.folderBookmark),
+        ),
+        findsOneWidget,
+      );
+    }
 
     expect(_selectedNavigationLabels(tester), ['Home']);
     await tester.tap(find.byTooltip('data'));

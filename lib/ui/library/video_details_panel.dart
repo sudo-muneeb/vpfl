@@ -69,7 +69,7 @@ class _VideoDetailsPanelState extends State<VideoDetailsPanel> {
       autofocus: true,
       child: Material(
         elevation: 12,
-        color: Theme.of(context).colorScheme.surface,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: Padding(

@@ -5,6 +5,7 @@ import 'package:media_kit/media_kit.dart';
 
 import '../../data/model/real_media_tracks.dart';
 import '../../data/services/playback_service.dart';
+import '../core/themes/vpfl_theme.dart';
 
 enum InspectorMode { media, diagnostics }
 
@@ -32,6 +33,7 @@ class PlayerInspector extends StatefulWidget {
 }
 
 class _PlayerInspectorState extends State<PlayerInspector> {
+  static final ThemeData _inspectorTheme = VpflTheme.dark;
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   String? _hardwareDecoder;
 
@@ -108,12 +110,17 @@ class _PlayerInspectorState extends State<PlayerInspector> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Theme(
+    data: _inspectorTheme,
+    child: Builder(builder: _buildPanel),
+  );
+
+  Widget _buildPanel(BuildContext context) {
     final playback = widget.playback;
     final tracks = RealMediaTracks(playback.tracks);
     final foreground = Theme.of(context).colorScheme.onSurface;
     return Material(
-      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.96),
+      color: VpflColors.popupBlack,
       elevation: 10,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

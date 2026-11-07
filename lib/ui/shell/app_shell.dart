@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../data/services/media_file_picker.dart';
 import '../../data/services/linux_file_manager_service.dart';
@@ -323,7 +324,7 @@ class _Sidebar extends StatelessWidget {
                 compact: compact,
                 destination: AppDestination.folders,
                 selected: false,
-                icon: Icons.create_new_folder_outlined,
+                icon: LucideIcons.folderPlus,
                 label: 'Add Folder',
                 onPressed: (_) => onAddFolder(),
               ),
@@ -341,7 +342,7 @@ class _Sidebar extends StatelessWidget {
                         selected:
                             destination == AppDestination.folders &&
                             selectedFolderId == folder.id,
-                        icon: Icons.folder_outlined,
+                        icon: LucideIcons.folderBookmark,
                         label: folder.displayName,
                         onPressed: (_) => onFolderSelected(folder),
                       ),
