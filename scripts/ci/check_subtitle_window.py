@@ -33,6 +33,8 @@ def inspect(enabled: Path, disabled: Path, rect: tuple[int, int, int, int]):
     control_red = 0
     control_red_line = 0
     control_bright_line = 0
+    control_dark_line = 0
+    control_dark_rows = 0
     burned_white = 0
     total = crop_width * crop_height
     for y in range(y0, y0 + crop_height):
@@ -80,16 +82,26 @@ def inspect(enabled: Path, disabled: Path, rect: tuple[int, int, int, int]):
                    min(height, y0 + crop_height + 120)):
         row_lengths = [0, 0]
         bright_lengths = [0, 0]
+        dark_lengths = [0, 0]
         for x in range(x0, x0 + crop_width):
             offset = (y * width + x) * 3
+            reference_offset = ((y0 + crop_height // 4) * width + x) * 3
+            reference = plain[reference_offset:reference_offset + 3]
             for index, pixels in enumerate((shown, plain)):
                 r, g, b = pixels[offset:offset + 3]
                 if r > 150 and r > g + 60 and r > b + 40:
                     row_lengths[index] += 1
                 if max(r, g, b) > 110:
                     bright_lengths[index] += 1
+                if (y < y0 + crop_height and max(reference) > 40 and
+                        max(r, g, b) < 32 and
+                        max(reference) - max(r, g, b) > 30):
+                    dark_lengths[index] += 1
         control_red_line = max(control_red_line, *row_lengths)
         control_bright_line = max(control_bright_line, *bright_lengths)
+        control_dark_line = max(control_dark_line, *dark_lengths)
+        if max(dark_lengths) > crop_width * 3 // 5:
+            control_dark_rows += 1
     # Changes outside the texture indicate an overlay, notification or moving UI.
     for y in range(height):
         for x in range(width):
@@ -108,6 +120,8 @@ def inspect(enabled: Path, disabled: Path, rect: tuple[int, int, int, int]):
             'control_red_pixels': control_red,
             'control_red_line_pixels': control_red_line,
             'control_bright_line_pixels': control_bright_line,
+            'control_dark_line_pixels': control_dark_line,
+            'control_dark_rows': control_dark_rows,
             'burned_white_pixels': burned_white}
 
 
@@ -135,6 +149,10 @@ def main():
         if metrics['control_red_line_pixels'] > max(80, min(180, args.rect[2] // 6)):
             raise AssertionError('playback controls cover the subtitle capture')
         if metrics['control_bright_line_pixels'] > args.rect[2] * 3 // 5:
+            raise AssertionError('playback controls cover the subtitle capture')
+        # Texture rounding can expose a single black edge row. A broad band
+        # across several rows is the opaque controls surface.
+        if metrics['control_dark_rows'] >= max(3, args.rect[3] // 40):
             raise AssertionError('playback controls cover the subtitle capture')
         if args.expect == 'visible' and metrics['changed_pixels'] < 120:
             raise AssertionError('subtitle is not visible in VPFL window')
