@@ -47,7 +47,7 @@ void main() {
       expect(find.text('Show containing folder'), findsOneWidget);
       for (final icon in [
         LucideIcons.circlePlay,
-        LucideIcons.fileText,
+        LucideIcons.receiptText,
         LucideIcons.folderKanban,
       ]) {
         expect(tester.widget<Icon>(find.byIcon(icon)).size, 19);
@@ -184,5 +184,56 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpWidget(const SizedBox.shrink());
     expect(find.byType(MenuItemButton), findsNothing);
+  });
+
+  testWidgets('outside dismissal does not leave the card focused', (
+    tester,
+  ) async {
+    final cardFocus = FocusNode();
+    addTearDown(cardFocus.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: VideoContextMenu(
+              onOpen: () {},
+              onShowDetails: () {},
+              onShowContainingFolder: () {},
+              child: InkWell(
+                focusNode: cardFocus,
+                onTap: () {},
+                child: const SizedBox(width: 200, height: 120),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final mouse = await tester.createGesture(
+      kind: PointerDeviceKind.mouse,
+      buttons: kSecondaryButton,
+    );
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.down(tester.getCenter(find.byType(VideoContextMenu)));
+    await mouse.up();
+    await tester.pumpAndSettle();
+    expect(find.byType(MenuItemButton), findsNWidgets(3));
+
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.byType(MenuItemButton), findsNothing);
+    expect(cardFocus.hasFocus, isFalse);
+
+    cardFocus.requestFocus();
+    await tester.pumpAndSettle();
+    expect(cardFocus.hasFocus, isTrue);
+    await mouse.down(tester.getCenter(find.byType(VideoContextMenu)));
+    await mouse.up();
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(MenuItemButton), findsNothing);
+    expect(cardFocus.hasFocus, isTrue);
   });
 }

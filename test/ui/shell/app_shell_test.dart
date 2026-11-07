@@ -255,6 +255,13 @@ void main() {
 
     expect(
       find.descendant(
+        of: find.byTooltip('Home'),
+        matching: find.byIcon(LucideIcons.house),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
         of: find.byTooltip('Add Folder'),
         matching: find.byIcon(LucideIcons.folderPlus),
       ),

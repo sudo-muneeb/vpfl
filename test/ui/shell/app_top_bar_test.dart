@@ -54,6 +54,51 @@ void main() {
     expect(find.text('System appearance'), findsOneWidget);
   });
 
+  testWidgets('appearance popup highlights only its selected choice in red', (
+    tester,
+  ) async {
+    const labels = {
+      ThemeMode.system: 'System appearance',
+      ThemeMode.light: 'Light appearance',
+      ThemeMode.dark: 'Dark appearance',
+    };
+    for (final theme in [VpflTheme.light, VpflTheme.dark]) {
+      for (final selected in ThemeMode.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: AppTopBar(
+                title: '',
+                themeMode: selected,
+                onOpenFile: () {},
+                onThemeModeChanged: (_) {},
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const Key('quick-appearance-menu')));
+        await tester.pumpAndSettle();
+
+        for (final entry in labels.entries) {
+          final redHighlight = find.ancestor(
+            of: find.text(entry.value),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is ColoredBox && widget.color == VpflColors.actionRed,
+            ),
+          );
+          expect(
+            redHighlight,
+            entry.key == selected ? findsOneWidget : findsNothing,
+          );
+        }
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+      }
+    }
+  });
+
   testWidgets(
     'Open file and appearance use the same icon color in both themes',
     (tester) async {

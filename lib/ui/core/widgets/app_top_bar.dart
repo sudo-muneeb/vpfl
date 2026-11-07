@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../themes/vpfl_theme.dart';
 import '../themes/vpfl_theme_extension.dart';
 import 'window_controls.dart';
 
@@ -108,29 +109,33 @@ class AppTopBar extends StatelessWidget {
                 icon: const Icon(LucideIcons.folderOpen),
               ),
               const SizedBox(width: 4),
-              PopupMenuButton<ThemeMode>(
-                key: const Key('quick-appearance-menu'),
-                tooltip: 'Appearance',
-                initialValue: themeMode,
-                onSelected: onThemeModeChanged,
-                iconSize: 22,
-                iconColor: utilityIconColor,
-                style: _utilityButtonStyle(scheme),
-                icon: const Icon(LucideIcons.sunMoon),
-                itemBuilder: (BuildContext context) => const [
-                  PopupMenuItem(
-                    value: ThemeMode.system,
-                    child: Text('System appearance'),
-                  ),
-                  PopupMenuItem(
-                    value: ThemeMode.light,
-                    child: Text('Light appearance'),
-                  ),
-                  PopupMenuItem(
-                    value: ThemeMode.dark,
-                    child: Text('Dark appearance'),
-                  ),
-                ],
+              Theme(
+                data: Theme.of(context)
+                    .copyWith(highlightColor: VpflColors.actionRed),
+                child: PopupMenuButton<ThemeMode>(
+                  key: const Key('quick-appearance-menu'),
+                  tooltip: 'Appearance',
+                  initialValue: themeMode,
+                  onSelected: onThemeModeChanged,
+                  iconSize: 22,
+                  iconColor: utilityIconColor,
+                  style: _utilityButtonStyle(scheme),
+                  icon: const Icon(LucideIcons.sunMoon),
+                  itemBuilder: (BuildContext context) => const [
+                    PopupMenuItem(
+                      value: ThemeMode.system,
+                      child: Text('System appearance'),
+                    ),
+                    PopupMenuItem(
+                      value: ThemeMode.light,
+                      child: Text('Light appearance'),
+                    ),
+                    PopupMenuItem(
+                      value: ThemeMode.dark,
+                      child: Text('Dark appearance'),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(width: 6),
               const WindowControlButtons(),

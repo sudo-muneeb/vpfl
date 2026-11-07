@@ -296,7 +296,7 @@ class _Sidebar extends StatelessWidget {
                 compact: compact,
                 destination: AppDestination.home,
                 selected: destination == AppDestination.home,
-                icon: Icons.home_outlined,
+                icon: LucideIcons.house,
                 label: 'Home',
                 onPressed: onDestinationSelected,
               ),

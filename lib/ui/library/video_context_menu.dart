@@ -10,7 +10,6 @@ class VideoContextMenu extends StatefulWidget {
     required this.onShowDetails,
     required this.onShowContainingFolder,
     required this.child,
-    this.childFocusNode,
     super.key,
   });
 
@@ -18,7 +17,6 @@ class VideoContextMenu extends StatefulWidget {
   final VoidCallback onShowDetails;
   final VoidCallback onShowContainingFolder;
   final Widget child;
-  final FocusNode? childFocusNode;
 
   @override
   State<VideoContextMenu> createState() => _VideoContextMenuState();
@@ -38,13 +36,7 @@ class _VideoContextMenuState extends State<VideoContextMenu> {
   Widget build(BuildContext context) => MenuAnchor(
     controller: _controller,
     style: VpflPopupStyle.menu(context),
-    childFocusNode: widget.childFocusNode,
     consumeOutsideTap: true,
-    onClose: () {
-      if (widget.childFocusNode?.canRequestFocus == true) {
-        widget.childFocusNode!.requestFocus();
-      }
-    },
     menuChildren: [
       MenuItemButton(
         style: VpflPopupStyle.item(context),
@@ -55,7 +47,7 @@ class _VideoContextMenuState extends State<VideoContextMenu> {
       ),
       MenuItemButton(
         style: VpflPopupStyle.item(context),
-        leadingIcon: const Icon(LucideIcons.fileText, size: 19),
+        leadingIcon: const Icon(LucideIcons.receiptText, size: 19),
         onPressed: widget.onShowDetails,
         child: const Text('Show details'),
       ),
