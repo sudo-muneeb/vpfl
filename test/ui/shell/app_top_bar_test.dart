@@ -8,7 +8,7 @@ import 'package:vpfl/ui/core/widgets/window_controls.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('com.app.vpfl/window');
+  const channel = MethodChannel('io.github.sudo_muneeb.vpfl/window');
   final calls = <String>[];
   var maximized = false;
 

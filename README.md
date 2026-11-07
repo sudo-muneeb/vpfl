@@ -30,6 +30,8 @@ VPFL targets x86_64 Linux. The repository can build native packages for
 Ubuntu 24.04 / Linux Mint 22.x, Fedora 44, and Arch Linux. See the
 [native package guide](docs/compatibility/native-packages.md) for supported
 targets and installation checks.
+The Linux desktop application ID is `io.github.sudo_muneeb.vpfl`; the package
+and command names remain `vpfl`.
 
 **Public installer releases are not yet available.** Once published, verified
 packages will be listed on the [GitHub Releases page](https://github.com/sudo-muneeb/vpfl/releases).

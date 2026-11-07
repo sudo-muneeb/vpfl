@@ -7,14 +7,14 @@ validated. It is not published to pub.dev.
 
 ```dart
 const manager = VpflDesktopLinux();
-final installed = await manager.isAvailable('com.app.vpfl.desktop');
+final installed = await manager.isAvailable('io.github.sudo_muneeb.vpfl.desktop');
 final current = await manager.getDefaultApplication('video/mp4');
 final status = await manager.getDefaultStatus(
-  'com.app.vpfl.desktop',
+  'io.github.sudo_muneeb.vpfl.desktop',
   ['video/mp4', 'video/webm'],
 );
 final result = await manager.setDefaultForMimeTypes(
-  'com.app.vpfl.desktop',
+  'io.github.sudo_muneeb.vpfl.desktop',
   ['video/mp4', 'video/webm'],
 );
 await manager.showFolder(Uri.directory('/home/me/Videos'));

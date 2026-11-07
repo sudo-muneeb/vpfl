@@ -7,9 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../data/services/lifecycle_trace.dart';
+import '../../../linux_application_id.dart';
 
 abstract final class WindowCommands {
-  static const _channel = MethodChannel('com.app.vpfl/window');
+  static const _channel = MethodChannel(vpflWindowChannel);
   static final maximized = ValueNotifier<bool>(false);
   static Future<void> Function()? shutdownHandler;
   static bool _handlerInstalled = false;

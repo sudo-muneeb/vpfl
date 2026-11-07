@@ -50,6 +50,16 @@ void main() {
     }
     expect(ownWindow, isNotEmpty, reason: windowList);
     final windowId = ownWindow.split(RegExp(r'\s+')).first;
+    final classResult = await Process.run('wmctrl', ['-lxp']);
+    expect(classResult.exitCode, 0, reason: '${classResult.stderr}');
+    final classLine = (classResult.stdout as String)
+        .split('\n')
+        .firstWhere((line) => line.startsWith('$windowId '), orElse: () => '');
+    expect(classLine, isNotEmpty, reason: '${classResult.stdout}');
+    expect(
+      classLine.split(RegExp(r'\s+')).elementAt(3),
+      'io.github.sudo_muneeb.vpfl.Io.github.sudo_muneeb.vpfl',
+    );
 
     Future<void> setMaximized(bool value) async {
       final result = await Process.run('wmctrl', [
@@ -79,7 +89,7 @@ void main() {
         glyph,
       );
       expect(
-        await const MethodChannel('com.app.vpfl/window')
+        await const MethodChannel('io.github.sudo_muneeb.vpfl/window')
             .invokeMethod<bool>('isMaximized'),
         value,
       );

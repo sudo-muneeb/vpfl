@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:vpfl_desktop_linux/vpfl_desktop_linux.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../linux_application_id.dart';
 import '../repositories/playback_history_repository.dart';
+
+export '../../linux_application_id.dart' show vpflDesktopId;
 
 /// The same concrete video MIME types advertised by the installed desktop entry.
 const List<String> vpflVideoMimeTypes = [
@@ -21,8 +24,6 @@ const List<String> vpflVideoMimeTypes = [
   'video/ogg',
   'application/mxf',
 ];
-
-const String vpflDesktopId = 'com.app.vpfl.desktop';
 
 /// Owns VPFL's invitation policy; the plugin itself has no prompt policy.
 class DefaultAppPromptService extends ChangeNotifier {
