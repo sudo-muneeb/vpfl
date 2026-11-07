@@ -36,6 +36,8 @@ subtitle job checks VPFL's final X11 window.
 
 | Check | Action |
 | --- | --- |
+| `ci / changed files` | Compare the pull request base and head files; only root Markdown, `.agents/` Markdown, `docs/` Markdown, and the pull request template qualify as documentation. Manual and reusable runs always use full CI. |
+| `ci / commit messages` | Validate commits introduced by pull requests targeting `main`. |
 | `ci / fixtures` | Generate and verify the complete video/subtitle fixture set plus a longer regression video once; upload them for other jobs. |
 | `ci / quality` | Enforce lockfile, Dart formatting, analyzer, unit and widget tests. |
 | `ci / native-build (ubuntu)` | Compile and package a DEB in Ubuntu 24.04; play the matrix and existing playback, lifecycle, error, inspector, and GIO regression suites in Xvfb. |
@@ -44,7 +46,12 @@ subtitle job checks VPFL's final X11 window.
 | `ci / package-install (ubuntu/fedora/arch)` | Install the generated package with the target package manager, check files and libraries, capture video color bars plus authored ASS and external SRT captions from the installed app's X11 window, close it, then remove it. |
 | `ci / display (wayland/xwayland/x11-fallback)` | Run the matrix under headless Weston or injected GPU initialization failure; query the selected GTK backend and require software fallback state. |
 | `ci / graphical-subtitles (ubuntu-x11)` | Compare standalone mpv/media_kit subtitle frames, then check paired CC On/Off pixels from VPFL's actual X11 window. |
-| `ci / required-gate` | Fail if any required job fails, is canceled, or is skipped. |
+| `ci / required-gate` | Require successful change detection and commit validation. For verified documentation-only pull requests, require the expensive jobs to be skipped; otherwise require them all to succeed. |
+
+Documentation-only pull requests skip fixture generation, quality checks, native
+builds, package installation, display checks, and graphical subtitle checks.
+Any other changed file, including workflow YAML, triggers the full set. A
+change detection failure prevents the required gate from passing.
 
 The separate, manually dispatched `gpu / physical-hardware` workflow needs a
 self-hosted Linux x64 runner labeled `vpfl-gpu` with Flutter 3.47.5, FFmpeg,
