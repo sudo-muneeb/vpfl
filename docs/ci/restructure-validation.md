@@ -294,3 +294,35 @@ Relocation validation: the two existing media-format contract tests passed;
 fresh generation and verification passed for all 31 base fixtures using the
 new default path. The Python CI suite passed all 45 tests. Dart formatting,
 full actionlint, and `git diff --check` passed. No JSON content changed.
+
+
+## First hosted PR run and package-display correction
+
+PR #19 was opened at `f122d43275302fb5fb901891ddf4621f8c189820`.
+[Run 42450207602](https://github.com/sudo-muneeb/vpfl/actions/runs/42450207602)
+passed preflight, fixtures, quality/plugin tests, all three native build/media
+lanes, all three display lanes, and Ubuntu/Fedora package installation.
+Arch package smoke failed with `VPFL window missing` (job 128640176493).
+The graphical subtitle job was still running during investigation.
+
+Downloaded that run's Arch package and fixtures. The regression video hash
+matched the locally generated file exactly. In a disposable Arch container,
+`xvfb-run --help` showed a 640x480 default, below VPFL's minimum window size.
+Two diagnostic reproductions found the window but failed the unchanged
+six-color compositor assertion; the saved capture had a black video surface,
+and one launch logged a native frame-size timeout. With the same package,
+fixture, assertions and timeouts on an explicit 1280x1024 display, the video
+smoke passed. The complete corrected Arch package command then passed video
+pixels, both installed subtitle checks, metadata and package removal.
+
+The old hosted artifact omitted window-manager state, so its precise
+missing-window mechanism could not be established retrospectively. The
+correction fixes the independently reproduced invalid display setup rather
+than guessing at audio warnings (which also occur in successful runs).
+Both package-smoke phases now explicitly use the geometry already required
+by installed subtitle checks. Failure cleanup additionally retains the
+Openbox log, EWMH window-manager/client lists, and a compositor capture.
+There is no assertion, fixture, timeout, application, or dependency-policy
+change. ShellCheck, Bash syntax and diff checks passed. The corrected hosted
+run must establish whether the original symptom recurs; subsequent hosted
+outcomes belong in the PR's verification record.

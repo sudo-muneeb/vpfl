@@ -95,7 +95,8 @@ No branch protection, ruleset, or required-check configuration is changed.
 
 Ubuntu 24.04, Fedora 44, and Arch compile against their own native libraries.
 Package lanes use fresh containers, validate contents/dependencies, desktop
-entries and AppStream, capture installed video/subtitle pixels, remove the
+entries and AppStream, capture installed video/subtitle pixels on explicit
+1280x1024 X11 displays, remove the
 package, and verify profile retention. Fedora enables RPM Fusion Free for
 full codec support; distro-default codec availability is a different contract.
 

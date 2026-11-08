@@ -220,7 +220,8 @@ metadata inspection also uses dpkg/rpm/namcap where the existing scripts specify
 
 `bash scripts/ci/run_installed_package.sh DISTRO PACKAGE
 build/ci-fixtures/regression.mp4 build/ci-fixtures` runs in fresh matching
-containers. It checks installation, ldd resolution, metadata, launch,
+containers with explicit 1280x1024 X11 geometry for both smoke phases.
+It checks installation, ldd resolution, metadata, launch,
 video color bars, ASS/external SRT final pixels, close, removal, and profile
 retention. Helpers `installed_app_smoke.sh`, `installed_subtitle_smoke.sh`,
 `check_installed_frame.py`, and `check_installed_subtitle_frame.py` remain
