@@ -1,238 +1,60 @@
-# Linux development and Flatpak
-
-## Development setup
-
-On Ubuntu or Linux Mint, install Flutter's Linux build toolchain and the native packages required by the chosen media_kit setup.
-
-Then verify:
-
-```bash
-flutter doctor -v
-flutter devices
-flutter run -d linux
-```
-
-Keep the project's Flutter SDK revision and `pubspec.lock` reproducible.
-
-## Initial dependencies
-
-The current dependencies are in `pubspec.yaml`. Keep them small; the list
-below includes planned integration categories, not packages to add up front.
-
-Expected categories:
-
-```text
-media_kit
-media_kit_video
-media_kit_libs_video
-
-flutter_riverpod
-
-SQLite package / database layer
-
-file_selector
-path
-path_provider
-
-window management
-desktop drag and drop
-D-Bus only when needed
-```
-
-Do not add a media conversion package in V1.
-
-## Command line
-
-Initial command contract:
-
-```bash
-vpfl
-```
-
-Launch normal UI.
-
-```bash
-vpfl <file>
-```
-
-Open one local media file.
-
-Resolve relative paths safely.
-
-Support quoted paths with spaces.
-
-Do not add command flags until there is a real use case.
-
-## External opening
-
-All of these should eventually feed one internal open action:
-
-```text
-vpfl <file>
-Open With
-double-click association
-file picker
-drag and drop
-recent item
-library item
-```
-
-The application should later support forwarding these requests to an existing instance.
-
-## Desktop identity
-
-The native app and packages use `io.github.sudo_muneeb.vpfl`, defined in
-`linux/CMakeLists.txt` and the packaging metadata. The existing
-`flatpak/io.github.sudo_muneeb.vpfl.yml` also uses this ID. Check identity across:
-
-* executable/launcher
-* Linux runner identity
-* desktop file
-* icon names
-* AppStream metadata
-* Flatpak manifest
-
-## Desktop entry
-
-Use the [packaged desktop entry](../packaging/linux/io.github.sudo_muneeb.vpfl.desktop) as
-the source of truth for the native launcher, icon, and MIME types. Keep it
-aligned with `lib/data/services/media_format_policy.dart`,
-`lib/data/services/default_app_prompt_service.dart`, `test/fixtures/media-matrix.json`,
-and the [V1 media contract](ci/README.md#v1-media-contract).
-Only advertise formats that have actually been tested.
-
-## Flatpak design
-
-The repository has an initial manifest and build script, but Flatpak build and
-runtime behavior remain unverified. Validate them before making Flatpak
-distribution claims.
-
-Changing the Flatpak app ID gives development installations a new sandbox and
-data directory under `~/.var/app/io.github.sudo_muneeb.vpfl`. An older
-`com.app.vpfl` sandbox, if present, remains separate; this manifest does not
-silently copy its data or preferences. Native installs continue to use
-`~/.local/share/vpfl` (or `$XDG_DATA_HOME/vpfl`) for the library and playback
-history, independently of the desktop ID.
-
-The sandbox must contain the native libraries required by the packaged playback stack.
-
-Do not depend on development libraries installed on the host.
-
-## Folder access
-
-Prefer user-granted access.
-
-Use portals where appropriate.
-
-Do not request blanket home or host filesystem access merely because it is convenient.
-
-Persist stable grant/document information where possible.
-
-If access is no longer valid:
-
-```text
-mark folder unavailable
-show clear UI
-offer reselect/relink
-```
-
-Do not silently delete history for temporarily unavailable folders.
-
-## Saved folders
-
-A selected folder should store:
-
-* display label
-* accessible URI/path
-* portal/document identity when available
-* recursive preference
-* last scan timestamp
-* availability
-
-Opening one isolated video must not be treated as permission to index its entire parent folder.
-
-## GPU and audio permissions
-
-Flatpak permissions should be as narrow as possible.
-
-Typical requirements may include:
-
-```text
-DRI device access for graphics/video
-audio socket
-Wayland
-X11 fallback when required
-portal access
-```
-
-Add network permission only if direct network playback ships.
-
-## MPRIS
-
-MPRIS is a later desktop integration milestone.
-
-Keep it outside playback UI code.
-
-Expose only required D-Bus interfaces.
-
-## Window behavior
-
-Initial requirements:
-
-* sensible minimum window size
-* maximize/restore
-* fullscreen
-* remember window size later if desired
-* correct taskbar/dock identity
-
-Always-on-top mini-player behavior is a later feature and compositor dependent.
-
-## Launcher files
-
-Package:
-
-```text
-desktop entry
-scalable application icon
-raster icons as needed
-AppStream metadata
-complete Flutter Linux bundle
-```
-
-A Flutter asset alone does not install an application icon into the desktop environment.
-
-## Offline/reproducible packaging
-
-Before Flathub submission:
-
-* pin sources
-* keep checksums
-* keep `pubspec.lock`
-* avoid hidden build-time downloads
-* verify native dependency closure
-* build from a clean environment
-* test on a machine without development playback packages
-
-## Release checks
-
-Verify:
-
-```text
-menu launch
-dock/taskbar grouping
-vpfl
-vpfl <file>
-Open With
-spaces in file names
-Unicode paths
-fullscreen
-subtitles
-saved folders
-restart persistence
-Flatpak update
-database migration
-```
-
-The [current CI workflow](ci/README.md) builds native DEB, RPM, and Arch
-packages only. Flatpak build, sandbox permissions, update, and migration
-checks remain release work; native package jobs provide no Flatpak result.
+# Linux integration and Flatpak status
+
+VPFL's implemented distribution path is native x86_64 DEB, RPM, and Arch
+packaging. See [native packages](compatibility/native-packages.md) for build
+and installation procedures and [CONTRIBUTING](../CONTRIBUTING.md) for setup.
+
+## Desktop integration
+
+The native runner and package metadata use `io.github.sudo_muneeb.vpfl`; executable/package
+names remain `vpfl` (Arch binary package: `vpfl-bin`). The desktop entry,
+icons, AppStream metadata, and GTK application ID must agree. The
+[packaged desktop entry](../packaging/linux/io.github.sudo_muneeb.vpfl.desktop) is the
+source of truth for launcher and MIME registration. Installation registers
+Open With support without changing per-user defaults. The
+[default-application guide](linux/default-applications.md) explains consent,
+reminder policy, and isolated GIO tests.
+
+`vpfl` launches the UI; `vpfl "/path/to/video.mkv"` opens one local file.
+`MediaOpenRequest` resolves relative and home-relative paths to file URIs;
+the command line accepts a filesystem path, not a URL argument. CLI,
+file picker, library cards, and recents enter the application playback route.
+Opening a file builds a navigation queue from eligible siblings when readable;
+it does not add its parent folder to the indexed library. Saved roots are
+explicitly added by the user. Drag-and-drop, forwarding to an existing
+instance, and MPRIS are not implemented.
+
+The GTK runner supplies frameless window controls, native resize regions,
+maximize-state notifications, and coordinated close. When `DISPLAY` is present
+and `GDK_BACKEND` is unset it selects X11, including XWayland in a Wayland
+session. Explicit backend overrides and pure-Wayland launches take their own
+path. Headless CI backend checks do not establish GNOME/KDE desktop behavior;
+see [CI limits](ci/README.md#known-limits).
+
+## Flatpak prototype
+
+[`flatpak/io.github.sudo_muneeb.vpfl.yml`](../flatpak/io.github.sudo_muneeb.vpfl.yml) and
+[`flatpak/build.sh`](../flatpak/build.sh) are an unverified prototype,
+not a published Flatpak or Flathub installation route. The manifest selects
+Freedesktop Platform/SDK 26.08 and copies a locally built Flutter bundle.
+It grants IPC, X11, Wayland, DRI, and PulseAudio access; it does not grant
+blanket home/host access or network access.
+
+The manifest does not build/bundle a complete libmpv/libepoxy dependency
+closure. Native packages rely on system playback libraries, which does not
+establish that the copied bundle can run inside this sandbox. Saved roots
+currently store paths, not persistent portal document grants. Native GIO
+association behavior also needs separate sandbox validation.
+
+Before distributing Flatpak:
+
+- Build and verify the native dependency closure without host development
+  libraries; pin sources/checksums and eliminate hidden build-time downloads.
+- Verify file/folder picker access and persistent grants across restart/update,
+  including unavailable roots and explicit recovery without deleting history.
+- Test menu launch, identity, Open With, fonts/subtitles, GPU/software output,
+  audio, resizing/fullscreen, and database migration in the sandbox.
+- Record the exact runtime, desktop, driver, commands, and observed results.
+
+These are release requirements, not implemented guarantees. No Flatpak lane
+exists in current CI; native package results cannot substitute for it.

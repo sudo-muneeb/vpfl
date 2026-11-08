@@ -1,5 +1,10 @@
 # Native subtitle verification (Part 3)
 
+Historical native-engine investigation from 13 October 2026. The picker
+limitations below were addressed by [Part 4](subtitle-integration-part4.md);
+current subtitle ownership is described in
+[architecture](../02-architecture.md#video-output-and-subtitles).
+
 Tested on 13 October 2026 on branch `audit/subtitle-baseline`. The suite in
 [`scripts/ci/`](../../scripts/ci/run_native_subtitle_checks.py) uses the Part 2
 [manifest](../../test/fixtures/subtitles/subtitle-matrix.json) and generated
@@ -37,10 +42,10 @@ manual selection. Per-case native properties are saved in the validated JSON.
 ## Results
 
 Both engines passed 18 of 18 scenario groups and 94 screenshot/control pairs
-each on the tested host. The [machine-readable comparison](../../build/ci-native-subtitles/comparison.json)
+each on the tested host. The machine-readable `build/ci-native-subtitles/comparison.json`
 records the fixture, manifest cue times and text, track expectations, status,
 versions, logs, and artifact paths for every group. The matching
-[generated report](../../build/ci-native-subtitles/report.md) summarizes the
+generated `build/ci-native-subtitles/report.md` summarizes the
 results. These artifacts are ignored build outputs and must be regenerated on
 another checkout.
 

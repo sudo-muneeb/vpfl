@@ -12,26 +12,57 @@ platform, check the [current product goals](GOALS.md) and the
 - Search existing issues and pull requests for related work. Open an issue for
   a substantial change so its approach can be discussed before implementation.
 - For a bug report, include the VPFL version or commit, Linux distribution,
-  steps to reproduce, expected and actual behavior, and relevant logs. Share
+  desktop/session (X11/Wayland), GPU/driver, installation method, steps to
+  reproduce, expected and actual behavior, and relevant terminal logs. For
+  playback issues, include container/codecs and whether other files work;
+  distinguish renderer mode from the decoder shown in Diagnostics. Share
   screenshots or a sample video only when you have permission to do so.
 - For a documentation fix or other small, focused change, a pull request is
   enough.
 
 ## Set up a development checkout
 
-Use a Linux host with the Flutter SDK on `PATH`. CI uses Flutter **3.47.5**;
-using that version gives the closest match. Install the Linux build
-dependencies described in the [README](README.md#run-from-source),
-then, from the repository root, run:
+Use an x86_64 Linux desktop host with Flutter **3.47.5** on `PATH` (the CI
+version; Dart is supplied by Flutter). Install a C/C++ toolchain, CMake,
+Ninja, pkg-config, GTK 3, libmpv, and libepoxy development packages. On
+Ubuntu 24.04 / Linux Mint 22.x:
+
+```bash
+sudo apt update
+sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev \
+  liblzma-dev libmpv-dev libepoxy-dev
+flutter doctor -v
+flutter devices
+```
+
+For Fedora and Arch package names and the larger native-test toolchain, inspect
+[`scripts/ci/install_dependencies.sh`](scripts/ci/install_dependencies.sh).
+That script changes system configuration and is intended for disposable CI
+containers, not as a workstation installer. Packaging additionally needs the
+[packaging tools](docs/compatibility/native-packages.md#build-prerequisites).
+
+After cloning, from the repository root:
 
 ```bash
 flutter pub get --enforce-lockfile
 flutter run -d linux
 ```
 
-To run the app with a separate local profile, use
-`./scripts/debug-isolated.sh`. See the [README](README.md#run-from-source) for
-the command, or run `./scripts/debug-isolated.sh --help` for its options.
+Keep `pubspec.lock`; do not upgrade dependencies incidentally. Use
+`./scripts/debug-isolated.sh [video-file]` for a separate test profile;
+`./scripts/debug-isolated.sh --help` lists its options. Normal development
+runs use your regular XDG database and cache.
+
+## Code style
+
+Use Effective Dart, the repository's `analysis_options.yaml`, and `dart format`.
+UI belongs under its feature, shared themes/widgets under `lib/ui/core`, and
+native/SQL/player operations behind their services/repositories. Riverpod
+wires shared dependencies and query streams; keep local UI state local.
+See the [architecture](docs/02-architecture.md) and
+[source map](docs/03-project-structure.md). New comments should explain
+contracts and nonobvious decisions. Preserve upstream attribution in vendored
+files; use the [patch workflow](patches/media_kit_video/README.md) for updates.
 
 ## Make a change
 
@@ -68,63 +99,32 @@ never exceed 72. Describe the actual change rather than "updates" or
 "improvements". Final punctuation is optional. The validator checks the type,
 heading format, and length; reviewers assess whether wording is clear.
 
-A clear title can stand alone, for example:
+For example, `docs(linux): clarify required build dependencies`. Add a body
+when it preserves a bug's cause, an architectural decision, or a compatibility
+constraint. Use a `BREAKING CHANGE:` footer when applicable.
 
-```text
-docs(linux): clarify required build dependencies
-```
-
-Add a body when it preserves useful context: the cause of a complex bug,
-an architectural choice, a compatibility constraint, or breaking behavior.
-Separate it from the title with a blank line. Keep it focused on what changed
-and why, without repeating the title or a pull request's test report:
-
-```text
-fix(playback): preserve subtitle selection after seeking
-
-Seeking previously reset the selected subtitle track.
-Restore the selection when the playback source is reloaded.
-```
-
-Other suitable titles include `feat(library): index selected folders`,
-`refactor(ui): extract player control layout`, and
-`test(library): cover missing folders during rescan`. Use a
-`BREAKING CHANGE:` footer, with or without `!` in the heading, when applicable.
-
-The optional [Git template](.gitmessage) gives lightweight guidance in Git's
-commit editor. Enable it once per clone if useful:
-
-```bash
-git config --local commit.template .gitmessage
-```
-
-Git CLI, VS Code, and other IDEs can use the same format whether or not they
-display the template. Check a message file locally with
-`python3 scripts/ci/check_commit_messages.py --file PATH`. CI checks commits
-introduced by pull requests to `main`. Keep each commit focused and coherent.
-Commit headings identify individual changes; commit bodies preserve reasoning
-that would be lost from those changes. A pull request title summarizes the
-branch outcome, and its description gives reviewers the overall approach,
-verification, and risks. Prefer a Conventional Commit title for a PR,
-especially when squashing. Its commits can have different scopes and titles.
-
-Prefer **Squash and merge** for intermediate development commits; write a clean
-final commit message rather than copying the whole pull request. Use **Rebase
-and merge** when individual commits are worth preserving. Do not rewrite
-shared history to apply the new convention retroactively.
+The optional [Git template](.gitmessage) can be enabled per clone with
+`git config --local commit.template .gitmessage`. Validate a message with
+`python3 scripts/ci/check_commit_messages.py --file PATH`; CI checks new commits
+in PRs to `main`. Keep commits coherent. Use squash merge for intermediate
+commits, or rebase merge when individual commits are worth preserving. Do not
+rewrite shared history to apply the convention retroactively.
 
 Before opening a pull request, run the checks that apply to your change:
 
 ```bash
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
-flutter test
+flutter test --reporter expanded
 ```
 
 For code changes, run `flutter build linux --release` when your Linux setup
-supports it. Documentation-only changes need a link and spelling review; they
-do not need a Flutter build. Record the commands you ran, their results, and
-any checks you could not run in the pull request.
+supports it. Documentation-only changes need a link, path, command, and
+consistency review, plus `git diff --check`; they do not need Flutter or multimedia checks.
+See [testing](docs/06-testing.md) for plugin/Python checks and the native suites
+to select for the affected behavior. The [CI guide](docs/ci/README.md) explains
+which Markdown paths qualify for the documentation-only PR gate. Record the
+commands you ran, their results, and any checks you could not run in the pull request.
 
 ## Open a pull request
 

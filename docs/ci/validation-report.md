@@ -37,7 +37,7 @@ required gate.
   aggregate-gate jobs. The gate rejects any failed, canceled, or skipped
   required job. The workflow uses read-only PR permissions.
 - Nightly and manual release-candidate workflows rerun the required pipeline;
-  nightly adds a 30-cycle lifecycle test. Neither publishes artifacts.
+  nightly adds a 30-cycle lifecycle test. Neither publishes GitHub Releases.
 - `test/fixtures/media-matrix.json` declares **26 video/container cases**, four external
   subtitle cases, and one embedded-subtitle video. A separate 30-second video
   supports older playback/lifecycle regressions.

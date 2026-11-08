@@ -6,6 +6,11 @@ automated checks and their limits, see the [CI guide](docs/ci/README.md). On
 `flutter analyze` reported no issues. Flatpak runtime, physical GPU decoding,
 and release-upgrade checks remain separate validation work.
 
+Use the [documentation index](docs/README.md) for current implementation and
+maintenance guides. Milestone test counts below are historical. Public release
+and AUR availability, plus finalized-tag policy, are recorded in the
+[release procedure](docs/ci/release-checklist.md).
+
 ## Project assessment
 
 VPFL is a local Linux desktop video player. Native DEB, RPM, and Arch packages
@@ -22,10 +27,10 @@ VPFL records; `media_kit` owns live playback state.
 Thumbnails resolve from valid Freedesktop cache, VPFL cache, then placeholder;
 frames may be cached after natural playback, never by seeking the active player.
 The UI loads cached data before asynchronous scans. Position events stay
-isolated from the app shell. Linux packaging must include native playback
-libraries and use user-granted folder access. Tests are focused unit and widget
-tests plus Linux/native integration checks; hardware and release claims require
-runtime evidence.
+isolated from the app shell. Linux packaging must provide the required native
+playback dependencies (native packages use system libmpv/libepoxy) and use
+user-selected folders. Tests are focused unit and widget tests plus Linux/native
+integration checks; hardware and release claims require runtime evidence.
 
 ## Previous milestone
 
@@ -247,8 +252,8 @@ runtime coverage.
 - Build and run the Flatpak, including portal-granted folder persistence and
   upgrade behavior.
 - Exercise real GPU rendering and hardware decoding on each claimed vendor.
-  The current PR matrix uses headless software renderers; the optional
-  physical-GPU workflow has not run on a provisioned runner.
+  The current PR matrix uses headless software renderers. Use the local GPU
+  diagnostic on a physical desktop before making hardware claims.
 - Test native Wayland and XWayland in GNOME and KDE sessions, subtitle
   presentation, release upgrades, and performance on target hardware.
 - The original intermittent `flutter run` disconnect was not reproduced

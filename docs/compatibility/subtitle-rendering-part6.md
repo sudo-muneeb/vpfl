@@ -1,5 +1,10 @@
 # Subtitle rendering in the VPFL Linux window (Part 6)
 
+Historical validation report. Later output-sizing and physical-pixel placement
+changes are recorded in [resize recovery](subtitle-resize-recovery.md);
+use [architecture](../02-architecture.md#video-output-and-subtitles) for the
+current implementation.
+
 Tested on 17 October 2026 from `audit/subtitle-baseline` at base revision
 `1c7a1bc`, with the unstaged Part 6 test and CI changes described here.
 The [window test guide](../ci/subtitle-window-checks.md) gives reproduction

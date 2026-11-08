@@ -1,5 +1,10 @@
 # Subtitle integration (Part 4)
 
+Historical implementation report, validated on 14 October 2026. For the
+current ownership overview and follow-up timing/rendering work, see
+[architecture](../02-architecture.md#video-output-and-subtitles) and the
+[documentation index](../README.md#historical-evidence).
+
 This change uses the generated [subtitle fixtures](../ci/subtitle-fixtures.md)
 and the [Part 3 native evidence](../ci/native-subtitle-verification.md). It leaves
 `media_kit`, mpv, libass, the fixtures, and VPFL's rendering settings intact.

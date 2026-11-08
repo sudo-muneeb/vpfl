@@ -48,16 +48,9 @@ Folder scanning should:
 
 ## Bounded work
 
-Do not create unlimited concurrent metadata requests.
-
-Start conservatively:
-
-```dart
-final workerCount =
-    (Platform.numberOfProcessors ~/ 2).clamp(1, 4);
-```
-
-Measure before increasing.
+The scanner does not extract stream metadata. Details inspection is on demand
+and serialized; do not add a speculative worker pool. Bound new background
+work and measure scan/playback interaction before increasing concurrency.
 
 ## Thumbnails
 
@@ -71,7 +64,7 @@ no cached image
 
 video begins successfully
 → optional media_kit screenshot
-→ resize and cache
+→ store PNG in VPFL cache
 → reuse later
 ```
 
@@ -91,7 +84,7 @@ Use:
 ListView.builder
 GridView.builder
 slivers where useful
-incremental database queries
+bounded queries where supported
 ```
 
 Avoid building the full library at once.
@@ -138,11 +131,10 @@ Do not create polling timers for data already available as events.
 
 Do not launch duplicate work for the same resource.
 
-Use in-flight request maps for:
-
-* metadata
-* folder refresh
-* cached image lookup
+Choose deduplication at the owning boundary. AppShell already guards scans by
+folder ID; Details serializes/cancels inspections rather than caching metadata.
+Do not add a second cache or an in-flight map without a demonstrated duplicate
+operation. Current ownership is documented in [architecture](02-architecture.md).
 
 ## Idle behavior
 
