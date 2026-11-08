@@ -243,9 +243,11 @@ messages such as `Could not open codec` appeared in headless Ubuntu/display
 logs, but the decoded-frame and completion checks passed. See the
 [hardware-decoding fallback documentation](https://mpv.io/manual/stable/#options-hwdec).
 
-On 12 October 2026, the local unit/widget suite passed 71 tests and
-`flutter analyze` reported no issues. Native lanes were not rerun for this
-local documentation audit.
+The counts above describe PR #3, not the current suite. Subsequent
+[subtitle window](../compatibility/subtitle-rendering-part6.md) and
+[resize recovery](../compatibility/subtitle-resize-recovery.md) reports retain
+their later local commands/results. None of those historical results is a new
+run on the current revision.
 
 ## Known limits
 
@@ -277,15 +279,11 @@ checklist for additional hardware, desktop, upgrade, and Flatpak limits.
 
 ## Merge protection
 
-The active **Protect main** ruleset requires a pull request, resolved review
-threads, and linear history. It blocks deletion and force-pushes to `main` and
-allows squash or rebase merges. It currently requires zero approving reviews
-and does not require a status check. Contributors should still fix failing CI
-jobs before merging. See the [contributor guide](../../CONTRIBUTING.md).
-
-For enforceable CI protection, add `ci / required-gate` as a required status
-check in the `main` ruleset after it has reported on a pull request. Require
-at least one independent approval if review by another person is part of the
-merge policy. The pull request template and `AGENTS.md` ask for evidence, but
-repository instructions alone cannot prevent an agent from committing or
-merging; branch rules and the owner's review provide the separate gate.
+The contributor policy requires PRs, resolved review conversations, and linear
+history. The earlier repository-rules inspection recorded in the
+[validation report](validation-report.md) found no required status check and
+zero mandatory approvals; that historical observation is not a current
+protection guarantee. Repository rules are configured outside workflow YAML.
+Maintainers should inspect the active `main` ruleset and require
+`ci / required-gate` if CI enforcement is intended. A passing job and written
+agent instructions do not themselves enforce branch protection.

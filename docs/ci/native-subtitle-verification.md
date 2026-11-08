@@ -1,6 +1,6 @@
 # Native subtitle verification (Part 3)
 
-This opt-in check exercises the generated Part 2 media below VPFL's Flutter
+This native check exercises the generated Part 2 media below VPFL's Flutter
 UI. It starts a fresh standalone mpv process for each case, then uses the
 repository's pinned `media_kit` in a separate Dart process. It changes no
 playback code or fixture definitions. The scripts live in `scripts/ci/`; all
@@ -55,8 +55,9 @@ per-case metrics, bounding boxes, and source images for inspection.
 
 `vo=null` still permits mpv/libass screenshots on the tested host, so no
 desktop display is required for this native path. This does **not** validate
-the final VPFL Flutter texture or compositor; later project parts must do
-that. Urdu, Arabic, and Japanese text values and visible pixels are checked,
+the final VPFL Flutter texture or compositor; the separate
+[window checks](subtitle-window-checks.md) cover X11 presentation. Urdu, Arabic,
+and Japanese text values and visible pixels are checked,
 but correct joining, direction, and individual glyph shapes need manual
 review of the saved PNGs. An embedded font attachment is checked through
 FFprobe metadata, native attachment/font-selection logs, and rendered pixels;
@@ -64,8 +65,9 @@ font selection in the installed system can differ elsewhere. The host's
 standalone mpv executable and media_kit-loaded libmpv paths are recorded
 separately in the generated results.
 
-The new native suite is kept separate from ordinary `flutter test` and the
-required PR jobs because it depends on host mpv, libass, and font resources.
-The existing fixture generation job still runs in CI. See the
+The native suite is separate from ordinary `flutter test` because it needs
+host mpv, libass, and fonts. It now runs in the full CI pipeline's required
+`ci / graphical-subtitles (ubuntu-x11)` job before final-window checks;
+documentation-only PRs skip that job. See the [CI guide](README.md) and the
 [observed Part 3 results](../compatibility/native-subtitle-verification.md)
 for this host's evidence and limits.

@@ -59,7 +59,9 @@ decoded burned-caption pixels with the plain video's pixels. Source files are
 probed and converted to SRT separately to verify cue text and timing. The
 malformed SRT must fail cue decoding or yield no cues. These checks establish
 fixture properties; they do not assert how VPFL, mpv, or libass displays or
-selects subtitles. Native rendering assertions belong in later project parts.
+selects subtitles. Native rendering assertions live in the
+[native comparison](native-subtitle-verification.md) and
+[window checks](subtitle-window-checks.md).
 
 The attached and burned-caption font is the repository's existing
 `assets/fonts/NotoSansDisplay-Regular.ttf`, licensed under SIL Open Font

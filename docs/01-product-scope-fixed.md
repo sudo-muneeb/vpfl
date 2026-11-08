@@ -12,6 +12,12 @@ proposed targets; hardware and release claims require tests on the actual
 release bundle and target machine. See the [CI guide](ci/README.md) for
 executed checks and their limits.
 
+For current capabilities use the [README](../README.md); for ownership and
+persistence use [architecture](02-architecture.md). In particular, saved
+playlists/favorites, persistent portal grants, single-instance forwarding,
+MPRIS, drag-and-drop, and Flatpak distribution are not implemented. A V1
+label below is a delivery intention, not evidence that a feature shipped.
+
 ## 1 Key decisions
 
 1. Develop in VS Code with the official Dart and Flutter extensions. Android Studio remains usable for Dart and Flutter; Linux desktop builds use the Linux toolchain.
@@ -202,7 +208,7 @@ Hardware rendering and decoding are separate controls. media_kit documents the r
 
 These advanced native controls need capability checks and tests against the exact packaged mpv version. They must not be inferred from mpv's standalone player interface alone.
 
-## 3 What media_kit supplies
+## 3 Engine capabilities considered in the plan
 
 Use the public interface wherever possible. The planned wrapper covers the main publicly documented playback surface:
 
@@ -232,7 +238,8 @@ Use the public interface wherever possible. The planned wrapper covers the main 
 
 The PlayerStream API uses a list of strings for subtitle events. Prefer the published API reference over older README examples when a signature differs.
 
-Do not build duplicate histories in both mpv and VPFL. VPFL owns recents, resume policy, folder records, favorites, and playlists, while media_kit owns active playback state.
+Do not build duplicate histories in both mpv and VPFL. VPFL owns recents,
+resume policy, and folder records, while media_kit owns active playback state. Favorites and persisted playlists remain planned.
 
 ### Subtitle rendering decision
 

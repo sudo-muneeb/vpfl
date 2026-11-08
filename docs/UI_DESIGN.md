@@ -1,5 +1,10 @@
 # VPFL UI design
 
+This is a design reference containing both implemented interactions and
+proposals. Current code/tests determine behavior. Sections explicitly marked
+as proposals are backlog, not features; [architecture](02-architecture.md)
+explains the implemented data and playback boundaries.
+
 This is the editable visual and interaction specification for VPFL.
 
 The exact colors, dimensions, radii, animations, and typography can be changed later without changing application architecture.
@@ -139,20 +144,16 @@ A partially watched item resumes according to the resume policy.
 
 Display videos indexed from user-added folders.
 
-Requirements:
-
-* lazy grid
-* incremental database query
-* natural filename sorting option
-* search
-* list/grid option later if useful
-* placeholder artwork is acceptable for never-played videos
+The current view uses a lazy grid backed by indexed SQLite rows and
+placeholder artwork for uncached videos. Search, configurable sorting,
+paginated queries, and a list/grid switch are proposals, not implemented controls.
 
 Do not generate expensive previews merely because a card entered the grid.
 
 ## Folder browser
 
-Folder browser should show:
+The current saved-folder view displays the selected root's indexed videos.
+Nested directory navigation and breadcrumbs below are a layout proposal:
 
 ```text
 breadcrumb path
@@ -501,7 +502,7 @@ caption
 controlLabel
 ```
 
-## Spacing
+## Proposed spacing tokens
 
 Define shared spacing tokens.
 
@@ -521,7 +522,7 @@ controlGap
 
 Exact values can be decided later.
 
-## Radius
+## Proposed radius tokens
 
 Centralize radius roles:
 

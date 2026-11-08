@@ -9,7 +9,7 @@ together local video playback, subtitles, and a personal video library.
 ## Features
 
 - **Playback controls**: Play, pause, seek, adjust volume and speed, manage
-  subtitles, and enter fullscreen.
+  subtitles, repeat or shuffle the queue, and enter fullscreen.
 - **Local video library**: Browse indexed videos and saved folders, and return
   to recently opened media.
 - **Resume playback**: Pick up unfinished videos from their saved positions
@@ -29,84 +29,64 @@ together local video playback, subtitles, and a personal video library.
 VPFL targets x86_64 Linux. The repository can build native packages for
 Ubuntu 24.04 / Linux Mint 22.x, Fedora 44, and Arch Linux. See the
 [native package guide](docs/compatibility/native-packages.md) for supported
-targets and installation checks.
+targets and installation checks. X11, headless Wayland, and XWayland have
+automated coverage; real desktop/driver coverage remains limited. Fedora codec
+availability depends on its installed multimedia packages.
 The Linux desktop application ID is `io.github.sudo_muneeb.vpfl`; the package
 and command names remain `vpfl`.
 
 **Public installer releases are not yet available.** Once published, verified
 packages will be listed on the [GitHub Releases page](https://github.com/sudo-muneeb/vpfl/releases).
-For now, developers can build and run VPFL from source.
+The [release status](docs/ci/release-checklist.md#current-publication-setup)
+records the verified availability of GitHub assets and the planned `vpfl-bin`
+AUR channel. Build from source for now; use the
+[package installation guide](docs/compatibility/native-packages.md#installing-a-release-package)
+for local packages or published assets when available.
 
 ## Run from source
 
-You will need a Linux desktop environment, the Flutter SDK with Linux desktop
-support, a working C/C++ build toolchain, and GTK 3, mpv, and libepoxy
-development dependencies. CI uses **Flutter 3.47.5**; use that version for the
-closest match. On Ubuntu or Linux Mint, install the native dependencies with:
-
-```bash
-sudo apt install clang cmake ninja-build pkg-config \
-  libgtk-3-dev libmpv-dev libepoxy-dev
-```
-
-Clone and run the application:
+Install Flutter **3.47.5** and the Linux native build dependencies listed in
+[CONTRIBUTING](CONTRIBUTING.md#set-up-a-development-checkout), then run:
 
 ```bash
 git clone https://github.com/sudo-muneeb/vpfl.git
 cd vpfl
-flutter pub get
+flutter pub get --enforce-lockfile
 flutter run -d linux
 ```
 
-Open a specific video while developing:
+To compile a release bundle, run `flutter build linux --release`. The executable
+is `build/linux/x64/release/bundle/vpfl`; keep the entire bundle together.
+For installable DEB, RPM, and Arch builds, use the
+[native package guide](docs/compatibility/native-packages.md).
+
+## Using VPFL
+
+Choose **Open file** to play a local video, or **Add Folder** to index a folder
+for browsing. Recent videos retain playback progress; history and resume can
+be controlled independently in Settings. The player provides subtitle selection
+and external loading, repeat/shuffle, video fit, screenshots, and an inspector.
+
+An installed application launches with `vpfl` or `vpfl "/path/to/video.mkv"`.
+During development, open a file with:
 
 ```bash
 flutter run -d linux --dart-entrypoint-args=/path/to/video.mkv
 ```
 
-An installed VPFL executable can be launched with `vpfl` or
-`vpfl /path/to/video.mkv`. For local testing with a separate app profile, use
-`./scripts/debug-isolated.sh [video-file]`; see the
-[script](scripts/debug-isolated.sh) for its options.
+Space toggles playback, Left/Right seek ten seconds, Up/Down change volume,
+M toggles mute, F toggles fullscreen, and Ctrl+O opens a file. Escape exits
+fullscreen or dismisses an overlay. Subtitles render through the host's
+mpv/libass and fonts; bundled interface fonts do not replace system subtitle
+fonts.
 
-## Building Linux packages
+## Documentation
 
-The repository provides scripts for generating native Linux packages. They
-have distribution-specific prerequisites; consult the
-[packaging guide](docs/compatibility/native-packages.md) before building or
-installing generated artifacts.
-
-**Debian / Ubuntu**
-
-```bash
-./packaging/scripts/package-linux.sh deb
-```
-
-**Fedora**
-
-```bash
-./packaging/scripts/package-linux.sh rpm
-```
-
-**Arch Linux**
-
-```bash
-./packaging/scripts/package-arch.sh
-```
-
-The Arch script generates the release archive used by the `vpfl-bin` package
-build; it does not install the package itself.
-
-## Under the hood
-
-VPFL uses Flutter for its desktop interface and `media_kit` for playback,
-backed by mpv. Its Linux integration covers rendering, a local media library,
-desktop file associations, and subtitle controls. The project also has
-automated playback and packaging checks.
-
-For implementation details, compatibility work, and planned improvements, see
-the [project documentation](docs/02-architecture.md),
-[CI guide](docs/ci/README.md), and [development goals](GOALS.md).
+The [documentation index](docs/README.md) links architecture, testing, CI,
+packaging/release procedures, compatibility investigations, and design work.
+[Development goals](GOALS.md) distinguish completed milestones from remaining
+work. Flatpak/Flathub distribution, MPRIS, and saved playlists are not current
+features.
 
 ## Contributing
 

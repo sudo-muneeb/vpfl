@@ -1,5 +1,10 @@
 # Subtitle baseline (Part 1 audit)
 
+Historical baseline: the missing verification, track reconciliation, and delay
+control described below refer to the audited revision. Later work implemented
+those paths; see [current architecture](../02-architecture.md#video-output-and-subtitles)
+and the [investigation sequence](../README.md#historical-evidence).
+
 Audited `origin/main` at `3b61ef5` on 13 October 2026. This document records
 the implemented behavior and test coverage; it does not add subtitle features.
 The code and tests below take precedence over future-facing rows in

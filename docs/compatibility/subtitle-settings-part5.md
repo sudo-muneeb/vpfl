@@ -1,5 +1,10 @@
 # Subtitle timing settings (Part 5)
 
+Historical implementation report, validated on 15 October 2026. The current
+timing action is in the three-dot menu at all widths; descriptions below
+record this phase. See [architecture](../02-architecture.md#video-output-and-subtitles)
+for the current subtitle boundary.
+
 VPFL's CC menu now opens a compact **Subtitle timing** dialog in both wide and
 compact player layouts. It shows the applied delay in milliseconds, changes it
 in 100 ms steps, and resets it to zero. Positive values show captions later;
