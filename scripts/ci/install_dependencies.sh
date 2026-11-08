@@ -7,7 +7,7 @@ case "${1:?usage: install_dependencies.sh ubuntu|fedora|arch}" in
     printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' \
       > /etc/apt/apt.conf.d/99-vpfl-ci
     apt-get update
-    apt-get install -y --no-install-recommends git curl jq unzip xz-utils zip python3 \
+    apt-get install -y --no-install-recommends git curl jq unzip xz-utils zip python3 python3-gi dbus-x11 \
       clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libmpv-dev \
       libepoxy-dev libsqlite3-dev libegl1-mesa-dev libgles2-mesa-dev \
       dpkg-dev desktop-file-utils appstream imagemagick ffmpeg xvfb xauth \

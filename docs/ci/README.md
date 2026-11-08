@@ -1,12 +1,16 @@
 # VPFL continuous integration
 
-This guide describes the checks in `.github/workflows/ci.yml` and their
-observed status. The workflow runs for pull requests targeting
-`bootstrap-project` or `main`; it also supports manual dispatch.
+There are exactly two workflows: `ci.yml` automatically verifies pull requests
+against `bootstrap-project` and `main`; `release-candidate.yml` manually
+qualifies a selected candidate. The release workflow reuses `ci.yml` with
+full verification enabled. There are no scheduled workflows or hosted
+physical GPU jobs. See the [test inventory](test-inventory.md) for invocation,
+environment, unique coverage, selection, and measured runtime boundaries,
+and the [restructuring validation record](restructure-validation.md) for evidence.
 
 ## V1 media contract
 
-VPFL V1 opens video files. `ci/media-matrix.json` lists 26 video
+VPFL V1 opens video files. `test/fixtures/media-matrix.json` lists 26 video
 files across the advertised extensions, four external subtitle files used
 with a video, and one video with an embedded subtitle. The video cases also
 exercise their encoded audio streams. `.ts` is explicit-open only because the
@@ -32,46 +36,138 @@ The [native subtitle comparison](native-subtitle-verification.md) checks
 standalone mpv and pinned media_kit rendering before the required graphical
 subtitle job checks VPFL's final X11 window.
 
-## Required pull request jobs
+## Pull request selection and preflight
 
-| Check | Action |
-| --- | --- |
-| `ci / changed files` | Compare the pull request base and head files; only root Markdown, `.agents/` Markdown, `docs/` Markdown, and the pull request template qualify as documentation. Manual and reusable runs always use full CI. |
-| `ci / commit messages` | Validate commits introduced by pull requests targeting `main`. |
-| `ci / fixtures` | Generate and verify the complete video/subtitle fixture set plus a longer regression video once; upload them for other jobs. |
-| `ci / quality` | Enforce lockfile, Dart formatting, analyzer, unit and widget tests. |
-| `ci / native-build (ubuntu)` | Compile and package a DEB in Ubuntu 24.04; play the matrix and existing playback, lifecycle, error, inspector, and GIO regression suites in Xvfb. |
-| `ci / native-build (fedora)` | Compile and package an RPM in Fedora 44; play the matrix in Xvfb. |
-| `ci / native-build (arch)` | Compile on Arch, build `vpfl-bin` with `makepkg`, and play the matrix in Xvfb. |
-| `ci / package-install (ubuntu/fedora/arch)` | Install the generated package with the target package manager, check files and libraries, capture video color bars plus authored ASS and external SRT captions from the installed app's X11 window, close it, then remove it. |
-| `ci / display (wayland/xwayland/x11-fallback)` | Run the matrix under headless Weston or injected GPU initialization failure; query the selected GTK backend and require software fallback state. |
-| `ci / graphical-subtitles (ubuntu-x11)` | Compare standalone mpv/media_kit subtitle frames, then check paired CC On/Off pixels from VPFL's actual X11 window. |
-| `ci / required-gate` | Require successful change detection and commit validation. For verified documentation-only pull requests, require the expensive jobs to be skipped; otherwise require them all to succeed. |
+`ci / changed files` compares base and head paths, including both sides of
+renames and deleted paths. Only root Markdown, `.agents/` Markdown, `docs/`
+Markdown, and `.github/PULL_REQUEST_TEMPLATE.md` qualify as documentation.
+Empty diffs and unknown paths select full application verification. Commit
+messages are validated independently using the existing main-PR convention.
+Neither titles, headings, nor branch names select tests.
 
-Documentation-only pull requests skip fixture generation, quality checks, native
-builds, package installation, display checks, and graphical subtitle checks.
-Any other changed file, including workflow YAML, triggers the full set. A
-change detection failure prevents the required gate from passing.
+Changes to CI configuration or infrastructure also run policy tests, Bash syntax checks, and pinned
+`actionlint` in preflight. Every application job depends on successful change
+classification **and** commit validation; a known preflight failure blocks
+expensive work. New commits cancel only older runs of this workflow for the
+same PR. Manual release runs use distinct run IDs and are never canceled by
+that policy.
 
-The separate, manually dispatched `gpu / physical-hardware` workflow needs a
-self-hosted Linux x64 runner labeled `vpfl-gpu` with Flutter 3.47.5, FFmpeg,
-`glxinfo`, `eglinfo`, a working X11 `DISPLAY`, and an accessible DRM render
-node. It rejects known software GL renderers, records GL/EGL diagnostics,
-then requires VPFL's GPU output path and an observed H.264 hardware decoder
-while playing the full video matrix. It has not run on a provisioned runner
-and is not a required PR check.
+The small classifier in `scripts/ci/ci_policy.py` is deliberately conservative:
 
-The three native build lanes compile in their own distribution containers.
-The Arch target is still the `vpfl-bin` packaging design, but its bundle is
-compiled on Arch in CI. X11 uses Xvfb. The Wayland lane removes `DISPLAY` and
-requires `GdkWaylandDisplay`; XWayland explicitly selects X11 and requires
-`GdkX11Display`. The integration test queries GTK through the native window
-channel; a backend mismatch fails the lane. The workflows use
-read-only repository permissions and no repository secrets.
-Fedora's native and clean-install lanes enable RPM Fusion Free and install its
-full `ffmpeg` package. Fedora's default `ffmpeg-free` decoder cannot handle
-the 10-bit H.264 fixture and stops matrix validation before VPFL's playback
-test. The fixture verifier still checks pixel format and full decode.
+- Documentation only: preflight and `ci / required-gate`.
+- Home, library, folders, shell, themes, and widget tests: core verification.
+  These paths retain all widget tests and Ubuntu application regressions.
+- Shared title-bar/window widgets: core plus native desktop checks.
+- Desktop plugin: core, native desktop, full distribution/display compatibility,
+  and native package builds/install tests.
+- Packaging: core, native desktop, full distribution/display compatibility,
+  and package builds/install tests. Installed subtitle pixels remain checked.
+- Subtitle integration tests and subtitle fixtures: core plus the full native
+  and graphical subtitle lane.
+- Playback, player UI, rendering, shared data/state, dependencies, other test
+  infrastructure, CI configuration, and unknown paths: all PR lanes.
+- Mixed component categories and unknown paths select full PR verification.
+  Documentation alongside one known component does not expand its selection.
+
+All non-documentation PRs run complete generated fixture integrity checks,
+lockfile dependency resolution, Dart formatting, static analysis, unit/widget
+and desktop plugin unit tests. Ubuntu runs the existing playback, error,
+inspector, resume, queue, Repeat One, three-cycle lifecycle, default-manager,
+and metadata regressions. This is the ordinary UI path; it needs no packages,
+Fedora/Arch builds, repeated display matrices, or graphical subtitle job.
+
+High-risk paths add the full video matrix on Ubuntu/Fedora/Arch, full matrices
+under Wayland/XWayland/injected software fallback, all three package builds
+and clean installs, and native plus graphical subtitles as selected above.
+Keeping the existing full matrices in these high-risk lanes avoids a second,
+reduced fixture manifest and its maintenance cost. Low-risk PRs use the
+existing Ubuntu playback regression as their representative smoke check.
+
+`ci / required-gate` retains its name and validates every boolean selection
+and every expected job result. Selected jobs must succeed; intentionally
+unselected jobs must be skipped. Failed/canceled prerequisites, missing or
+malformed outputs, unexpected skips, and unexpectedly executed jobs fail the
+gate. Release mode additionally requires every lane and lifecycle stress.
+Matrix lanes use `fail-fast: false` so one failure preserves other diagnostics.
+No branch protection, ruleset, or required-check configuration is changed.
+
+## What the native lanes prove
+
+Ubuntu 24.04, Fedora 44, and Arch compile against their own native libraries.
+Package lanes use fresh containers, validate contents/dependencies, desktop
+entries and AppStream, capture installed video/subtitle pixels, remove the
+package, and verify profile retention. Fedora enables RPM Fusion Free for
+full codec support; distro-default codec availability is a different contract.
+
+X11 uses Xvfb; Wayland and XWayland use headless Weston with explicit GTK
+backend assertions. Injected GPU initialization failure must select software
+output. Native matrices check decoded frames, tracks and playback transitions;
+X11 graphical subtitles and installed packages additionally check final
+compositor pixels. **Mesa/headless execution proves neither physical GPU
+rendering nor hardware decoding.**
+
+Fixtures are generated once per run and uploaded for one day. Packages and
+failure diagnostics are retained for seven days; candidate provenance for
+30 days. Retry the whole workflow if its one-day fixture artifact has expired.
+Flutter SDK caching is preserved. No new shared build or dependency
+cache is introduced; every lane still enforces `pubspec.lock`.
+
+## Release candidate validation
+
+Manually dispatch `release-candidate.yml`, optionally entering a candidate
+commit, tag, or branch. The workflow resolves that ref once to a SHA, records
+it and the workflow revision, and passes the immutable SHA to the reusable
+CI workflow. Every checkout uses that SHA. The candidate must contain these
+CI scripts; validating an older incompatible revision fails explicitly.
+
+Release mode ignores documentation classification. It requires all quality,
+fixtures, distribution, package, display, native desktop and subtitle checks,
+including graphical pixels, sharpness, resize/fullscreen, and **30 lifecycle
+cycles** using the existing test implementation. `release / required-gate`
+fails unless the candidate resolves and the complete qualification succeeds.
+No publishing, tags, AUR metadata, or public release uploads occur.
+
+Physical GPU, real desktop/compositor sessions, upgrades from prior releases,
+and Flatpak remain separate manual concerns in the
+[release checklist](release-checklist.md). Flatpak release verification is
+not implemented here.
+
+## Local and community hardware testing
+
+Use [the local GPU command](../../scripts/testing/test_gpu.sh) on an existing
+X11/XWayland desktop; no self-hosted runner is needed:
+
+```bash
+bash scripts/testing/test_gpu.sh
+bash scripts/testing/test_gpu.sh --decode
+bash scripts/testing/test_gpu.sh --require-decode
+# Explicitly permit a software renderer for diagnostic playback:
+bash scripts/testing/test_gpu.sh --allow-software --decode
+```
+
+Install Flutter 3.47.5, the Linux build dependencies, FFmpeg/FFprobe, Python,
+`glxinfo`, and optionally `eglinfo` and `lspci` beforehand. The command does
+not install system packages. It records OS/kernel, graphics controllers,
+GL driver/renderer and supplementary EGL information. Default mode rejects
+known software renderers and requires a DRM render node. Native playback
+reuses the complete synthetic media matrix and requires VPFL's GPU output
+evidence independently of decoding. The matrix writes a flushed stage log
+into the command's unique result directory; raw Dart stdout is not reliably
+forwarded by Flutter's Linux test runner. `--decode` reports the observed H.264
+hardware decoder or UNSUPPORTED; `--require-decode` additionally fails when
+that capability is not demonstrated. Neither mode claims all codecs decode
+in hardware. Decode failure does not relabel a successful rendering check.
+
+The command isolates persistent XDG config/data/cache/state, generates only
+test media, removes temporary profiles, and leaves a concise report with
+PASS/FAIL/SKIP/UNSUPPORTED rows and diagnostic logs in `build/gpu-results/`.
+It preserves the current display session's runtime and X authority. It never
+opens the normal library/settings or uploads anything. Review the report and
+logs before voluntarily sharing them through a
+[GitHub compatibility issue](https://github.com/sudo-muneeb/vpfl/issues/new).
+Include the tested commit, GPU/driver, session, mode, capability results,
+and reproducible symptoms. Remove personal paths and other sensitive details;
+home prefixes are redacted from text logs, but review is still necessary.
 
 ## Run locally
 
@@ -103,7 +199,7 @@ changes without touching the user's profile.
 For distribution-specific runs, use the same scripts as the workflow inside
 the named target container. Avoid using a real VPFL user profile.
 
-The opt-in [Part 4 subtitle integration check](../compatibility/subtitle-integration-part4.md)
+The [Part 4 subtitle integration check](../compatibility/subtitle-integration-part4.md)
 uses the generated subtitle suite with VPFL's actual `PlaybackService` and
 Flutter video surface. Run its four Linux test files in separate Flutter
 invocations after fixture verification; this host's Flutter runner could not
@@ -120,6 +216,12 @@ mpv/media_kit comparison; package-install jobs also check authored ASS and
 automatically discovered SRT captions in installed VPFL windows.
 The [Part 6 compatibility report](../compatibility/subtitle-rendering-part6.md)
 records the executed results and remaining platform limits.
+
+Additional native checks can be invoked with
+`bash scripts/ci/run_subtitle_regressions.sh build/ci-video-fixtures` and
+`bash scripts/ci/run_desktop_regressions.sh`; the subtitle command requires
+fixtures generated/verified with `--subtitle-suite`. These commands are now
+selected CI coverage as described above.
 
 ## Validation record
 
@@ -157,8 +259,8 @@ local documentation audit.
   The GPU initialization fault is injected in one X11 lane; other native
   renderer faults are not yet covered.
 - A headless Mesa renderer is not a physical GPU or hardware decode result.
-  The optional self-hosted GPU workflow and GNOME/KWin nested validation are
-  unexecuted; there is no required physical-GPU PR lane yet.
+  Local physical GPU results and GNOME/KWin desktop checks remain separate
+  from the hosted gate; no vendor-specific capability is inferred.
 - Flatpak packaging, upgrade from an old release package, old database schema
   snapshots, and long performance benchmarks are not part of this PR gate.
 - Images and external actions are pinned to release tags, not immutable image
@@ -168,10 +270,9 @@ local documentation audit.
 See [troubleshooting](troubleshooting.md) and the
 [release checklist](release-checklist.md).
 
-The nightly workflow calls the same required CI and then runs 30 lifecycle
-cycles on Ubuntu/Xvfb. The manual release-candidate workflow reruns required
-CI without publishing. Neither workflow substitutes for the manual hardware,
-desktop, upgrade, and Flatpak checks in the release checklist.
+There is no nightly or other scheduled workflow. Thirty-cycle lifecycle
+stress now runs only during manual release qualification. See the release
+checklist for additional hardware, desktop, upgrade, and Flatpak limits.
 
 ## Merge protection
 

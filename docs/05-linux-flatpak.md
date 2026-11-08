@@ -97,7 +97,7 @@ The native app and packages use `io.github.sudo_muneeb.vpfl`, defined in
 Use the [packaged desktop entry](../packaging/linux/io.github.sudo_muneeb.vpfl.desktop) as
 the source of truth for the native launcher, icon, and MIME types. Keep it
 aligned with `lib/data/services/media_format_policy.dart`,
-`lib/data/services/default_app_prompt_service.dart`, `ci/media-matrix.json`,
+`lib/data/services/default_app_prompt_service.dart`, `test/fixtures/media-matrix.json`,
 and the [V1 media contract](ci/README.md#v1-media-contract).
 Only advertise formats that have actually been tested.
 

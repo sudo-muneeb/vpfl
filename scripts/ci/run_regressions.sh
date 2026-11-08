@@ -41,3 +41,8 @@ bash scripts/ci/run_display.sh x11 flutter test \
 
 VPFL_TEST_XDG_DEFAULTS=1 bash scripts/ci/run_display.sh x11 flutter test \
   integration_test/default_manager_linux_test.dart -d linux --reporter expanded
+
+# A separate paused probe must not disturb the foreground player.
+bash scripts/ci/run_display.sh x11 flutter test \
+  integration_test/media_metadata_linux_test.dart -d linux \
+  --dart-define=VPFL_CI_FIXTURES="$fixtures" --reporter expanded
