@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,11 +6,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:drift/native.dart';
 import 'package:vpfl/data/model/app_database.dart';
 import 'package:vpfl/data/persistence_providers.dart';
+import 'package:vpfl/data/playback_service_provider.dart';
+import 'package:vpfl/data/services/playback_service.dart';
 import 'package:vpfl/data/repositories/playback_history_repository.dart';
 import 'package:vpfl/ui/app.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme_extension.dart';
 import 'package:vpfl/ui/home/home_screen.dart';
+import 'package:vpfl/ui/library/video_details_panel.dart';
 import 'package:vpfl/ui/shell/app_destination.dart';
 import 'package:vpfl/ui/shell/app_shell.dart';
 
@@ -76,6 +80,78 @@ void main() {
     // Drift closes canceled query streams on the next timer turn.
     await tester.pump(const Duration(microseconds: 1));
   });
+
+  for (final target in ['All Videos', 'Settings', 'Home']) {
+    testWidgets('details panel closes when navigating to $target', (
+      tester,
+    ) async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appDatabaseProvider.overrideWithValue(database),
+            playbackServiceProvider.overrideWithValue(_IdlePlayback()),
+            recentPlaybackProvider.overrideWith(
+              (ref) => Stream.value([
+                PlaybackHistory(
+                  uri: 'file:///nonexistent/details.mp4',
+                  displayName: 'details.mp4',
+                  lastOpenedAt: DateTime(2026),
+                  positionMs: 0,
+                  durationMs: 1000,
+                  watchCount: 1,
+                  completed: false,
+                ),
+              ]),
+            ),
+          ],
+          child: MaterialApp(
+            theme: VpflTheme.light,
+            home: AppShell(
+              initialDestination: target == 'Home'
+                  ? AppDestination.settings
+                  : AppDestination.home,
+              themeMode: ThemeMode.light,
+              onThemeModeChanged: (_) {},
+              historyEnabled: true,
+              resumeEnabled: true,
+              onHistoryEnabledChanged: (_) {},
+              onResumeEnabledChanged: (_) {},
+              onOpenMedia: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      if (target == 'Home') {
+        await tester.tap(find.byTooltip('Home'));
+        await tester.pumpAndSettle();
+      }
+      final mouse = await tester.createGesture(
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryButton,
+      );
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.down(tester.getCenter(find.text('details.mp4')));
+      await mouse.up();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Show details'));
+      await tester.pumpAndSettle();
+      expect(find.byType(VideoDetailsPanel), findsOneWidget);
+
+      if (target != 'Home') {
+        await tester.tap(find.byTooltip(target));
+      } else {
+        await tester.tap(find.byTooltip('Settings'));
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(VideoDetailsPanel), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(microseconds: 1));
+    });
+  }
 
   testWidgets('sidebar navigates between the main sections', (
     WidgetTester tester,
@@ -356,3 +432,13 @@ Widget _testApp({List<SavedFolder> folders = const []}) => ProviderScope(
   ],
   child: const VpflApp(initialMediaUri: null, startupError: null),
 );
+
+/// A playback service with no loaded media; metadata inspection never reads
+/// from it because the files in these tests are not active.
+class _IdlePlayback implements PlaybackService {
+  @override
+  String? get loadedMediaUri => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}

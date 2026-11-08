@@ -109,6 +109,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                               setState(() {
                                 _selectedFolder = folder;
                                 _destination = AppDestination.folders;
+                                _detailsPath = null;
                               });
                               widget.onLocationChanged?.call(
                                 AppDestination.folders,
@@ -117,7 +118,10 @@ class _AppShellState extends ConsumerState<AppShell> {
                             },
                             onDestinationSelected:
                                 (AppDestination destination) {
-                                  setState(() => _destination = destination);
+                                  setState(() {
+                                    _destination = destination;
+                                    _detailsPath = null;
+                                  });
                                   widget.onLocationChanged?.call(
                                     destination,
                                     _selectedFolder,

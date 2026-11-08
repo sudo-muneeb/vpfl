@@ -10,6 +10,7 @@ import '../../data/services/subtitle_delay.dart';
 import '../core/themes/vpfl_theme_extension.dart';
 import '../core/themes/vpfl_typography.dart';
 import '../core/themes/vpfl_popup_style.dart';
+import 'player_shortcuts.dart';
 import 'seek_ten_icon.dart';
 
 /// Event-driven playback controls. Each stream only rebuilds the control that
@@ -444,6 +445,7 @@ class _RateButton extends StatelessWidget {
         final double current = snapshot.data ?? rate;
         return PopupMenuButton<double>(
           tooltip: 'Playback speed',
+          popUpAnimationStyle: _menuAnimation(context),
           clipBehavior: Clip.antiAlias,
           initialValue: current,
           onSelected: onSetRate,
@@ -583,6 +585,7 @@ class _SubtitleButton extends StatelessWidget {
         final requested = (selection.data ?? selectedTracks).subtitle;
         return PopupMenuButton<Object>(
           tooltip: 'Subtitles',
+          popUpAnimationStyle: _menuAnimation(context),
           iconColor: Theme.of(context)
               .extension<VpflThemeExtension>()!
               .playerOverlayForeground,
@@ -717,6 +720,10 @@ class _RepeatButton extends StatelessWidget {
   );
 }
 
+/// Menus and dialogs follow the system reduced-motion preference.
+AnimationStyle? _menuAnimation(BuildContext context) =>
+    MediaQuery.disableAnimationsOf(context) ? AnimationStyle.noAnimation : null;
+
 Future<void> _showSubtitleDelayDialog(
   BuildContext context,
   int initialMilliseconds,
@@ -725,6 +732,8 @@ Future<void> _showSubtitleDelayDialog(
   Future<void> Function() reset,
 ) => showDialog<void>(
   context: context,
+  routeSettings: const RouteSettings(name: playerControlDialogRouteName),
+  animationStyle: _menuAnimation(context),
   builder: (context) => Theme(
     data: VpflPopupStyle.dialogTheme(context),
     child: AlertDialog(
@@ -844,6 +853,7 @@ class _OverflowMenu extends StatelessWidget {
           final Tracks available = trackState.data ?? tracks;
           return PopupMenuButton<_PlayerAction>(
             tooltip: 'More playback options',
+            popUpAnimationStyle: _menuAnimation(context),
             iconColor: Theme.of(context)
                 .extension<VpflThemeExtension>()!
                 .playerOverlayForeground,
@@ -1033,6 +1043,8 @@ class _OverflowMenu extends StatelessWidget {
   Future<Object?> _chooseSubtitleSelection(BuildContext context) =>
       showDialog<Object>(
         context: context,
+        routeSettings: const RouteSettings(name: playerControlDialogRouteName),
+        animationStyle: _menuAnimation(context),
         builder: (context) => Theme(
           data: VpflPopupStyle.dialogTheme(context),
           child: StreamBuilder<Track>(
@@ -1095,6 +1107,8 @@ class _OverflowMenu extends StatelessWidget {
     T? selected,
   }) => showDialog<T>(
     context: context,
+    routeSettings: const RouteSettings(name: playerControlDialogRouteName),
+    animationStyle: _menuAnimation(context),
     builder: (BuildContext context) => Theme(
       data: VpflPopupStyle.dialogTheme(context),
       child: AlertDialog(

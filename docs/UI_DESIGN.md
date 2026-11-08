@@ -389,7 +389,23 @@ M            Mute
 Ctrl+O       Open file
 ```
 
-Avoid triggering global playback shortcuts while the user is typing into a text field.
+Space, M, F, Escape, and Ctrl+O execute once per physical key press. Holding
+Left/Right repeats ten-second seeks; holding Up/Down repeats five-point volume
+changes, clamped to 0–100. Key release never executes a player shortcut.
+Bindings require exactly the listed modifiers (either Control key works).
+
+Text fields retain typing, cursor movement, and editing shortcuts without
+triggering or consuming player shortcuts. Dialogs own keyboard input while open.
+In an open player menu, Space, M, F, and Ctrl+O dismiss the menu and run once;
+arrow keys, Escape, Enter, and Tab stay with the menu, and Space activates a
+menu item that has keyboard focus. Escape closes only the menu. Enter and Numpad
+Enter activate focused controls once per press.
+Sliders retain arrow-key adjustment. Space activates a focused playback button
+once per press; it plays or pauses when focus is on the player surface or a
+non-activating target. A pointer click on the video restores player shortcuts.
+Escape closes the player inspector first, then exits fullscreen, then returns
+from the player on a subsequent press. The library details panel also closes
+once per Escape press.
 
 ## Hover behavior
 
@@ -583,3 +599,15 @@ Every icon-only control needs:
 * visible focus state
 
 Test increased text scale and keyboard-only operation.
+
+## Motion and overlays
+
+Player overlay transitions (bottom controls, fullscreen title bar, queue edge
+buttons) share one 220 ms ease-in-out cubic timing. Bottom controls and the
+title bar fade and slide; queue edge buttons fade. Popup menus and
+dialogs in the player use Material's default transitions. When the system asks
+to reduce motion, all of them switch instantly and reach the same end state.
+Hidden player controls are excluded from focus and semantics, and any key press
+reveals them without moving focus. Hiding the controls dismisses their tooltips.
+Player menus and dialogs are dismissed when their controls unmount or the media
+source changes. The library details panel closes when the destination changes.
