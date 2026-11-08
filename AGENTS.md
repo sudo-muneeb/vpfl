@@ -20,7 +20,7 @@ conflict, ask the repository owner before changing scope or bypassing a check.
    | --- | --- |
    | New feature, platform, or media format | `GOALS.md`, `docs/01-product-scope-fixed.md`, and the V1 contract in `docs/ci/README.md`; check whether the proposal is in scope before implementing it. |
    | UI, state, or performance | `docs/02-architecture.md`, `docs/04-performance.md`, `docs/06-testing.md`, and the relevant `.agents/` guidance; check rebuild scope, accessibility, and widget tests. |
-   | Playback, queues, formats, or subtitles | `docs/02-architecture.md`, `docs/06-testing.md`, `docs/ci/README.md`, and `ci/media-matrix.json` where formats change; check source switches, completion, errors, and the applicable native playback tests. |
+   | Playback, queues, formats, or subtitles | `docs/02-architecture.md`, `docs/06-testing.md`, `docs/ci/README.md`, and `test/fixtures/media-matrix.json` where formats change; check source switches, completion, errors, and the applicable native playback tests. |
    | Library, filesystem, settings, or database | `docs/02-architecture.md` and `docs/06-testing.md`; check isolated persistence, migration, scan, and failure cases as applicable. |
    | Linux window, native plugin, renderer, or package | `docs/06-testing.md`, `docs/ci/README.md`, and the relevant `docs/compatibility/` guide; check the matching Linux integration or install lane. Consult `docs/ci/release-checklist.md` for release claims. |
    | Documentation only | Check links, commands, claims, and consistency with the current code and neighboring docs. |

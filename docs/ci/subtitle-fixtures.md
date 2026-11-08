@@ -1,7 +1,7 @@
 # Subtitle fixture suite
 
 The subtitle suite extends the existing FFmpeg generator and verifier. The
-31-case `ci/media-matrix.json` and its native playback test keep their current
+31-case `test/fixtures/media-matrix.json` and its native playback test keep their current
 contract. `test/fixtures/subtitles/subtitle-matrix.json` describes additional
 media, and `test/fixtures/subtitles/sources/` contains the small, reviewed
 text sources. Generated media goes to the ignored

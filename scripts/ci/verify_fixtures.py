@@ -75,7 +75,7 @@ def verify(manifest_path, directory):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--manifest', type=Path,
-                        default=Path(__file__).resolve().parents[2] / 'ci/media-matrix.json')
+                        default=Path(__file__).resolve().parents[2] / 'test/fixtures/media-matrix.json')
     parser.add_argument('--dir', type=Path, required=True)
     parser.add_argument('--subtitle-suite', action='store_true',
                         help='also verify the deterministic subtitle suite')

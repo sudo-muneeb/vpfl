@@ -27,7 +27,7 @@ def sha256(p):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--manifest', type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2] / 'ci/media-matrix.json')
+    ap.add_argument('--manifest', type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[2] / 'test/fixtures/media-matrix.json')
     ap.add_argument('--out', type=pathlib.Path, required=True)
     ap.add_argument('--only', help='comma-separated IDs for initial validation; omit for full every-PR matrix')
     ap.add_argument('--subtitle-suite', action='store_true',

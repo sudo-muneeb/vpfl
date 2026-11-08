@@ -99,11 +99,15 @@ The title-bar widget test sends a native `maximizedChanged` event without a
 Flutter size change and checks both Maximize and Restore. The Linux integration
 test `integration_test/window_state_linux_test.dart` uses an external X11 window
 manager action to maximize and restore the real GTK window. Run it with
-Metacity, Xvfb, and `wmctrl` installed:
+Openbox (or Metacity), Xvfb, D-Bus, Python GI, and `wmctrl` installed:
 
 ```bash
-xvfb-run -a bash -c 'metacity --replace --no-composite >/tmp/vpfl-metacity.log 2>&1 & sleep 2; VPFL_TEST_EXTERNAL_MAXIMIZE=1 flutter test integration_test/window_state_linux_test.dart -d linux'
+bash scripts/ci/run_desktop_regressions.sh
 ```
+
+The command gives FileManager1 a private D-Bus session and tests maximize/
+restore under an isolated X11 window manager. It runs on desktop-risk PRs and
+on every release candidate.
 
 ## Integration tests
 
@@ -254,7 +258,17 @@ near the behavior they cover. Linux tests live in `integration_test/`; use the
 existing playback, lifecycle, window, media matrix, and library suites as
 starting points. Inspect current filenames before adding or running a test.
 
-## Normal CI
+## Verification selection
+
+Automatic PR checks use changed paths; release candidates force full coverage.
+See the [CI model](ci/README.md) and [test inventory](ci/test-inventory.md).
+Physical GPU rendering and optional H.264 hardware decoding can be tested with
+`bash scripts/testing/test_gpu.sh --decode`; inspect its local report before
+voluntarily sharing it. There are no scheduled or self-hosted runner workflows.
+`library_rescan_test.dart` remains an explicitly manual active-library audit;
+do not include it in automatic directory-wide integration invocations.
+
+## Local core and compatibility checks
 
 ```bash
 flutter pub get --enforce-lockfile
@@ -265,8 +279,8 @@ python3 scripts/ci/generate_fixtures.py --out build/ci-video-fixtures
 python3 scripts/ci/verify_fixtures.py --dir build/ci-video-fixtures
 ./scripts/ci/run_display.sh x11 flutter test integration_test/media_matrix_test.dart \
   -d linux --dart-define=VPFL_CI_FIXTURES="$PWD/build/ci-video-fixtures"
-./scripts/ci/run_display.sh x11 flutter test integration_test/resume_playback_test.dart \
-  -d linux --dart-define=VPFL_TEST_VIDEO="$PWD/build/ci-video-fixtures/regression.mp4"
+bash scripts/ci/generate_regression_video.sh build/ci-video-fixtures/regression.mp4
+bash scripts/ci/run_regressions.sh build/ci-video-fixtures
 ```
 
 The native integration command needs Xvfb and Linux playback libraries. The

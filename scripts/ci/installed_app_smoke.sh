@@ -10,6 +10,18 @@ wm=$!
 app=''
 frame=''
 cleanup() {
+  local result=$?
+  [[ ! -f /tmp/vpfl-openbox.log ]] || cp /tmp/vpfl-openbox.log "$logdir/installed-window-manager.log"
+  wmctrl -m > "$logdir/installed-window-manager-state.log" 2>&1 || :
+  wmctrl -lxp > "$logdir/installed-windows.log" 2>&1 || :
+  if [[ "$result" != 0 ]]; then
+    local width height
+    if read -r width height < <(xdotool getdisplaygeometry); then
+      ffmpeg -nostdin -v error -y -f x11grab -draw_mouse 0 \
+        -video_size "${width}x${height}" -i "$DISPLAY" -frames:v 1 \
+        "$logdir/installed-failure.png" > "$logdir/installed-failure-capture.log" 2>&1 || :
+    fi
+  fi
   [[ ! -f /tmp/vpfl-installed.log ]] || cp /tmp/vpfl-installed.log "$logdir/installed-app.log"
   [[ -z "$app" ]] || kill "$app" 2>/dev/null || :
   kill "$wm" 2>/dev/null || :

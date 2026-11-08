@@ -23,7 +23,8 @@ const _fixturesPath = String.fromEnvironment('VPFL_CI_FIXTURES');
 void _stage(String stage) {
   final line = '${DateTime.now().toUtc().toIso8601String()} $stage';
   stderr.writeln('VPFL_CI_STAGE $line');
-  final log = File('build/ci-logs/media-matrix-stages.log');
+  final logRoot = Platform.environment['VPFL_CI_LOG_DIR'] ?? 'build/ci-logs';
+  final log = File('$logRoot/media-matrix-stages.log');
   log.parent.createSync(recursive: true);
   log.writeAsStringSync('$line\n', mode: FileMode.append, flush: true);
 }
@@ -129,7 +130,7 @@ void main() {
       reason: 'VPFL_CI_FIXTURES is required',
     );
     final manifest = jsonDecode(
-      File('ci/media-matrix.json').readAsStringSync(),
+      File('test/fixtures/media-matrix.json').readAsStringSync(),
     ) as Map<String, dynamic>;
     final index = jsonDecode(
       File('${directory.path}/index.json').readAsStringSync(),
@@ -206,7 +207,7 @@ void main() {
           reason: 'injected GPU failure must select software output',
         );
       }
-      stdout.writeln('VPFL_RENDERING_MODE=${output.renderingMode.value}');
+      _stage('VPFL_RENDERING_MODE=${output.renderingMode.value}');
       _stage('initial video ready');
       for (final entry
           in (manifest['fixtures'] as List).cast<Map<String, dynamic>>()) {
@@ -262,23 +263,26 @@ void main() {
         );
         expect(screenshot, isNotNull, reason: '$id produced no decoded frame');
         await _checkPatches(screenshot!, id);
-        if (id == 'h264_mp4' &&
-            Platform.environment['VPFL_CI_REQUIRE_HARDWARE'] == '1') {
-          expect(
-            output.renderingMode.value,
-            'gpu',
-            reason: 'hardware lane requires the native GPU rendering path',
-          );
+        if (id == 'h264_mp4') {
+          // Report decoding independently of rendering for local hardware checks.
           final decoder = await _native(
             '$id hardware decoder',
             playback.hardwareDecoder,
           );
-          stdout.writeln('VPFL_HARDWARE_DECODER=$decoder');
-          expect(
-            decoder,
-            isNot(anyOf(isNull, isEmpty, 'no')),
-            reason: 'hardware lane requires an observed H.264 hardware decoder',
-          );
+          _stage('VPFL_HARDWARE_DECODER=$decoder');
+          if (Platform.environment['VPFL_CI_REQUIRE_HARDWARE'] == '1') {
+            expect(
+              output.renderingMode.value,
+              'gpu',
+              reason: 'hardware lane requires the native GPU rendering path',
+            );
+            expect(
+              decoder,
+              isNot(anyOf(isNull, isEmpty, 'no')),
+              reason:
+                  'hardware lane requires an observed H.264 hardware decoder',
+            );
+          }
         }
         expect(
           playback.duration.inMilliseconds,

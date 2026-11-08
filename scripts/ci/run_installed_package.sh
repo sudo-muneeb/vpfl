@@ -35,6 +35,7 @@ case "$distro" in
     ;;
   arch)
     if [[ -n "${VPFL_CI_ARCH_MIRROR:-}" ]]; then
+      # shellcheck disable=SC2016 # Pacman expands the mirror placeholders.
       printf 'Server = %s/$repo/os/$arch\n' "$VPFL_CI_ARCH_MIRROR" \
         > /etc/pacman.d/mirrorlist
     fi
@@ -60,13 +61,15 @@ for binary in /usr/lib/vpfl/vpfl /usr/lib/vpfl/lib/*.so; do
     exit 1
   fi
 done
+# Arch's xvfb-run defaults to 640x480, below VPFL's minimum window size.
+# Both compositor checks require the complete app window on the same geometry.
+export VPFL_CI_X11_SCREEN_ARGS='-screen 0 1280x1024x24'
 xdg=$(mktemp -d -t vpfl-installed-xdg.XXXXXXXX)
 trap 'rm -rf "$xdg"' EXIT
 VPFL_CI_XDG_ROOT="$xdg" ./scripts/ci/run_display.sh x11 \
   ./scripts/ci/installed_app_smoke.sh "$sample"
 if [[ -n "$subtitle_root" ]]; then
   VPFL_CI_XDG_ROOT="$xdg" \
-    VPFL_CI_X11_SCREEN_ARGS='-screen 0 1280x1024x24' \
     ./scripts/ci/run_display.sh x11 \
     bash ./scripts/ci/installed_subtitle_smoke.sh \
       "$subtitle_root/subtitle-suite/authored_ass.mkv" \

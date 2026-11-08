@@ -1,5 +1,11 @@
 # CI implementation and validation report
 
+> Historical execution record for the earlier CI design. The active nightly
+> and self-hosted GPU workflows described below have been removed. Current
+> selection, manual release qualification, and local GPU testing are documented
+> in [the CI guide](README.md) and [restructuring validation](restructure-validation.md).
+
+
 This is a historical record of PR #3 and the checks performed through
 11 October 2026. For the current workflow and remaining coverage, see the
 [CI guide](README.md). Earlier failures below are retained as evidence of how
@@ -32,7 +38,7 @@ required gate.
   required job. The workflow uses read-only PR permissions.
 - Nightly and manual release-candidate workflows rerun the required pipeline;
   nightly adds a 30-cycle lifecycle test. Neither publishes artifacts.
-- `ci/media-matrix.json` declares **26 video/container cases**, four external
+- `test/fixtures/media-matrix.json` declares **26 video/container cases**, four external
   subtitle cases, and one embedded-subtitle video. A separate 30-second video
   supports older playback/lifecycle regressions.
 - The generator, verifier, XDG/display wrapper, package smoke, Arch package

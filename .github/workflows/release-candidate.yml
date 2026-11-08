@@ -2,10 +2,60 @@ name: VPFL release candidate checks
 
 on:
   workflow_dispatch:
+    inputs:
+      candidate:
+        description: Commit SHA, tag, or branch to qualify (blank uses selected workflow ref)
+        type: string
+        required: false
 
 permissions:
   contents: read
 
 jobs:
-  required_ci:
+  candidate:
+    name: release / resolve candidate
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate || github.sha }}
+      - name: Record immutable candidate and workflow revision
+        id: resolve
+        env:
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          printf 'Candidate commit: %s\nWorkflow revision: %s\n' "$sha" "$WORKFLOW_SHA" | tee candidate.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-commit
+          path: candidate.txt
+          retention-days: 30
+          if-no-files-found: error
+
+  qualification:
+    needs: candidate
     uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.candidate.outputs.sha }}
+      release: true
+
+  result:
+    name: release / required-gate
+    if: always()
+    needs: [candidate, qualification]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require complete candidate qualification
+        env:
+          CANDIDATE: ${{ needs.candidate.outputs.sha }}
+          RESOLVED: ${{ needs.candidate.result }}
+          QUALIFICATION: ${{ needs.qualification.result }}
+        run: |
+          test "$RESOLVED" = success
+          test "$QUALIFICATION" = success
+          test -n "$CANDIDATE"
+          echo "Qualified commit: $CANDIDATE" >> "$GITHUB_STEP_SUMMARY"

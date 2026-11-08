@@ -165,7 +165,7 @@ the pinned version, not assumptions about later media_kit releases.
 ## Existing subtitle test inventory
 
 The fixture generator is [`scripts/ci/generate_fixtures.py`](../../scripts/ci/generate_fixtures.py),
-driven by [`ci/media-matrix.json`](../../ci/media-matrix.json). The verifier
+driven by [`test/fixtures/media-matrix.json`](../../test/fixtures/media-matrix.json). The verifier
 checks file hashes, metadata, and FFmpeg decode; it does not inspect subtitle
 appearance. The required X11, Wayland, and XWayland matrix lanes are in
 [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).

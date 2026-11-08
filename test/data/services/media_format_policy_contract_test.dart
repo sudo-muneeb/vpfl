@@ -7,7 +7,7 @@ import 'package:vpfl/data/services/media_format_policy.dart';
 void main() {
   test('video fixture extensions match the explicit-open policy', () {
     final manifest = jsonDecode(
-      File('ci/media-matrix.json').readAsStringSync(),
+      File('test/fixtures/media-matrix.json').readAsStringSync(),
     ) as Map<String, dynamic>;
     final extensions = (manifest['fixtures'] as List)
         .cast<Map<String, dynamic>>()
