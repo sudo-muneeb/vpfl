@@ -42,8 +42,8 @@ and command names remain `vpfl`.
 **Public installer releases are not yet available.** Once published, verified
 packages will be listed on the [GitHub Releases page](https://github.com/sudo-muneeb/vpfl/releases).
 The [release status](docs/ci/release-checklist.md#current-publication-setup)
-records the verified availability of GitHub assets and the planned `vpfl-bin`
-AUR channel. Build from source for now; use the
+records the availability of GitHub assets. No AUR submission is planned for
+v1.0.1. Build from source for now; use the
 [package installation guide](docs/compatibility/native-packages.md#installing-a-release-package)
 for local packages or published assets when available.
 

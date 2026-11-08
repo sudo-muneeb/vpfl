@@ -48,5 +48,5 @@ update-desktop-database -q /usr/share/applications || :
 update-desktop-database -q /usr/share/applications || :
 
 %changelog
-* Sun Oct 04 2026 Sheikh Muneeb Ahmed <muneebahmed2250@gmail.com> - @VERSION@-1
+* Mon Nov 09 2026 Sheikh Muneeb Ahmed <muneebahmed2250@gmail.com> - @VERSION@-1
 - Package the Flutter Linux release bundle.
