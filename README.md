@@ -1,10 +1,14 @@
-![VPFL logo and wordmark](vpfl-banner.png)
+![VPFL logo and wordmark](assets/readme/vpfl-banner.png)
 
 [![OpenRepos](https://img.shields.io/endpoint?url=https://openrepos.org/status/vpfl.openrepos.org.json&style=flat-square)](https://vpfl.openrepos.org/)
 
 VPFL (Video Player in Flutter for Linux) is a free, open-source desktop video
 player built with Flutter and powered by `media_kit` and mpv. It brings
 together local video playback, subtitles, and a personal video library.
+
+## Preview
+
+![VPFL playing a local video on Linux](assets/readme/vpfl.gif)
 
 ## Features
 
