@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:media_kit/media_kit.dart';
 
 import '../core/themes/vpfl_theme_extension.dart';
 import 'player_inspector.dart';
+import 'player_shortcuts.dart';
 
 /// Pointer-aware playback overlay used on the video surface.
 class VideoControlsOverlay extends StatefulWidget {
@@ -19,6 +21,7 @@ class VideoControlsOverlay extends StatefulWidget {
     required this.isPlaying,
     required this.playingStream,
     required this.onPlayPause,
+    this.sourceGeneration = 0,
     this.playlist,
     this.playlistStream,
     this.onPrevious,
@@ -38,6 +41,7 @@ class VideoControlsOverlay extends StatefulWidget {
   final bool isPlaying;
   final Stream<bool> playingStream;
   final Future<void> Function() onPlayPause;
+  final int sourceGeneration;
   final Playlist? playlist;
   final Stream<Playlist>? playlistStream;
   final Future<void> Function()? onPrevious;
@@ -55,6 +59,10 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
   static const Duration _idleHideDelay = Duration(milliseconds: 1500);
   static const Duration _nearControlsHideDelay = Duration(seconds: 3);
   static const double _controlProximityHeight = 140;
+  // One duration and curve for every overlay transition; reduced motion
+  // removes the animation but keeps the same end states.
+  static const Duration _motionDuration = Duration(milliseconds: 220);
+  static const Curve _motionCurve = Curves.easeInOutCubic;
   final FocusNode _shortcutFocus = FocusNode(debugLabel: 'Video shortcuts');
   Timer? _hideTimer;
   late StreamSubscription<bool> _playingSubscription;
@@ -64,6 +72,11 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
   bool _edgeButtonsVisible = false;
   bool _routeCovered = false;
   bool _pointerNearControls = false;
+  NavigatorState? _navigator;
+  String? _menuDismissLabel;
+
+  Duration get _duration =>
+      MediaQuery.disableAnimationsOf(context) ? Duration.zero : _motionDuration;
 
   @override
   void initState() {
@@ -76,6 +89,9 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
   @override
   void didUpdateWidget(covariant VideoControlsOverlay oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.sourceGeneration != widget.sourceGeneration) {
+      _dismissOrphanedTransientRoutes();
+    }
     if (oldWidget.playingStream != widget.playingStream) {
       _playingSubscription.cancel();
       _playingSubscription = widget.playingStream.listen(_onPlayingChanged);
@@ -88,6 +104,8 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _navigator = Navigator.maybeOf(context);
+    _menuDismissLabel = MaterialLocalizations.of(context).menuDismissLabel;
     final routeCovered = ModalRoute.isCurrentOf(context) == false;
     if (routeCovered == _routeCovered) return;
     _routeCovered = routeCovered;
@@ -104,7 +122,26 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
     _hideTimer?.cancel();
     _playingSubscription.cancel();
     _shortcutFocus.dispose();
+    _dismissOrphanedTransientRoutes();
     super.dispose();
+  }
+
+  /// Player menus and dialogs are routes and can outlive their controls.
+  void _dismissOrphanedTransientRoutes() {
+    final navigator = _navigator;
+    final label = _menuDismissLabel;
+    if (navigator == null || label == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!navigator.mounted) return;
+      navigator.popUntil(
+        (route) => !isPlayerControlTransientRoute(route, label),
+      );
+    });
+  }
+
+  void _revealControls() {
+    if (!_bottomVisible) setState(() => _bottomVisible = true);
+    _scheduleHide();
   }
 
   void _onPlayingChanged(bool playing) {
@@ -165,6 +202,9 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
       _pointerNearControls ? _nearControlsHideDelay : _idleHideDelay,
       () {
         if (!mounted) return;
+        // Tooltips live in the Overlay, so they would stay on the video after
+        // the controls that own them fade out.
+        if (_playing && _bottomVisible) Tooltip.dismissAllToolTips();
         setState(() {
           if (_playing) _bottomVisible = false;
           _topVisible = false;
@@ -189,11 +229,17 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<VpflThemeExtension>()!;
-    return CallbackShortcuts(
+    return PlayerShortcuts(
       bindings: widget.bindings,
       child: Focus(
         focusNode: _shortcutFocus,
         autofocus: true,
+        onKeyEvent: (_, event) {
+          // Hidden controls are not focusable; any key press brings them back
+          // without moving focus.
+          if (event is KeyDownEvent && !_routeCovered) _revealControls();
+          return KeyEventResult.ignored;
+        },
         child: Listener(
           behavior: HitTestBehavior.translucent,
           onPointerUp: _onPointerUp,
@@ -210,7 +256,10 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: widget.onPlayPause,
+                    onTap: () {
+                      _shortcutFocus.requestFocus();
+                      unawaited(widget.onPlayPause());
+                    },
                   ),
                 ),
                 if (widget.inspectorMode != null &&
@@ -244,40 +293,72 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
                       );
                     },
                   ),
-                if (widget.fullscreen && _topVisible)
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: SafeArea(
-                      bottom: false,
-                      child: Material(
-                        color: colors.playerOverlayTop,
-                        child: Row(
-                          children: [
-                            IconButton(
-                              tooltip: 'Exit fullscreen',
-                              onPressed: widget.onExit,
-                              color: colors.playerOverlayForeground,
-                              icon: const Icon(LucideIcons.minimize),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                widget.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(
-                                      color: colors.playerOverlayForeground,
-                                    ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: ExcludeSemantics(
+                    excluding: !_topVisible,
+                    child: ExcludeFocus(
+                      excluding: !_topVisible,
+                      child: IgnorePointer(
+                        ignoring: !_topVisible,
+                        child: AnimatedSwitcher(
+                          duration: _duration,
+                          switchInCurve: _motionCurve,
+                          switchOutCurve: _motionCurve,
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0, -0.35),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
                               ),
-                            ),
-                          ],
+                          child: widget.fullscreen && _topVisible
+                              ? SafeArea(
+                                  key: const ValueKey('fullscreen-top-bar'),
+                                  bottom: false,
+                                  child: Material(
+                                    color: colors.playerOverlayTop,
+                                    child: Row(
+                                      children: [
+                                        IconButton(
+                                          tooltip: 'Exit fullscreen',
+                                          onPressed: widget.onExit,
+                                          color: colors.playerOverlayForeground,
+                                          icon: const Icon(
+                                            LucideIcons.minimize,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            widget.title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                  color: colors
+                                                      .playerOverlayForeground,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
                       ),
                     ),
                   ),
+                ),
                 Positioned.fill(
                   child: StreamBuilder<Playlist>(
                     stream: widget.playlistStream,
@@ -323,39 +404,47 @@ class _VideoControlsOverlayState extends State<VideoControlsOverlay> {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  child: IgnorePointer(
-                    ignoring: !_bottomVisible,
-                    child: AnimatedSlide(
-                      offset: _bottomVisible
-                          ? Offset.zero
-                          : const Offset(0, 0.35),
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeInOutCubic,
-                      child: AnimatedOpacity(
-                        opacity: _bottomVisible ? 1 : 0,
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeInOutCubic,
-                        child: SafeArea(
-                          top: false,
-                          child: ColoredBox(
-                            color: colors.playerEdgeBackground,
-                            child: IconTheme(
-                              data: IconThemeData(
-                                color: colors.playerOverlayForeground,
-                              ),
-                              child: IconButtonTheme(
-                                data: IconButtonThemeData(
-                                  style: ButtonStyle(
-                                    foregroundColor: WidgetStatePropertyAll(
-                                      colors.playerOverlayForeground,
-                                    ),
-                                  ),
-                                ),
-                                child: DefaultTextStyle.merge(
-                                  style: TextStyle(
+                  // Hidden controls must not take pointer, keyboard, or screen
+                  // reader interaction.
+                  child: ExcludeSemantics(
+                    excluding: !_bottomVisible,
+                    child: ExcludeFocus(
+                      excluding: !_bottomVisible,
+                      child: IgnorePointer(
+                        ignoring: !_bottomVisible,
+                        child: AnimatedSlide(
+                          offset: _bottomVisible
+                              ? Offset.zero
+                              : const Offset(0, 0.35),
+                          duration: _duration,
+                          curve: _motionCurve,
+                          child: AnimatedOpacity(
+                            opacity: _bottomVisible ? 1 : 0,
+                            duration: _duration,
+                            curve: _motionCurve,
+                            child: SafeArea(
+                              top: false,
+                              child: ColoredBox(
+                                color: colors.playerEdgeBackground,
+                                child: IconTheme(
+                                  data: IconThemeData(
                                     color: colors.playerOverlayForeground,
                                   ),
-                                  child: widget.controls,
+                                  child: IconButtonTheme(
+                                    data: IconButtonThemeData(
+                                      style: ButtonStyle(
+                                        foregroundColor: WidgetStatePropertyAll(
+                                          colors.playerOverlayForeground,
+                                        ),
+                                      ),
+                                    ),
+                                    child: DefaultTextStyle.merge(
+                                      style: TextStyle(
+                                        color: colors.playerOverlayForeground,
+                                      ),
+                                      child: widget.controls,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -381,14 +470,20 @@ class _EdgeReveal extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => ExcludeFocus(
+  Widget build(BuildContext context) => ExcludeSemantics(
     excluding: !visible,
-    child: IgnorePointer(
-      ignoring: !visible,
-      child: AnimatedOpacity(
-        opacity: visible ? 1 : 0,
-        duration: const Duration(milliseconds: 180),
-        child: child,
+    child: ExcludeFocus(
+      excluding: !visible,
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : _VideoControlsOverlayState._motionDuration,
+          curve: _VideoControlsOverlayState._motionCurve,
+          child: child,
+        ),
       ),
     ),
   );

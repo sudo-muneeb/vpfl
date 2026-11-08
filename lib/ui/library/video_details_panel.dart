@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 
 import '../../data/services/media_metadata_service.dart';
+import '../core/widgets/app_shortcuts.dart';
 
 typedef MetadataLoader = Future<MediaMetadata> Function(
   String filePath, {
@@ -64,7 +65,9 @@ class _VideoDetailsPanelState extends State<VideoDetailsPanel> {
 
   @override
   Widget build(BuildContext context) => CallbackShortcuts(
-    bindings: {LogicalKeySet(LogicalKeyboardKey.escape): widget.onClose},
+    bindings: {
+      const PressShortcutActivator(LogicalKeyboardKey.escape): widget.onClose,
+    },
     child: Focus(
       autofocus: true,
       child: Material(

@@ -76,6 +76,40 @@ Verify what the user sees and can do.
 
 Do not lock tests to unnecessary widget nesting.
 
+## Keyboard shortcut regressions
+
+`test/ui/player_shortcuts_test.dart` covers every player binding, repeat and
+release behavior, rapid presses, exact modifiers, text entry, focus changes,
+synthesized focus synchronization events, and modal input. The app shortcut
+suite checks focused control activation, dialog dismissal, and preserved text
+editing and Tab traversal. The details-panel suite checks held Escape.
+
+The native `integration_test/keyboard_shortcuts_linux_test.dart` checks actual
+pause, repeated and rapid seek, volume, mute, fullscreen, menu dismissal, source
+switching, and completion recovery. It also holds Escape across fullscreen
+exit. It runs in `scripts/ci/run_regressions.sh` with a generated 30-second video
+and isolated XDG directories. Run it independently with:
+
+```bash
+bash scripts/ci/generate_regression_video.sh build/keyboard-fixtures/regression.mp4
+bash scripts/ci/run_display.sh x11 flutter test \
+  integration_test/keyboard_shortcuts_linux_test.dart -d linux \
+  --dart-define=VPFL_TEST_VIDEO="$PWD/build/keyboard-fixtures/regression.mp4" \
+  --reporter expanded
+```
+
+These tests inject Flutter key events. They do not establish physical keyboard,
+compositor repeat settings, or native file-picker behavior on every desktop.
+
+`test/ui/player_menu_shortcuts_test.dart` covers shortcuts with a popup menu
+open: Space, held Space, rapid open/Space cycles with and without reduced
+motion, Escape and held Escape, arrow keys, focused menu items, and dialogs.
+`test/ui/video_controls_overlay_test.dart` covers hidden-control focus, keyboard
+reveal, tooltip dismissal, shared motion timing, reduced motion, and player
+menu/dialog cleanup when controls unmount or sources change.
+`test/ui/shell/app_shell_test.dart` covers closing the details panel on
+navigation.
+
 ## Fullscreen interaction tests
 
 Explicitly test the top-bar contract:
