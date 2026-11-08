@@ -61,12 +61,13 @@ class LibraryRepository {
     }
     await _database
         .into(_database.savedFolders)
-        .insertOnConflictUpdate(
+        .insert(
           SavedFoldersCompanion.insert(
             path: normalized,
             displayName: path.basename(normalized),
             addedAt: DateTime.now(),
           ),
+          onConflict: DoNothing(target: [_database.savedFolders.path]),
         );
     return (_database.select(
       _database.savedFolders,
