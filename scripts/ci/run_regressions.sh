@@ -11,8 +11,9 @@ test -f "$short"
 test -f "$fixtures/h264_mkv.mkv"
 test -f "$fixtures/vp8_webm.webm"
 
-for suite in linux_playback_test library_open_failure_test \
-             player_inspector_linux_test recoverable_codec_error_test; do
+for suite in linux_playback_test keyboard_shortcuts_linux_test \
+             library_open_failure_test player_inspector_linux_test \
+             recoverable_codec_error_test; do
   echo "Running $suite"
   bash scripts/ci/run_display.sh x11 flutter test "integration_test/$suite.dart" \
     -d linux --dart-define=VPFL_TEST_VIDEO="$sample" --reporter expanded

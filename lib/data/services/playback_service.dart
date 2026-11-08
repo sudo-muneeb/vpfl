@@ -640,13 +640,25 @@ class PlaybackService {
   Future<void> seek(Duration position) => _player.seek(position);
 
   /// Seeks relative to the current position, clamped to the media duration.
-  Future<void> seekBy(Duration offset) {
-    final Duration target = position + offset;
-    final Duration clamped = Duration(
-      milliseconds: target.inMilliseconds.clamp(0, duration.inMilliseconds),
-    );
-    return _player.seek(clamped);
-  }
+  Future<void> seekBy(Duration offset) => NativePlayer.lock.synchronized(
+    () async {
+      // The backend accumulates relative seeks while a previous seek is still
+      // pending. The position stream can lag behind those requests.
+      if (duration <= Duration.zero || _player.state.completed) {
+        final target = position + offset;
+        final clamped = Duration(
+          milliseconds: target.inMilliseconds.clamp(0, duration.inMilliseconds),
+        );
+        await _nativePlayer.seek(clamped, synchronized: false);
+        return;
+      }
+      await _nativePlayer.command([
+        'seek',
+        (offset.inMilliseconds / 1000).toStringAsFixed(3),
+        'relative+exact',
+      ]);
+    },
+  );
 
   /// Moves to the next item when the queue contains multiple items.
   Future<void> next() async {
@@ -683,8 +695,23 @@ class PlaybackService {
   Future<void> setVolume(double value) =>
       _player.setVolume(value.clamp(0, 100));
 
+  /// Adjusts volume against the backend's current value, clamped to 0–100.
+  Future<void> adjustVolume(double offset) =>
+      NativePlayer.lock.synchronized(() async {
+        final current = double.parse(await _nativePlayer.getProperty('volume'));
+        await _nativePlayer.command([
+          'set',
+          'volume',
+          (current + offset).clamp(0, 100).toString(),
+        ]);
+      });
+
   /// Toggles between muted and full volume.
-  Future<void> toggleMute() => setVolume(volume == 0 ? 100 : 0);
+  Future<void> toggleMute() => NativePlayer.lock.synchronized(
+    // Resolve each toggle against mpv's current volume, not the delayed stream
+    // snapshot. Share media_kit's command lock with absolute volume changes.
+    () => _nativePlayer.command(['cycle-values', 'volume', '0', '100']),
+  );
 
   /// Sets playback speed.
   Future<void> setRate(double value) {

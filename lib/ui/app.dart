@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/themes/vpfl_theme.dart';
 import 'core/widgets/window_controls.dart';
+import 'core/widgets/app_shortcuts.dart';
 import '../data/model/app_database.dart';
 import '../data/persistence_providers.dart';
 import '../data/playback_service_provider.dart';
@@ -13,6 +14,7 @@ import '../data/thumbnail_providers.dart';
 import '../data/services/application_shutdown.dart';
 import '../data/services/lifecycle_trace.dart';
 import 'player/player_screen.dart';
+import 'player/player_shortcuts.dart';
 import 'shell/app_destination.dart';
 import 'shell/app_shell.dart';
 
@@ -157,6 +159,9 @@ class _VpflAppState extends ConsumerState<VpflApp> {
     if (_closing) return const SizedBox.shrink();
     return MaterialApp(
       title: 'VPFL',
+      shortcuts: appShortcutBindings(),
+      builder: (context, child) =>
+          PlayerMenuShortcuts(child: child ?? const SizedBox.shrink()),
       debugShowCheckedModeBanner: false,
       theme: VpflTheme.light,
       darkTheme: VpflTheme.dark,

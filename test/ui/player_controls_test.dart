@@ -9,6 +9,7 @@ import 'package:vpfl/ui/core/themes/vpfl_theme.dart';
 import 'package:vpfl/ui/core/themes/vpfl_theme_extension.dart';
 import 'package:vpfl/ui/player/player_controls.dart';
 import 'package:vpfl/ui/player/seek_ten_icon.dart';
+import 'package:vpfl/ui/player/video_controls_overlay.dart';
 
 void main() {
   testWidgets('light player controls retain white labels over video', (
@@ -908,6 +909,44 @@ void main() {
     await tester.tap(find.text('Subtitle timing…'));
     await tester.pumpAndSettle();
     expect(find.text('−200 ms'), findsOneWidget);
+  });
+
+  testWidgets('source switch closes a dialog opened by real player controls', (
+    tester,
+  ) async {
+    var adjustments = 0;
+    Widget player(int sourceGeneration) => MaterialApp(
+      theme: VpflTheme.dark,
+      home: Scaffold(
+        body: SizedBox.expand(
+          child: VideoControlsOverlay(
+            title: 'Video',
+            fullscreen: false,
+            controls: _controls(
+              onAdjustSubtitleDelay: (_) async => adjustments++,
+            ),
+            onExit: () async {},
+            bindings: const {},
+            isPlaying: false,
+            playingStream: const Stream<bool>.empty(),
+            onPlayPause: () async {},
+            sourceGeneration: sourceGeneration,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(player(1));
+    await tester.tap(find.byTooltip('More playback options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Subtitle timing…'));
+    await tester.pumpAndSettle();
+    expect(find.text('Subtitle timing'), findsOneWidget);
+
+    await tester.pumpWidget(player(2));
+    await tester.pumpAndSettle();
+    expect(find.text('Subtitle timing'), findsNothing);
+    expect(adjustments, 0);
   });
 }
 

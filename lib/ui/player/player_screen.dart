@@ -24,6 +24,7 @@ import '../core/themes/vpfl_theme_extension.dart';
 import '../settings/default_app_controls.dart';
 import 'player_controls.dart';
 import 'player_inspector.dart';
+import 'player_shortcuts.dart';
 import 'video_controls_overlay.dart';
 import 'video_output_size.dart';
 
@@ -85,6 +86,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   int _openGeneration = 0;
   int _countedGeneration = 0;
   bool _subtitlePickerBusy = false;
+  Future<void> _fullscreenTail = Future<void>.value();
   ValueNotifier<String?>? _renderingModeSource;
   BoxFit _videoFit = BoxFit.contain;
   ({int width, int height})? _pendingVideoOutputSize;
@@ -320,54 +322,66 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
   }
 
-  bool get _textEntryHasFocus =>
-      FocusManager.instance.primaryFocus?.context
-          ?.findAncestorWidgetOfExactType<EditableText>() !=
-      null;
-
   void _runShortcut(Future<void> Function() action) {
-    if (_textEntryHasFocus) return;
     unawaited(action());
   }
 
-  void _toggleFullscreen() {
-    final VideoState? videoState = _videoKey.currentState;
-    if (videoState != null) _runShortcut(videoState.toggleFullscreen);
+  Future<void> _queueFullscreenAction(
+    Future<void> Function(VideoState? state) action,
+  ) {
+    final result = _fullscreenTail.then((_) async {
+      if (!mounted) return;
+      await action(_videoKey.currentState);
+      // Enter/exit changes the route and its active VideoState context. Build
+      // that route before resolving the next physical press's action.
+      if (mounted) await WidgetsBinding.instance.endOfFrame;
+    });
+    // Keep later presses usable after a failure; the returned result still
+    // reports the original error to its caller.
+    _fullscreenTail = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
   }
 
+  Future<void> _toggleFullscreen() => _queueFullscreenAction((state) async {
+    await state?.toggleFullscreen();
+  });
+
+  Future<void> _exitFullscreen() => _queueFullscreenAction((state) async {
+    await state?.exitFullscreen();
+  });
+
   void _handleEscape() {
-    if (_textEntryHasFocus) return;
     if (_inspectorMode.value != null) {
       _inspectorMode.value = null;
       return;
     }
-    final VideoState? videoState = _videoKey.currentState;
-    if (videoState?.isFullscreen() == true) {
-      unawaited(videoState!.exitFullscreen());
-    } else {
-      widget.onBack();
-    }
+    unawaited(
+      _queueFullscreenAction((state) async {
+        if (state?.isFullscreen() == true) {
+          await state!.exitFullscreen();
+        } else {
+          widget.onBack();
+        }
+      }),
+    );
   }
 
-  Map<ShortcutActivator, VoidCallback> _fullscreenShortcuts(VideoState state) =>
-      {
-        const SingleActivator(LogicalKeyboardKey.space): () =>
-            _runShortcut(_playback.playOrPause),
-        const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
-            _runShortcut(() => _playback.seekBy(const Duration(seconds: -10))),
-        const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
-            _runShortcut(() => _playback.seekBy(const Duration(seconds: 10))),
-        const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
-            _runShortcut(() => _playback.setVolume(_playback.volume + 5)),
-        const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
-            _runShortcut(() => _playback.setVolume(_playback.volume - 5)),
-        const SingleActivator(LogicalKeyboardKey.keyM): () =>
-            _runShortcut(_playback.toggleMute),
-        const SingleActivator(LogicalKeyboardKey.keyF): state.toggleFullscreen,
-        const SingleActivator(LogicalKeyboardKey.escape): _handleEscape,
-        const SingleActivator(LogicalKeyboardKey.keyO, control: true):
-            _pickAndOpenFile,
-      };
+  Map<ShortcutActivator, VoidCallback> _shortcuts() => playerShortcutBindings(
+    onPlayPause: () => _runShortcut(_playback.playOrPause),
+    onSeekBackward: () =>
+        _runShortcut(() => _playback.seekBy(const Duration(seconds: -10))),
+    onSeekForward: () =>
+        _runShortcut(() => _playback.seekBy(const Duration(seconds: 10))),
+    onVolumeUp: () => _runShortcut(() => _playback.adjustVolume(5)),
+    onVolumeDown: () => _runShortcut(() => _playback.adjustVolume(-5)),
+    onMute: () => _runShortcut(_playback.toggleMute),
+    onFullscreen: () => _runShortcut(_toggleFullscreen),
+    onEscape: _handleEscape,
+    onOpenFile: _pickAndOpenFile,
+  );
 
   Future<void> _readRenderingMode() async {
     try {
@@ -632,25 +646,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final String? error = widget.startupError ?? _mediaError;
-    return CallbackShortcuts(
-      bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.space): () =>
-            _runShortcut(_playback.playOrPause),
-        const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
-            _runShortcut(() => _playback.seekBy(const Duration(seconds: -10))),
-        const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
-            _runShortcut(() => _playback.seekBy(const Duration(seconds: 10))),
-        const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
-            _runShortcut(() => _playback.setVolume(_playback.volume + 5)),
-        const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
-            _runShortcut(() => _playback.setVolume(_playback.volume - 5)),
-        const SingleActivator(LogicalKeyboardKey.keyM): () =>
-            _runShortcut(_playback.toggleMute),
-        const SingleActivator(LogicalKeyboardKey.keyF): _toggleFullscreen,
-        const SingleActivator(LogicalKeyboardKey.escape): _handleEscape,
-        const SingleActivator(LogicalKeyboardKey.keyO, control: true):
-            _pickAndOpenFile,
-      },
+    return PlayerShortcuts(
+      bindings: _shortcuts(),
       child: Focus(
         focusNode: _shortcutFocus,
         autofocus: true,
@@ -708,6 +705,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   isPlaying: _playback.isPlaying,
                                   playingStream: _playback.playingStream,
                                   onPlayPause: _playback.playOrPause,
+                                  sourceGeneration: _playback.sourceGeneration,
                                   playlist: _playback.playlist,
                                   playlistStream: _playback.playlistStream,
                                   onPrevious: _previousVideo,
@@ -727,11 +725,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                             _inspectorMode.value = null,
                                       ),
                                   controls: _buildPlayerControls(
-                                    onToggleFullscreen: state.toggleFullscreen,
+                                    onToggleFullscreen: _toggleFullscreen,
                                     fullscreen: fullscreen,
                                   ),
-                                  onExit: state.exitFullscreen,
-                                  bindings: _fullscreenShortcuts(state),
+                                  onExit: _exitFullscreen,
+                                  bindings: _shortcuts(),
                                 );
                               },
                             ),

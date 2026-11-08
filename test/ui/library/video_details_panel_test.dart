@@ -79,8 +79,32 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Reading video details…'), findsOneWidget);
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    for (final event in [
+      const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.escape,
+        logicalKey: LogicalKeyboardKey.escape,
+        timeStamp: Duration.zero,
+        synthesized: true,
+      ),
+      const KeyUpEvent(
+        physicalKey: PhysicalKeyboardKey.escape,
+        logicalKey: LogicalKeyboardKey.escape,
+        timeStamp: Duration.zero,
+        synthesized: true,
+      ),
+    ]) {
+      HardwareKeyboard.instance.handleKeyEvent(event);
+    }
+    expect(closeCount, 0, reason: 'focus synchronization is not a press');
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
     expect(closeCount, 1);
+    for (var repeat = 0; repeat < 5; repeat++) {
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.escape);
+    }
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+    expect(closeCount, 1);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    expect(closeCount, 2);
     await tester.pumpWidget(const SizedBox.shrink());
     expect(request?.isCanceled, true);
     pending.complete(metadata);
