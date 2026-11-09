@@ -2,50 +2,84 @@
 
 [![OpenRepos](https://img.shields.io/endpoint?url=https://openrepos.org/status/vpfl.openrepos.org.json&style=flat-square)](https://vpfl.openrepos.org/)
 
-VPFL (Video Player in Flutter for Linux) is a free, open-source desktop video
-player built with Flutter and powered by `media_kit` and mpv. It brings
-together local video playback, subtitles, and a personal video library.
+VPFL (Video Player in Flutter for Linux) is a free, open source video player for Linux that brings together smooth playback, powerful subtitle support, and a personal video library in a clean, modern desktop experience.
 
-## Preview
+## Screenshots
 
-![VPFL playing a local video on Linux](assets/readme/vpfl.gif)
+**Home — Browse recent videos and folders.**
+
+![VPFL home screen](assets/readme/home-screen.png)
+
+**Player — Watch videos with playback controls.**
+
+![VPFL player screen](assets/readme/player-screen.png)
+
+**Settings — Customize playback and library preferences.**
+
+![VPFL settings screen](assets/readme/settings-screen.png)
 
 ## Features
 
-- **Playback controls**: Play, pause, seek, adjust volume and speed, manage
-  subtitles, repeat or shuffle the queue, and enter fullscreen.
-- **Local video library**: Browse indexed videos and saved folders, and return
-  to recently opened media.
-- **Resume playback**: Pick up unfinished videos from their saved positions
-  when resume is enabled.
-- **Subtitle support**: Select embedded subtitle tracks or load external SRT,
-  ASS, SSA, and WebVTT files.
-- **Linux desktop integration**: Open local files from the desktop, launch a
-  video from the command line, and choose VPFL as the default player for its
-  registered video formats.
-- **GPU rendering where available**: GPU-backed video presentation with a
-  software rendering fallback. Rendering mode is separate from video decoding.
+- **Local video playback**: Play, pause, seek, change speed and volume, mute,
+  choose a video fit, and watch in fullscreen.
+- **Queue controls**: Move between videos, shuffle the queue, and repeat the
+  current video or the whole queue.
+- **Subtitles and tracks**: Select embedded subtitles or load external SRT,
+  ASS, SSA, and WebVTT files. Adjust subtitle timing and choose available audio
+  or video tracks.
+- **Video library**: Add folders for indexing, browse their videos in one
+  library, and return to recently played files.
+- **Playback history and resume**: Continue unfinished videos from their saved
+  positions. Control history and resume separately, or clear saved history.
+- **Screenshots and details**: Save a frame as an image and inspect media
+  information and playback diagnostics.
+- **Linux desktop integration**: Open files from the desktop or command line,
+  and set VPFL as the default app for its registered video formats.
+- **Appearance and keyboard control**: Follow the system theme or choose light
+  or dark mode, and use keyboard shortcuts for common player actions.
+- **GPU presentation where available**: Present video through GPU rendering
+  with a software fallback. Rendering mode is separate from video decoding.
 - **Open source**: Use, inspect, modify, and redistribute VPFL under the
   Apache License 2.0.
 
+## Supported video and subtitle formats
+
+VPFL accepts these local video files and external subtitle files. Playback
+depends on the codecs available through the installed mpv libraries.
+
+| Type | Format | File extensions |
+| --- | --- | --- |
+| Video | MP4 / M4V / QuickTime | `.mp4`, `.m4v`, `.mov` |
+| Video | Matroska / WebM | `.mkv`, `.webm` |
+| Video | AVI / FLV / Ogg video | `.avi`, `.flv`, `.ogv` |
+| Video | MPEG video / DVD video | `.mpeg`, `.mpg`, `.vob` |
+| Video | MPEG transport stream | `.ts`, `.mts`, `.m2ts` |
+| Video | Windows Media / ASF | `.wmv`, `.asf` |
+| Video | 3GPP / 3GPP2 | `.3gp`, `.3g2` |
+| Video | MXF | `.mxf` |
+| Subtitle | SubRip | `.srt` |
+| Subtitle | Advanced SubStation Alpha | `.ass` |
+| Subtitle | SubStation Alpha | `.ssa` |
+| Subtitle | WebVTT | `.vtt` |
+
+Files ending in `.ts` can be opened directly but are excluded from automatic
+folder scans because the extension is also used by TypeScript.
+
 ## Download and installation
 
-VPFL targets x86_64 Linux. The repository can build native packages for
-Ubuntu 24.04 / Linux Mint 22.x, Fedora 44, and Arch Linux. See the
-[native package guide](docs/compatibility/native-packages.md) for supported
-targets and installation checks. X11, headless Wayland, and XWayland have
-automated coverage; real desktop/driver coverage remains limited. Fedora codec
-availability depends on its installed multimedia packages.
-The Linux desktop application ID is `io.github.sudo_muneeb.vpfl`; the package
-and command names remain `vpfl`.
+**VPFL v1.0.1 is publicly available** for x86_64 Linux. This download link
+always opens the latest published release:
 
-**Public installer releases are not yet available.** Once published, verified
-packages will be listed on the [GitHub Releases page](https://github.com/sudo-muneeb/vpfl/releases).
-The [release status](docs/ci/release-checklist.md#current-publication-setup)
-records the availability of GitHub assets. No AUR submission is planned for
-v1.0.1. Build from source for now; use the
-[package installation guide](docs/compatibility/native-packages.md#installing-a-release-package)
-for local packages or published assets when available.
+[![Download latest release](https://img.shields.io/github/v/release/sudo-muneeb/vpfl?label=Download%20latest%20release&style=for-the-badge)](https://github.com/sudo-muneeb/vpfl/releases/latest)
+
+Choose the asset for your system on the release page:
+
+| System | Asset |
+| --- | --- |
+| Ubuntu 24.04 / Linux Mint 22.x | DEB package (`.deb`) |
+| Fedora 44 | RPM package (`.rpm`) |
+| Arch Linux | Arch package (`.pkg.tar.zst`) |
+| Linux bundle | TAR archive (`.tar.gz`) |
 
 ## Run from source
 
@@ -59,11 +93,6 @@ flutter pub get --enforce-lockfile
 flutter run -d linux
 ```
 
-To compile a release bundle, run `flutter build linux --release`. The executable
-is `build/linux/x64/release/bundle/vpfl`; keep the entire bundle together.
-For installable DEB, RPM, and Arch builds, use the
-[native package guide](docs/compatibility/native-packages.md).
-
 ## Using VPFL
 
 Choose **Open file** to play a local video, or **Add Folder** to index a folder
@@ -71,18 +100,24 @@ for browsing. Recent videos retain playback progress; history and resume can
 be controlled independently in Settings. The player provides subtitle selection
 and external loading, repeat/shuffle, video fit, screenshots, and an inspector.
 
-An installed application launches with `vpfl` or `vpfl "/path/to/video.mkv"`.
-During development, open a file with:
+Launch an installed application from a terminal:
 
 ```bash
-flutter run -d linux --dart-entrypoint-args=/path/to/video.mkv
+vpfl
+vpfl "/path/to/video.mkv"
 ```
 
-Space toggles playback, Left/Right seek ten seconds, Up/Down change volume,
-M toggles mute, F toggles fullscreen, and Ctrl+O opens a file. Escape exits
-fullscreen or dismisses an overlay. Subtitles render through the host's
-mpv/libass and fonts; bundled interface fonts do not replace system subtitle
-fonts.
+### Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| Space | Play or pause |
+| Left / Right | Seek backward / forward 10 seconds |
+| Up / Down | Increase / decrease volume |
+| M | Toggle mute |
+| F | Toggle fullscreen |
+| Ctrl+O | Open a file |
+| Escape | Exit fullscreen or dismiss an overlay |
 
 ## Documentation
 
@@ -110,4 +145,4 @@ Created and maintained by Sheikh Muneeb Ahmed.
 
 ---
 
-[Website](https://vpfl.pages.dev/) · [GitHub](https://github.com/sudo-muneeb/vpfl) · [Issues](https://github.com/sudo-muneeb/vpfl/issues)
+[Website](https://vpfl.pages.dev/) · [GitHub](https://github.com/sudo-muneeb/vpfl) · [Issues](https://github.com/sudo-muneeb/vpfl/issues) · [LinkedIn](https://www.linkedin.com/company/video-player-in-flutter-for-linux/)
