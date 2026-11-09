@@ -48,6 +48,7 @@ migrate_working_dir/
 .pub/
 /build/
 /dist/
+/release-assets/
 /coverage/
 
 # Symbolication related
