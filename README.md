@@ -119,6 +119,35 @@ vpfl "/path/to/video.mkv"
 | Ctrl+O | Open a file |
 | Escape | Exit fullscreen or dismiss an overlay |
 
+### Why VPFL??
+
+| Feature | VPFL | VLC | mpv | Haruna | Celluloid |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Playback** | | | | | |
+| Local video playback | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Modern graphical UI | ✓ | ✓ | ✗ | ✓ | ✓ |
+| One-click settings access | ✓ | ◐ | ✗ | ✓ | ◐ |
+| Dark / light themes | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Playback speed control | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Library** | | | | | |
+| Folder indexing | ✓ | ◐ | ✗ | ✗ | ✗ |
+| Dedicated video library | ✓ | ◐ | ✗ | ✗ | ✗ |
+| Library thumbnails | ✓ | ◐ | ✗ | ◐ | ✗ |
+| Recently played videos | ✓ | ✓ | ◐ | ✓ | ◐ |
+| Playback resume | ✓ | ◐ | ✓ | ✓ | ◐ |
+| **Features** | | | | | |
+| Queue management | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Shuffle and repeat | ✓ | ✓ | ✓ | ✓ | ◐ |
+| Screenshot capture | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Audio / video track selection | ✓ | ✓ | ✓ | ✓ | ✓ |
+| External subtitles | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Subtitle synchronization | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Keyboard shortcuts | ✓ | ✓ | ✓ | ✓ | ✓ |
+| GPU presentation | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Open source | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+✓ Supported · ◐ Partial/configuration-dependent · ✗ Not available as a documented built-in feature. Indicative comparison, not an exhaustive feature audit. GPU presentation does not necessarily mean hardware decoding.
+
 ## Documentation
 
 The [documentation index](docs/README.md) links architecture, testing, CI,
